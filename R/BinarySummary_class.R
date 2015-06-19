@@ -1,28 +1,5 @@
-`%+%` <- function(a, b) paste0(a, b)  # cat function
-#-----------------------------------------------------------------------------
-# TO DO: 
-#-----------------------------------------------------------------------------
-# - Subsetting / Delayed eval
-  # x) Delayed evaluation of subsets implies that data and newdata ALWAYS HAVE TO BE a DATA.FRAME!!!
-  # x) See if this is possible for matrix()
-  # x) See implementation of subset.data.frame and subset.matrix - there might be a way around it even for data=as.matrix(data)
-  # x) Move delayed eval. to DatBinarySummary, right before Xmat and Y_vals are defined
-  
-# - Replace all node name references (columns) with indices? See ?subset.data.frame:
-  # nl <- as.list(seq_along(data.df))
-  # names(nl) <- names(data.df)
-  # eval(substitute(node), nl, parent.frame()) -> replace parent.frame() with a reasonable calling envir
 
-# - Continuous summary measures
-  # x) see how to generalize this to pooled fits, k-specific fits, etc (use subset definitions + ?)
-  # x) create a new class BinarySummaryModelPool that inherits from BinarySummaryModel and
-  # x) will include function to convert data_mtx to long format
-  # x) redefines outvar to be a vector of outcomes
-  # x) redefined predict function?
-## ---------------------------------------------------------------------
-library(assertthat)
-library(speedglm)
-library(R6)
+
 
 logitlinkinv <- function (eta) .Call(stats:::"C_logit_linkinv", eta) # use this glm logitlink inverse function
 
@@ -32,34 +9,33 @@ logisfit.glmS3 = function(datsum_obj) { # # S3 method for glm binomial family fi
   message("calling glm.fit...")
   Xmat = datsum_obj$getXmat 
   Y_vals = datsum_obj$getY
-  ctrl <- glm.control(trace=FALSE, maxit=1000)
+  if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA's and avoid throwing exception
+    m.fit <- list(coef = rep_len(NA_real_, ncol(Xmat)))
+  } else {
+    ctrl <- glm.control(trace=FALSE, maxit=1000)
     # SuppressGivenWarnings({
               m.fit <- glm.fit(x = Xmat, y = Y_vals, family = binomial(), control = ctrl)
               # }, GetWarningsToSuppress())
-    fit <- list(coef = m.fit$coef, linkfun = m.fit$family$linkinv, fitfunname = "glm")
-    class(fit) <- c(class(fit), c("glmS3"))
-    return(fit)
+  }
+  fit <- list(coef = m.fit$coef, linkfun = logitlinkinv, fitfunname = "glm")
+  class(fit) <- c(class(fit), c("glmS3"))
+  return(fit)
 }
 
 logisfit.speedglmS3 = function(datsum_obj) { # S3 method for speedglm binomial family fit, takes DatBinarySummary data object 
   message("calling speedglm.wfit...")
   Xmat = datsum_obj$getXmat
   Y_vals = datsum_obj$getY
-  m.sglm.fit <- speedglm.wfit(X = Xmat, y = Y_vals, family = binomial())
-  fit <- list(coef = m.sglm.fit$coef, linkfun = logitlinkinv, fitfunname = "speedglm")
+  print("dims of glm data:")
+  print(dim(Xmat)); print(length(Y_vals))
+  if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA's and avoid throwing exception
+    m.fit <- list(coef = rep_len(NA_real_, ncol(Xmat)))
+  } else {
+    m.fit <- speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial())
+  }
+  fit <- list(coef = m.fit$coef, linkfun = logitlinkinv, fitfunname = "speedglm")
   class(fit) <- c(class(fit), c("speedglmS3"))
   return(fit)
-}
-
-# TO DO:
-# x) Note that if this feature is to be open to the user, eval() has to be done in the parent.frame of the calling function, not baseenv().
-# x) Same with summary measures: need to eval them in the calling environment (in addition to the envir of data.frame(netW,netA))
-evalsubst <- function(data, subsetexpr) {
-  # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):
-  res <- try(eval(subsetexpr, envir = c(data, as.list(gvars)), enclos = baseenv())) # to evaluate vars not found in data in baseenv()
-  # res <- try(eval(subst_call, envir = data, enclos = parent.frame())) # to evaluate vars not found in data in parent.frame()
-  # old:# res <- try(eval(subst_call, envir = c(lapply(TD_vnames, I), node_func), enclos=anchor_evn))  # evaluate modified_call in the df namespace with custom '[' function  
-  return(res)
 }
 
 ## ---------------------------------------------------------------------
@@ -68,6 +44,7 @@ evalsubst <- function(data, subsetexpr) {
 #' @importFrom R6 R6Class
 #' @export
 Abstract_DatBinarySummary <- R6Class(classname = "Abstract_DatBinarySummary",
+# Abstract_DatBin <- R6Class(classname = "Abstract_DatBin",  
   portable = TRUE,
   class = TRUE,
   public = list(
@@ -108,22 +85,18 @@ Abstract_DatBinarySummary <- R6Class(classname = "Abstract_DatBinarySummary",
 #' Add method to save design matrix when its created? Second time getXmat(), return previously created dmat?
 #'
 #' @importFrom R6 R6Class
-#' @importFrom assertthat assert_that
+#' @importFrom assertthat assert_that is.count is.string is.flag
 #' @export
 
+# TO DO: rename class to DatBin
 DatBinarySummary <- R6Class(classname = "DatBinarySummary",
+# DatBin <- R6Class(classname = "DatBin",
   inherit = Abstract_DatBinarySummary,
+  # inherit = Abstract_DatBin,
   portable = TRUE,
   class = TRUE,
   public = list(
-    # glmfitclass = "glmS3",  # default glm fit class
-    # outvar = character(),   # outcome name(s)
-    # predvars = character(), # names of predictor vars
-    # n = NA_integer_,        # number of rows in the input data
-    # subset_expr = NULL,     # PASS THE LOGICAL EXPRESSIONS TO self$subset WHICH WILL BE EVALUTED IN THE ENVIRONMENT OF THE data
-    # subset_idx = NULL,      # Logical vector of length n (TRUE = include the obs)
     initialize = function(reg, ...) {
-    # initialize = function(reg, data, subset, ...) {
       assert_that(is.string(reg$outvar))
       assert_that(is.character(reg$predvars))
       self$outvar <- reg$outvar
@@ -134,41 +107,52 @@ DatBinarySummary <- R6Class(classname = "DatBinarySummary",
         # self$subset_idx <- as.expression(TRUE) # an alternative to reduce the no. of checks on self$subset_idx
         # self$subset_idx <- as.call(TRUE) # an alternative to reduce the no. of checks on self$subset_idx
       assert_that(is.logical(self$subset_expr) || is.call(self$subset_expr))
-
       # print("Declared new DatBinarySummary"); print(self$show()); print("with subset expr: "); print(self$subset_expr)
       # self$setdata(data = data, subset = subset, ...)
       invisible(self)
     },
 
     # TO DO: move to private method...
+    # Use data$get.df.sW.sA(covars, subset) to get data.frame of all predictors, data$vec.var(var, subset) to get outcome var vector 
+    # Change below to: setdata = function(dat.sWsA, ...) { # Sets X_mat, Yvals, evaluates subset and performs correct subseting of data
     setdata = function(data, ...) { # Sets X_mat, Yvals, evaluates subset and performs correct subseting of data
-    # setdata = function(data, subset, ...) { # Sets X_mat, Yvals, evaluates subset and performs correct subseting of data
-      assert_that(is.data.frame(data))
-      self$n <- nrow(data)
+      assert_that(is.DatNet.sWsA(data))
+      self$n <- data$nobs
 
       if (is.logical(self$subset_expr)) {self$subset_idx <- self$subset_expr}
-
       if (is.call(self$subset_expr)) {
-        self$subset_idx <- evalsubst(data = data, subsetexpr = self$subset_expr)
-        
-        # print("fit subset_idx: "%+%length(self$subset_idx)); 
-        # print("sum subset: "%+%sum(self$subset_idx))
-        # print(head(self$subset_idx))
+        # THIS IS GOING TO BE DIFFICULT. 
+        # evalsubst needs to be changed so that environments of both dat.sA and dat.sW are available
+        self$subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
+        # change to: self$subset_idx <- datsWsA$evalsubst(subsetexpr = self$subset_expr)
+        # self$subset_idx <- evalsubst(data = data, subsetexpr = self$subset_expr)
+
+        print("self$subset_expr: "); print(self$subset_expr)
+        print("fit subset_idx: "%+%length(self$subset_idx)); 
+        print("sum subset: "%+%sum(self$subset_idx)); print(head(self$subset_idx))
 
         assert_that(is.logical(self$subset_idx))
         assert_that((length(self$subset_idx) == self$n) || (length(self$subset_idx) == 1L))
         # e.g., subset <- TRUE means select all rows or subset <- "(nFriends==3)"
       }
-      # ****
-      # Will this always be a vector or could this be a data.frame of several predictors (A, ..., A_netFj) for pooled regression?
-      private$Y_vals <- data[self$subset_idx, self$outvar]
-      private$X_mat <- as.matrix(cbind(Intercept = 1, data[self$subset_idx, self$predvars, drop = FALSE]))
-      # To find and replace misvals in X_mat: # private$X_mat[private$X_mat == gvars$misval] <- gvars$misXreplace
+      private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Will always be a vector
+
+      if (sum(self$subset_idx) == 0L) {  # When nrow(X_mat) == 0L avoids exception (when nrow == 0L => prob(A=a) = 1)
+        private$X_mat <- matrix(, nrow = 0L, ncol = (length(self$predvars) + 1))
+        colnames(private$X_mat) <- c("Intercept", self$predvars)
+      } else {
+        print("Dat Bin self$predvars"); print(self$predvars)
+        private$X_mat <- as.matrix(cbind(Intercept = 1, data$get.df.sW.sA(self$subset_idx, self$predvars, self$outvar)))
+        # old version for X_mat when data was an actual data.frame of all cbind(sW,sA)
+        # private$X_mat <- as.matrix(cbind(Intercept = 1, data[self$subset_idx, self$predvars, drop = FALSE]))
+        # To find and replace misvals in X_mat: # private$X_mat[private$X_mat == gvars$misval] <- gvars$misXreplace
+      }
+      print("Y_vals: "); print(length(private$Y_vals)); print(head(private$Y_vals))
+      print("design mat: "); print(dim(private$X_mat)); print(class(private$X_mat)); print(head(private$X_mat))
     },
 
     newdata = function(newdata, ...) {
-    # newdata = function(newdata, subset_idx, ...) {
-      assert_that(is.data.frame(newdata)) #old: assert_that(is.data.frame(newdata)||is.matrix(newdata))
+      assert_that(is.DatNet.sWsA(newdata)) # old: assert_that(is.data.frame(newdata)||is.matrix(newdata))
       self$setdata(data = newdata, ...)
       invisible(self)
     },
@@ -177,7 +161,6 @@ DatBinarySummary <- R6Class(classname = "DatBinarySummary",
     # No need for S3 for now, until need different pred. funs for different classes
     # Does not handle cases with deterministic Anodes in the original data..
     logispredict = function(m.fit) {
-    # logispredict = function(newdatsum_obj, m.fit) {      
       assert_that(!is.null(private$X_mat)); assert_that(!is.null(self$subset_idx))
       pAout <- rep_len(gvars$misval, self$n) # Set to default missing value for A[i] degenerate/degerministic/misval: # Alternative, set to default replacement val: pAout <- rep_len(gvars$misXreplace, newdatsum_obj$n)      
       if (sum(self$subset_idx > 0)) {
@@ -214,8 +197,9 @@ DatBinarySummary <- R6Class(classname = "DatBinarySummary",
 #' @export
 
 BinarySummaryModel <- R6Class(classname = "BinarySummaryModel",
-  # inherit = Abstract_BinarySummary,
+# BinOutModel  <- R6Class(classname = "BinOutModel",
   inherit = DatBinarySummary,
+  # inherit = DatBin,
   portable = TRUE,
   class = TRUE,
   public = list(
@@ -247,6 +231,7 @@ BinarySummaryModel <- R6Class(classname = "BinarySummaryModel",
       # ... additional checks & assertions... # ... add try() to below: # ... add checks for testing a successful fit
 
       private$m.fit <- logisfit(datsum_obj = self$datbin) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() # alternative 2 is to apply data_obj method / method that fits the model
+      # print("private$m.fit"); print(private$m.fit)
       self$is.fitted <- TRUE
 
       private$probA1 <- self$datbin$logispredict(m.fit = private$m.fit)
@@ -263,21 +248,19 @@ BinarySummaryModel <- R6Class(classname = "BinarySummaryModel",
       if (missing(newdata)) { # ... Do nothing, predictions for fitted data are already saved
         return(invisible(self))
       }
-
       self$datbin$newdata(newdata = newdata, ...) # re-populate datbin with new X_mat & Y_vals
-      
       # print("predict newdata"); print(head(newdata))
-
       private$probA1 <- self$datbin$logispredict(m.fit = private$m.fit) # overwrite probA1 with new predictions:
       # private$probA1 <- logispredict(newdatsum_obj = self$datbin, m.fit = private$m.fit) # overwrite probA1 with new predictions:
       # print("predict private$probA1: "); print(private$probA1)
-
-      invisible(self)
+      invisible(self) # returning self allows chaining object manipulations
     },
-
-    predictAeqa = function(indA_i) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
+    # WARNING: This method cannot be chained together with other methods (s.a, class$predictAeqa()$fun())
+    # Convert contin. sA vector into matrix of binary cols, then call parent class method: super$predictAeqa()
+    # Invisibly return cumm. prob P(sA=sa|sW=sw)
+    predictAeqa = function(obsdat.sA) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
       assert_that(self$is.fitted)
-      assert_that(is.integer(indA_i)) # check B: indA_i is a row of integers
+      assert_that(is.integer(obsdat.sA)) # check B: obsdat.sA is a row of integers
       assert_that(is.logical(self$getsubset))
 
       # print("private$probA1"); print(private$probA1)
@@ -286,18 +269,18 @@ BinarySummaryModel <- R6Class(classname = "BinarySummaryModel",
 
       assert_that(!any(is.na(private$probA1[self$getsubset]))) # check that predictions P(A=1|dmat) exist for all obs.
 
-      # TO FIND AND REPLACE FOR MISSING VALS IN indA_i: # indA_i[indA_i==gvars$misval] <- gvars$misXreplace
-      private$probAeqa <- rep_len(1L, length(indA_i)) # preset the output like. vector to constant 1
-      probA1 <- private$probA1[self$getsubset]; 
-      indA <- indA_i[self$getsubset]
-      private$probAeqa[self$getsubset] <- probA1^(indA) * (1L - probA1)^(1L - indA)
+      private$probAeqa <- rep_len(1L, length(obsdat.sA)) # for missing, the likelihood is always set to P(A = a) = 1.
+      # TO FIND AND REPLACE FOR MISSING VALS IN obsdat.sA: # obsdat.sA[obsdat.sA==gvars$misval] <- gvars$misXreplace
 
+      probA1 <- private$probA1[self$getsubset];
+      indA <- obsdat.sA[self$getsubset]
+      private$probAeqa[self$getsubset] <- probA1^(indA) * (1L - probA1)^(1L - indA)
       # print("private$probA1: "); print(private$probA1)
       # print("self$getsubset: "); print(self$getsubset)
-      # print("indA_i: "); print(indA_i)
+      # print("obsdat.sA: "); print(obsdat.sA)
       # print("private$probAeqa: "); print(private$probAeqa)
       self$datbin$emptydata  # wipe out prediction data after getting the likelihood
-      invisible(self) # allows chaining object manipulations
+      invisible(private$probAeqa)
     }
   ),
 

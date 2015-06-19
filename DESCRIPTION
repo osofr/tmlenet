@@ -3,8 +3,25 @@ Title: Targeted Maximum Likelihood Estimation for Networks
 Version: 0.0.9
 Authors@R: person("Oleg", "Sofrygin", email = "oleg.sofrygin@gmail.com", role = c("aut", "cre"))
 Description: Targeted Maximum Likelihood Estimation (TMLE) of treatment/censoring specific mean outcome for point-treatment data with network structure
-Suggests: SuperLearner, snowfall, bigmemory, biganalytics, locfit,
-        knitr
-Depends: R (>= 3.2.0)
-License: What license is it under?
+Depends: 
+    R (>= 3.2.0)
+Imports:
+    assertthat,
+    speedglm, 
+    R6,
+    stringr
+Suggests:
+    SuperLearner,
+    snowfall,
+    bigmemory,
+    biganalytics,
+    locfit,
+    ltmle,
+    RUnit,
+    knitr,
+    igraph,
+    ggplot2,
+    Hmisc
+VignetteBuilder: knitr
+License: GPL-2
 LazyData: true

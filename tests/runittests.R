@@ -88,6 +88,219 @@ sample_checks <- function() {   # doesn't run, this is just to show what test fu
 as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 allNA = function(x) all(is.na(x))
 
+
+## ---------------------------------------------------------------------
+# TEST SET FOR DETECTING VECTOR TYPES
+## ---------------------------------------------------------------------
+test_mat <- as.matrix(data.frame(a = c(0,1,0,0,1), b = rep(5,5), c = c(1,2,3,4,5), d = rnorm(5)))
+correct.types <- list(a = gvars$sVartypes$bin, b = gvars$sVartypes$bin, c = gvars$sVartypes$cat, d = gvars$sVartypes$cont)
+out.types <- detect.col.types(test_mat)
+all.equal(correct.types, out.types)
+
+## ---------------------------------------------------------------------
+# TEST SET FOR NetIndClass class
+## ---------------------------------------------------------------------
+testdf <- data.frame(a = rnorm(100), b = rnorm(100))
+nettest <- NetIndClass$new(Odata = testdf, Kmax = 5)
+nettest$getNetInd
+nettest$getNetInd <- NULL
+
+## ---------------------------------------------------------------------
+# TESTING ContinSummaryModel class and NewSummaryModel.contin constructor
+## ---------------------------------------------------------------------
+# TEST 1: Binary outvar (treated as continuous). Testing that results match with binary class prediction.
+# self <- list()
+# self$nbins <- 10L
+# self$cats <- ...
+# self$sA_nms <- ...
+# (binvar <- rbinom(n=100, size = 1, prob = 0.3))
+# (int_bylen <- c(0, 0.1, 0.9, 1))
+# (int_bymass <- quantile(binvar, prob = c(0, 0.1, 0.9, 1)))
+# (ord1 <- findInterval(x = binvar, vec = int_bylen, rightmost.closed = TRUE))
+# (ord2 <- findInterval(x = binvar, vec = int_bymass, rightmost.closed = TRUE))
+# make.bins_mtx_1(x.ordinal = ord.sAj, self = self)
+# obj <- NewSummaryModel.contin()
+# obj$fit()
+
+# sAnorm <- normalize(x = rnorm(100000))
+# # sAnorm <- normalize(x = datatest$sA)
+# (ints_list <- define.intervals(x = sAnorm, nbins = self$nbins))
+# xcat_bylen = make.ordinal(x = sAnorm, intervals = ints_list$intbylen)  # 1: x as categorical for intervals def by equal len 0-1
+# xcat_bymass = make.ordinal(x = sAnorm, intervals = ints_list$intbymass) # 2: x as categorical for intervals def by equal mass 0-1
+# # data.frame(sAnorm, xcat_bylen, xcat_bymass)
+# hist(xcat_bylen)
+# hist(xcat_bymass)
+# sort(unique(xcat_bylen))
+# sort(unique(xcat_bymass))
+
+# (t1 <- system.time(bins_mat1 <- make.bins_mtx_1(x.ordinal = xcat_bylen)))
+# outdf1 <- data.frame(sAnorm, xcat_bylen, bins_mat1)
+
+# (t2 <- system.time(bins_mat2 <- make.bins_mtx_1(x.ordinal = xcat_bymass)))
+# outdf2 <- data.frame(sAnorm, xcat_bymass, bins_mat2)
+
+# print(head(outdf1))
+# print(head(outdf2))
+# head(cbind(bins_mat1, bins_mat2))
+
+# TEST 2: Continuous outvar.
+# datatest <- data.frame(
+#                       W = rbinom(100, 1, prob=.5), 
+#                       A = rbinom(100, 1, prob=.2),
+#                       sA = rnorm(100),
+#                       Y = rbinom(100, 1, prob=.7), 
+#                       nFriends = rbinom(100, 5, prob=0.2)
+#                       )
+# nodes <- list(Anode = "A", Wnode = "W", Ynode = "Y", nFnode = "nFriends")
+
+
+## ---------------------------------------------------------------------
+# TESTING classes not throw exceptions for fitting empty X_mat design mat and empty Y outcome vector
+## ---------------------------------------------------------------------
+# testmat <- matrix(rnorm(50), nrow=10, ncol = 5)
+# colnames(testmat) <- "A"%+%(1:5)
+# Yvals <- rep(1, 10)
+# fit <- speedglm.wfit(y = Yvals, X = testmat, family = binomial())$coef
+# class(fit)
+# attributes(fit)
+
+# testmat_emp <- testmat[FALSE, ]
+# nrow(testmat_emp)==0L
+# Yvals_emp <- Yvals[FALSE]
+# cbind(Yvals_emp, testmat_emp)
+# # both throw exceptions for empty design mat:
+# speedglm.wfit(y = Yvals_emp, X = testmat_emp, family = binomial())$coef
+# glm.fit(x = testmat_emp, y = Yvals_emp, family = binomial())
+# logisfit.glmS3 = function(datsum_obj) { # # S3 method for glm binomial family fit, takes DatBinarySummary data object 
+# logisfit.speedglmS3 = function(datsum_obj) { # S3 method for speedglm binomial family fit, takes DatBinarySummary data object 
+
+
+test.RegressionClass <- function() {
+# TEST RegressionClass:
+reg_test <- RegressionClass$new(outvar.class = gvars$sVartypes$bin, 
+                                  outvar = "A", 
+                                  predvars = c("W1", "W2"), 
+                                  subset = expression(A=0))
+  # class(reg_test)
+  reg_test$reg
+}
+
+
+test.continous.sA <- function() {
+    # I) Build network vectors: (W, W_netF_1, ..., W_netF_k) for each W in Wnodes by PRE-ALLOCATING netW_full:
+    datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, AddnFnode = TRUE)
+    # datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, AddnFnode = TRUE, misValRepl = TRUE)
+    netW_full <- datnetW$dat.netVar
+    print("datnetW$ncols.netVar: "%+%datnetW$ncols.netVar);
+    # print("datnetW$names.netVar: "); print(datnetW$names.netVar)
+    # ...
+    # II) APPLY THE SUMMARY MEASURE FUNCTIONS / EXPRESSION TO netW_full to OBTAIN sW columns SELECT ONLY sW columns in hform_g0 and hfrom_gstar or use all? 
+    sW_nms <- W_nms # change that to the actual names of summary measures in sW or entire expressions sW
+    obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms, norm.c.sVars = TRUE)$dat.sVar
+    print("head(obsdat.sW)"); print(head(obsdat.sW))
+    print("datnetW$type.sVar: "); str(datnetW$type.sVar)
+    print("datnetW$names.c.sVar: "); print(datnetW$names.c.sVar)
+    datnetW$def_cbin_intrvls()
+    print("Detected intervals: "); print(datnetW$cbin_intrvls)
+    print("Detected nbins: "); print(datnetW$nbins)
+
+    oldncats1 <- set.maxncats(5)
+    oldnbins1 <- set.nbins(10)
+    print("No normalization. Binning by mass")
+      obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms)$dat.sVar
+      print("head(obsdat.sW)"); print(head(obsdat.sW))
+      print("Var types: "); str(datnetW$type.sVar)
+      print("Contin covars names: "); print(datnetW$names.c.sVar)
+      defints1 <- datnetW$def_cbin_intrvls()$cbin_intrvls
+      print("No normalization bin intervals by mass: "); print(defints1)
+      print("nbins: "); print(datnetW$nbins); 
+      print("Testing ordinals with ncats < nbins get nbins = ncats:"); print(datnetW$nbins["nFriends"] < gvars$nbins)
+
+    print("No normalization. Binning by equal length")
+      intlen_ints <- datnetW$def_cbin_intrvls(bin_bymass = FALSE)$cbin_intrvls
+      print("No normalization bin intervals by length: "); print(intlen_ints)
+      print("nbins: "); print(datnetW$nbins)
+
+    print("Testing ordinals with ncats > nbins get collapsed into fewer cats:")
+    set.nbins(4)
+      obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms)$dat.sVar
+      defints2 <- datnetW$def_cbin_intrvls()$cbin_intrvls
+      print("New bins with collapsed ordinals: "); print(defints2)
+      print("nbins: "); print(datnetW$nbins)
+
+    set.nbins(10)
+    print("Testing normalization:")
+      obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms, norm.c.sVars = TRUE)$dat.sVar
+      print("head(obsdat.sW)"); print(head(obsdat.sW))
+      savedtypes <- datnetW$type.sVar
+      print("Var types: "); str(datnetW$type.sVar)
+      print("Contin covars names: "); print(datnetW$names.c.sVar)
+      savedc.ints <- datnetW$def_cbin_intrvls()$cbin_intrvls
+      print("Detected bin intervals: "); print(savedc.ints)
+      print("nbins: "); print(datnetW$nbins)
+
+    print("testing overwriting of bin intervals 1:")
+      newint <- seq(from = 0, to = 1, length.out = (gvars$nbins+1))
+      datnetW$def_cbin_intrvls(cbin_intrvls = newint)
+      print("Assigned bin intervals 1: "); print(datnetW$cbin_intrvls)
+      print("nbins: "); print(datnetW$nbins)
+      print("Correctly assigned bin intervals 1: "); print(all.equal(as.vector(datnetW$cbin_intrvls[[1]]), as.vector(datnetW$cbin_intrvls[[2]])))
+
+    print("testing overwriting of bin intervals 2:")
+      int1 <-  seq(from = 0, to = 0.5, length.out = (gvars$nbins+1))
+      int2 <-  seq(from = 0.5, to = 1, length.out = (gvars$nbins+1))
+      newcbins <- list(nFriends = int1, netW3_sum = int2)
+      datnetW$def_cbin_intrvls(cbin_intrvls = newcbins)
+      print("Assigned bin intervals 2: "); print(datnetW$cbin_intrvls);
+      print("nbins: "); print(datnetW$nbins)
+      print("Correctly assigned bin intervals 2: "); print(all.equal(datnetW$cbin_intrvls, newcbins))
+
+    print("testing passing custom type.sVar list:")
+      datnetW$make_sVar(names.sVar = sW_nms, type.sVar = gvars$sVartypes$bin, norm.c.sVars = TRUE)
+      print("assigned all the same bin types: ");
+      print(all(unlist(lapply(datnetW$type.sVar, function(x) x%in%gvars$sVartypes$bin))))
+      str(datnetW$type.sVar)
+      print("Cont. var names correct: "); print(length(datnetW$names.c.sVar) == 0L)
+      print("Redefined c bin intervals correct: "); print(length(datnetW$def_cbin_intrvls()$cbin_intrvls) == 0L)
+      print("nbins: "); print(datnetW$nbins)
+
+      datnetW$make_sVar(names.sVar = sW_nms, type.sVar = savedtypes, norm.c.sVars = TRUE)
+      print("Re-assigned old types: "); str(datnetW$type.sVar)
+      newc.ints <- datnetW$def_cbin_intrvls()$cbin_intrvls
+      print("Redefined c bin intervals: "); print(newc.ints)
+      print("nbins: "); print(datnetW$nbins)
+      print("Redefined c bin ints match old ones: "); print(all.equal(savedc.ints, newc.ints))
+    set.maxncats(oldncats1)
+    set.nbins(oldnbins1)
+}
+
+
+notest.evalsubset2dfs <- function() {
+  # Testing eval'ing logical expressions in envirs of two data.frames with different number of rows.
+  mat1 <- matrix(c(0,1,1,1,0), nrow = 5, ncol = 2)
+  colnames(mat1) <- c("A1", "A2")
+  mat2 <- matrix(c(2,3), nrow = 15, ncol = 4)
+  colnames(mat2) <- c("B1", "B2", "B3", "B4")
+  # using env as lists from df(mat1) and df(mat2) put together (mat1 and mat2 have diff no. of rows)
+  (testenv1 <- c(data.frame(mat1), data.frame(mat2)))
+  # using env as one data.frame put together (result has the same no. of rows)
+  (testenv2 <- cbind(data.frame(mat1), data.frame(mat2)))
+  subsetexpr1 <- parse(text = "A1 == 1")[[1]]
+  eval(subsetexpr1, envir = testenv1, enclos = baseenv())
+  # [1] FALSE  TRUE  TRUE  TRUE FALSE 
+  subsetexpr2 <- parse(text = "B1 == 2")[[1]]
+  eval(subsetexpr2, envir = testenv1, enclos = baseenv())
+  # [1]  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE
+  subsetexpr3 <- parse(text = "(B1 == 2) & (A1 == 1)")[[1]] # automatically repeates the result of the first logical expr (B1 == 2)
+  (resenv1 <- eval(subsetexpr3, envir = testenv1, enclos = baseenv()))  
+  # [1] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE
+  (resenv2 <- eval(subsetexpr3, envir = testenv2, enclos = baseenv()))
+  # [1] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE
+  all.equal(resenv1, resenv2) # works as expected
+  # [1] TRUE 
+}
+
+
 test.bugfixes <- function() {
 }
 

@@ -1,12 +1,16 @@
-library(stringr)
-
 `%+%` <- function(a, b) paste0(a, b)  # cat function
 gvars <- new.env(parent = emptyenv())
-
 # gvars$misval <- 1L
 # gvars$misval <- -.Machine$integer.max
-gvars$misval <- NA_integer_
-gvars$misXreplace <- 0L
+gvars$misval <- NA_integer_ # the default missing value for observations
+gvars$misXreplace <- 0L     # the default replacement value for misval that appear in the design matrix
+gvars$tolerr <- 10^-12      # tolerance error: assume for abs(a-b) < gvars$tolerr => a = b
+# gvars$maxncats <- 10L 
+gvars$maxncats <- 5L        # max number of categories a "categorical" variable sA[j] is allows. If > the variable is automatically considered "continuous"
+gvars$nbins <- 10L          # default n bins for continous var         
+gvars$sVartypes <- list(bin = "binary", cat = "categor", cont = "contin")
+
+
 testmisfun <- function() {  # returns a function (alternatively a call) that tests for missing values in sA / sW
   if (is.na(gvars$misval)) {
     return(is.na)
@@ -18,18 +22,35 @@ testmisfun <- function() {  # returns a function (alternatively a call) that tes
     return(function(x) {x%in%gvars$misval})
   }
 }
-gvars$misfun <- testmisfun()
-setmisval <- function(gvars, newmisval) {
+get.misval <- function() {
+  gvars$misfun <- testmisfun()
+  gvars$misval
+}
+set.misval <- function(gvars, newmisval) {
   oldmisval <- gvars$misval
   gvars$misval <- newmisval
   gvars$misfun <- testmisfun()    # EVERYTIME gvars$misval HAS CHANGED THIS NEEDS TO BE RESET/RERUN.
   invisible(oldmisval)
 }
-getmisval <- function() {
-  gvars$misfun <- testmisfun()
-  gvars$misval
+set.nbins <- function(nbins) {
+  old.nbins <- gvars$nbins
+  gvars$nbins <- nbins
+  invisible(old.nbins)
 }
+set.maxncats <- function(maxncats) {
+  old.maxncats <- gvars$maxncats
+  gvars$maxncats <- maxncats
+  invisible(old.maxncats)
+}
+gvars$misfun <- testmisfun()
 
+
+
+#-----------------------------------------------------------------------------
+# Class Tests
+#-----------------------------------------------------------------------------
+is.DatNet.sWsA <- function(DatNet.sWsA) "DatNet.sWsA"%in%class(DatNet.sWsA)
+is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
 
 #-----------------------------------------------------------------------------
 # ALL NETWORK VARIABLE NAMES MUST BE CONSTRUCTED BY CALLING THIS FUNCTION.
@@ -40,30 +61,31 @@ getmisval <- function() {
 # character vector of network names is returned. If varnm is also a vector, a 
 # character vector for all possible combinations of (varnm x fidx) is returned.
 #-----------------------------------------------------------------------------
-netvar <- function(varnm, fidx) { # OUTPUT format: netVarnm_j
-  cstr <- function(varnm, fidx) {
-    slen <- length(fidx)
-    lstr <- vector(mode = "character", length = slen)
-    rstr <- vector(mode = "character", length = slen)
-    netidxstr <- !(fidx %in% 0L)
-    lstr[netidxstr] <- "net"    
-    rstr[netidxstr] <- str_c('_', fidx[netidxstr])
-    return(str_c(lstr, varnm, rstr))
-  }
-  if (length(varnm) > 1) {
-    return(unlist(lapply(varnm, cstr, fidx)))
-  } else {
-    return(cstr(varnm, fidx))
-  }
-}
+#### permanently switched to netvar2 below ####
+# netvar <- function(varnm, fidx) { # OUTPUT format: netVarnm_j
+#   cstr <- function(varnm, fidx) {
+#     slen <- length(fidx)
+#     lstr <- vector(mode = "character", length = slen)
+#     rstr <- vector(mode = "character", length = slen)
+#     netidxstr <- !(fidx %in% 0L)
+#     lstr[netidxstr] <- "net"    
+#     rstr[netidxstr] <- str_c('_', fidx[netidxstr])
+#     return(str_c(lstr, varnm, rstr))
+#   }
+#   if (length(varnm) > 1) {
+#     return(unlist(lapply(varnm, cstr, fidx)))
+#   } else {
+#     return(cstr(varnm, fidx))
+#   }
+# }
 netvar2 <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
   cstr <- function(varnm, fidx) {
     slen <- length(fidx)
     rstr <- vector(mode = "character", length = slen)
     netidxstr <- !(fidx %in% 0L)
-    rstr[netidxstr] <- str_c('_netF', fidx[netidxstr])  # vs. 1
+    rstr[netidxstr] <- stringr::str_c('_netF', fidx[netidxstr])  # vs. 1
     # rstr[netidxstr] <- str_c('.net.', fidx[netidxstr])  # vs. 2
-    return(str_c(varnm, rstr))
+    return(stringr::str_c(varnm, rstr))
   }
   if (length(varnm) > 1) {
     return(unlist(lapply(varnm, cstr, fidx)))
@@ -124,16 +146,20 @@ f.gen.A.star <- function(k, df_AllW, fcn_name, f_args=NULL) {
 
 #-----------------------------------------------------------------------------
 # return entire network matrix from indiv. covar (Var) + covariate itself as first column
+# NetInd_k is a matrix (N x k) of network friend indicies; 
+# When obs i doesn't have j friend, NetInd[i, j] = NA
 #-----------------------------------------------------------------------------
-.f.allCovars <- function(k, NetInd_k, Var, VarNm, misval = 0L) {
-	n <- length(Var) 
-	NetInd_k <- matrix(NetInd_k, nrow=n, ncol=k)
+.f.allCovars <- function(k, NetInd_k, Var, VarNm, misval = gvars$misXreplace) {
+# .f.allCovars <- function(k, NetInd_k, Var, VarNm, misval = 0L) {
+  assertthat::assert_that(is.matrix(NetInd_k))
+  n <- length(Var)
+	# NetInd_k <- matrix(NetInd_k, nrow=n, ncol=k)
 	netVar_names <- NULL
 	netVar_full <- NULL
-	d <- matrix(0L, nrow=n, ncol = k+1)
+	d <- matrix(0L, nrow = n, ncol = k + 1)
 	d[ , 1] <- Var
-	d[ , c(2:(k+1))] <- apply(NetInd_k, 2, function(k_indx) {
-                    											netVar <- Var[k_indx]
+	d[ , c(2:(k+1))] <- apply(NetInd_k, 2, function(k_indx) {  
+                    											netVar <- Var[k_indx]  # netVar values for non-existing friends are automatically NA
                                           netVar[is.na(netVar)] <- misval
                     											return(netVar)
                     											})
@@ -242,8 +268,10 @@ pred.hbars.new <- function(new_data=NULL, fit_h_reg_obj, NetInd_k) {
     # cY_mtx <- cbind(determ_cols, as.matrix(new_data[, c(node_l$nFnode, W_nms, netA_names)]))
 
     if (h_user==FALSE) {
-      h_vec.g0.new <- fit_h_reg_obj$m.gAi_vec_g$predict(newdata = new_data)$predictAeqa(indA = indA)$getcumprodAeqa()
-      h_vec.gstar.new <- fit_h_reg_obj$m.gAi_vec_gstar$predict(newdata = new_data)$predictAeqa(indA = indA)$getcumprodAeqa()
+      h_vec.g0.new <- fit_h_reg_obj$m.gAi_vec_g$predict(newdata = new_data)$predictAeqa(indA = indA)
+      # $getcumprodAeqa()
+      h_vec.gstar.new <- fit_h_reg_obj$m.gAi_vec_gstar$predict(newdata = new_data)$predictAeqa(indA = indA)
+      # $getcumprodAeqa()
       #---------------------------------------------------------------------
     }
     h_tilde.new <- h_vec.gstar.new / h_vec.g0.new
@@ -257,46 +285,66 @@ pred.hbars.new <- function(new_data=NULL, fit_h_reg_obj, NetInd_k) {
     return(list(df_h_bar_vals=df_h_bar_vals))
 }
 
+
+#' @title Defining and fitting the clever covariate h under g_0 and g_star, i.e. models P(sA[j]|sW,\bar{sA}[j])
+#' @docType function
+# @format An R6 class object.
+#' @name fit.hbars.new
+#' @importFrom assertthat assert_that is.count
+##' @export
 # fit models for m_gAi
 #---------------------------------------------------------------------------------
-fit.hbars.new <- function(data, h_fit_params) {    
+fit.hbars.new <- function(data, h_fit_params) {
+    message("... fit.hbars.new() ...")
     .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" ")) # defining the vector of c^A's that needs evaluation under h(c) 
     #---------------------------------------------------------------------------------
+    # NEW 06/16/15: No longer need to cbind both datasets until last moment. 
+    # Can be done with cbind(data.frame(), data.frame()) inside DatNet.sW.sA
+    # This function should just return DatNet.sWsA with datnetAstar that cotanis the final matrix dat.sA with n*p rows
     # GENERATE SAMPLES OF (dat.sW, dat.sA), where sA is sampled under f.g_name, of size p*nobs, for p>=1.
     # Returns observed (sA,sW) data if is.null(f.g_name)
     # TO ADD: pass ahead a total number of sA that will be created by DatNet class (need it to pre-allocate self$dat.sWsA)
     # TO ADD: Current structure requires building sA twice, once for observed data and once for g_0 when g_0 unknown. This can be expensive. 
-    # TO ADD: Change DatNet$new to accept vector for Odata.
     #---------------------------------------------------------------------------------
-    makesWsA = function(datnetW, datnetA) {
-      cbind(datnetW$dat.sVar, datnetA$dat.sVar)
-    }
-    gen_sWsA_dat = function(p = 1, Kmax, nodes, datnetW, datnetA, f.g_name = NULL, f.g_args = NULL)  {
-      names.sWsA <- c(datnetW$names.sVar, datnetA$names.sVar)
-      assert_that(is.count(p)) # self$p <- p
-      nobs <- datnetW$nobs
-
-      if (is.null(f.g_name)) {  # return observed data sW,sA if g fun is nul
-        Odat.sW.sA <- makesWsA(datnetW, datnetA)
-        colnames(Odat.sW.sA) <- names.sWsA
-        return(data.frame(Odat.sW.sA))
-      }
-
-      dat.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx
-      colnames(dat.sWsA) <- names.sWsA
-
-      for (i in seq(p)) {  
-        Avec.df <- data.frame(Anode = f.gen.A.star(Kmax, datnetW$dat.netVar, f.g_name, f.g_args), 
-                              stringsAsFactors = FALSE)
-        colnames(Avec.df)[1] <- nodes$Anode
-        datnetAstar <- DatNet$new(Odata = Avec.df,
-                                  NetInd_k = NetInd_k, Kmax = Kmax, nodes = nodes, VarNodes = nodes$Anode)
-
-        datnetAstar$make_sVar(names.sVar = datnetA$names.sVar) # create summary measures sA
-        dat.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- makesWsA(datnetW = datnetW, datnetA = datnetAstar)
-      }
-      return(data.frame(dat.sWsA))
-    }
+    # gen_sWsA_dat = function(p = 1, Kmax, nodes, datnetW, datnetA, f.g_name = NULL, f.g_args = NULL)  {
+    #   makesWsA = function(datnetW, datnetA) {
+    #     # INSTEAD CALL A CONSTRUCTOR FOR DatNet.sWsA$new()
+    #     print("Creating an object of class DatNet.sWsA")
+    #     DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)
+    #   }
+    #   # names.sWsA <- c(datnetW$names.sVar, datnetA$names.sVar)
+    #   assert_that(is.count(p)) # self$p <- p
+    #   nobs <- datnetW$nOdata
+    #   if (is.null(f.g_name)) {  # return observed data sW,sA if g fun is nul
+    #     return(makesWsA(datnetW, datnetA))
+    #     # Odat.sW.sA <- makesWsA(datnetW, datnetA)
+    #     # colnames(Odat.sW.sA) <- names.sWsA
+    #     # return(data.frame(Odat.sW.sA))
+    #   }
+    #   dat.sA <- matrix(nrow = (nobs * p), ncol = (datnetA$ncols.sVar))  # pre-allocate result mat for sA only
+    #   # dat.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx
+    #   colnames(dat.sA) <- datnetA$names.sVar
+    #   # colnames(dat.sWsA) <- names.sWsA
+    #   for (i in seq_len(p)) {
+    #     Avec.df <- data.frame(Anode = f.gen.A.star(Kmax, datnetW$dat.netVar, f.g_name, f.g_args), stringsAsFactors = FALSE)
+    #     colnames(Avec.df)[1] <- nodes$Anode
+    #     # CALL A fun DatNet THAT will instead grow dat.sA in DatNet.
+    #     # PUT A FLAG IN $new? NOT POSSIBLE. JUST Acess another function on DatNet
+    #     # if (i == 1) {
+    #       datnetAstar <- DatNet$new(Odata = Avec.df, NetInd_k = NetInd_k, Kmax = Kmax, nodes = nodes, VarNodes = nodes$Anode)
+    #     # } else {
+    #     #   datnetAstar$add.dat.netVar(Odata = Avec.df)
+    #     # }
+    #     datnetAstar$make_sVar(names.sVar = datnetA$names.sVar) # create summary measures sA
+    #     dat.sA[((i - 1) * nobs + 1):(nobs * i), ] <- datnetAstar$dat.sVar
+    #     # dat.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- makesWsA(datnetW = datnetW, datnetA = datnetAstar)
+    #   }
+    #   datnetAstar$dat.sVar <- dat.sA
+    #   # Copy variable detected types and bin interval definitions from the observed data (datnetA)
+    #   datnetAstar$type.sVar <- datnetA$type.sVar
+    #   datnetAstar$cbin_intrvls <- datnetA$cbin_intrvls
+    #   return(makesWsA(datnetW = datnetW, datnetA = datnetAstar))
+    # }
 
     #---------------------------------------------------------------------------------
     # PARAMETERS FOR LOGISTIC ESTIMATION OF h
@@ -337,27 +385,34 @@ fit.hbars.new <- function(data, h_fit_params) {
     # datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, AddnFnode = TRUE, misValRepl = TRUE)
     netW_full <- datnetW$dat.netVar
     print("datnetW$ncols.netVar: "%+%datnetW$ncols.netVar);
+    print(datnetW$names.netVar)
     # print("datnetW$names.netVar: "); print(datnetW$names.netVar)
     # ...
-    # II) APPLY THE SUMMARY MEASURE FUNCTIONS / EXPRESSION TO netW_full to OBTAIN sW columns SELECT ONLY sW columns in hform_g0 and hfrom_gstar or use all? 
+    # II) APPLY THE SUMMARY MEASURE FUNCTIONS / EXPRESSION TO netW_full to OBTAIN sW columns SELECT ONLY sW columns in hform_g0 and hfrom_gstar or use all?
     sW_nms <- W_nms # change that to the actual names of summary measures in sW or entire expressions sW
     obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms)$dat.sVar
-    # print("original W_nms extracted from h_form: "%+%length(W_nms)); print(W_nms);
-    # print("datnetW$ncols.sVar: "%+%datnetW$ncols.sVar);
-    # print("datnetW$names.sVar: "); print(datnetW$names.sVar)
-    # print("creating obsdat.sW:"); print(head(obsdat.sW))
-    # ...
-    # III) REPLACE ALL misval values in sW with gvars$misXreplace (OR DO IT ON THE ACTUAL DATASET WHEN SUBSETTING IS PERFORMED)
+    # same with normalization of contin. covars:
+    # obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms, norm.c.sVars = TRUE)$dat.sVar
+    print("head(obsdat.sW)"); print(head(obsdat.sW))
+    print("type.sVar: "); str(datnetW$type.sVar)
+    print("names.c.sVar: "); print(datnetW$names.c.sVar)
+
+    # III) Detect intervals for continous covars (Don't really need to do that for netW)
+    datnetW$def_cbin_intrvls()
+    print("Detected intervals: "); print(datnetW$cbin_intrvls)
+    print("Detected nbins: "); print(datnetW$all.nbins)
+    # IV) To replace ALL misval values in sW with gvars$misXreplace
     # print("replacing missing with misXreplace in obsdat.sW.");
     obsdat.sW <- datnetW$fixmiss_sVar()$dat.sVar
     #print(head(obsdat.sW))
     # ...
-    # IV) (OPTIONAL) ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO sW:
+    # V) (OPTIONAL) ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO sW:
     # print("adding determ cols to obsdat.sW (with default misval).");
     #-----------------------------------------------------------
-    obsdat.sW <- datnetW$add_deterministic(Odata = data, userDETcol = "determ.g")$dat.sVar
+    message("cancelled adding DET nodes to sVar -> All sW automatically get added to A ~ predictors...")
+    # obsdat.sW <- datnetW$add_deterministic(Odata = data, userDETcol = "determ.g")$dat.sVar
+    # print("datnetW$type.sVar: "); str(datnetW$type.sVar)
     #print(head(obsdat.sW))
- 
     #---------------------------------------------------------------------------------
     # BUILDING OBSERVED (netA, sA) (sA - summary measures of netA)
     # (actual sW_g0 and sW_gstar used for fitting h_g0 and h_gstar can be a subset of columns in sW)
@@ -380,10 +435,35 @@ fit.hbars.new <- function(data, h_fit_params) {
     #-----------------------------------------------------------
     # obs.sA - a dataset (matrix) of n observed summary measures sA
     obsdat.sA <- datnetA$dat.sVar # indA <- datnetA$dat.netVar
+    print("obs sA classes: "); print(datnetA$sVar_class)
     #-----------------------------------------------------------
-    # obsdat.sW.sA - a dataset (matrix) of n observed summary measures (sW,sA)
-    obsdat.sW.sA <- gen_sWsA_dat(p = 1, Kmax = k, nodes = node_l, datnetW = datnetW, datnetA = datnetA)                            
-    print("obsdat.sW.sA"); print(head(obsdat.sW.sA))
+    datnetA$def_cbin_intrvls()
+    print("Detected types: "); str(datnetA$type.sVar)
+    print("Detected intervals: "); print(datnetA$cbin_intrvls)
+    print("Detected nbins: "); print(datnetA$all.nbins)
+
+    #-----------------------------------------------------------
+    # Turn A into cont type and add some intervals to it
+    #-----------------------------------------------------------
+    datnetA$set.sVar.type("A", "contin")
+    # THIS IS A BUG. ALL "A" END UP BEING ASSIGNED THE SAME ORDINAL VALUE:
+    message("THIS IS A BUG, ALL A ARE ASSIGNED TO THE SAME BIN WHEN USIGng $detect.sVar.intrvls:")
+    intvrls <- datnetA$detect.sVar.intrvls("A")
+    datnetA$set.sVar.intrvls("A", intvrls)
+    print("intvrls for A"); print(intvrls)
+    print("BINS FOR A:")
+    print(table(datnetA$make.ord.sVar("A")))
+    print(head(datnetA$binirize.sVar("A")))
+    # browser()
+    # datnetA$set.sVar.intrvls("A", intvrls)
+    # or below:
+    datnetA$set.sVar.intrvls("A", seq(0,1,by=0.1))
+    print(datnetA$get.sVar.intrvls("A"))
+    print("bins for A now:")
+    print(table(datnetA$make.ord.sVar("A")))
+    print(head(datnetA$binirize.sVar("A")))
+    # DO the same with A_netF1 into cont type and add some intervals to it:
+    # datnetA$set.sVar.type("A_netF1") <- 
 
     #-----------------------------------------------------------
     # DEFINING SUBSETING EXPRESSIONS (FOR DETERMINISTIC / DEGENERATE sA)
@@ -409,40 +489,116 @@ fit.hbars.new <- function(data, h_fit_params) {
     ##########################################
     # Summary class params:
     ##########################################
-    # sA_class <- c("binary", "contin", rep_len("binary", 5))
-    sA_class <- rep_len("binary", length(sA_nms))
+    # sVartypes <- gvars$sVartypes # <- list(bin = "binary", cat = "categor", cont = "contin")
+    # sA_class <- as.list(c(sVartypes$cont, sVartypes$bin, rep_len(sVartypes$bin, length(sA_nms)-2)))
+    # names(sA_class) <- datnetA$names.sVar
+    # sA_class <- rep_len(sVartypes$bin, length(sA_nms))
+    sA_class <- datnetA$type.sVar
+    # print("sA_class for observed: "); print(str(sA_class))
 
-    summary_params <- list(sA_class = sA_class, sA_nms = sA_nms, sW_nms = W_nms, subset = subsets_expr)
-    # summary_params <- list(Kmax = k, nodes = node_l, sA_class = sA_class, sA_nms = sA_nms, sW_nms = W_nms, subset = subsets_expr)
+    # *** TO DO: DON'T RE-CREATE PARAMS OF SummariesModel$new INSIDE THE CONSTRUCTORs. ****
+    summary_params <- list(sA_class = sA_class, sA_nms = datnetA$names.sVar, 
+                            sW_nms = datnetW$names.sVar, 
+                            subset = subsets_expr, datnet.sA = datnetA)
+
     ##########################################
     message("fitting h under g_0...")
     ##########################################
+
+    # *********
+    # MAJOR CHANGES TO sWsA STRUCTURE (06/18/2015):
+    # * Changing the structure, gen_sWsA_dat() renamed to make.df.sWsA() and moved inside DatNet.sWsA class;
+    # * The observed data is now always stored as $datnetW,$datnetA fields in every DatNet.sWsA object (under g_0 or g_star);
+    # * DatNet.sWsA$new(datnetW,datnetW) only saves obs data objects datnetW and datnetW as fields;
+    # * DatNet.sWsA$new() has to be called only twice: once for g_0 (g_N) and once for g_star;
+    # * $make.df.sWsA() must be called to create $df.sW.sA ($dat.sVar) - a data.frame of COMBINED sWsA;
+    # * All binning / interval methods MUST BE called on DatNet.sWsA (NOT $datnetA, $datnetW) (inherited from DatNet);
+    # *********
+    # * Both copies of DatNet.sWsA are storing datnetA/datnetW by reference - same copy;
+    # * Changing datnetA/datnetW in one copy of DatNet.sWsA will result them being changed in the other copy of DatNet.sWsA as well.
+    # *********
+    # * MOST IMPORTANTLY we can now get rid of the MC sim loop for evaling psi_n. Just use already sampled DatNet.gstar dataset and evaluate psi_n only once.
+    # *********
+
     p_h0 <- ifelse(is.null(f.g0), 1, n_samp_g0gstar)
-    fit.g0_dat <- gen_sWsA_dat(p = p_h0, Kmax = k, nodes = node_l, datnetW = datnetW, datnetA = datnetA, 
-                                f.g_name = f.g0, f.g_args = f.g0_args)
-    # print("fit.g0_dat: "); print(head(fit.g0_dat))
-    # above fun gen_sWsA_dat will becomes part of DatSummaries class:
-    # DatSummaries$new(Odata = data, Kmax = k, nodes = node_l, NetInd_k = NetInd_k, f.g_name = f.g0, f.g_args = f.g_args)
+    DatNet.g0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)
+    DatNet.g0$make.df.sWsA(p = p_h0, Kmax = k, nodes = node_l, f.g_name = f.g0, f.g_args = f.g0_args)
+    # old version:
+    # obsdat.sW.sA <- gen_sWsA_dat(p = 1, Kmax = k, nodes = node_l, datnetW = datnetW, datnetA = datnetA)
+    # fit.g0_dat <- gen_sWsA_dat(p = p_h0, Kmax = k, nodes = node_l, datnetW = datnetW, datnetA = datnetA, 
+    #                            f.g_name = f.g0, f.g_args = f.g0_args)
+    
+    print("DatNet.g0 stored sWsA df: "); 
+    print(dim(DatNet.g0$df.sW.sA)); print(head(DatNet.g0$df.sW.sA)); print(class(DatNet.g0$df.sW.sA))
+    print("all intervals (for datnetA & datnetW) in DatNet.g0: "); print(DatNet.g0$cbin_intrvls)
+    print("all var types (for datnetA & datnetW) in DatNet.g0: "); str(DatNet.g0$type.sVar)
 
     summeas.g0 <- do.call(SummariesModel$new, summary_params)
-    # print("summeas.g0$regs_list: "); print(summeas.g0$regs_list)
-    summeas.g0$fit(data = fit.g0_dat)
-    summeas.g0$predict(newdata = obsdat.sW.sA) # DOESN'T HAVE TO BE CALLED IF (is.null(f.g0)), since PREDICATIONS ARE ALREADY SAVED for obsdat.sW.sA:
-    summeas.g0$predictAeqa(obsdat.sA = obsdat.sA)
-    h_vec.g0.new <- summeas.g0$getcumprodAeqa()
+    summeas.g0$fit(data = DatNet.g0)
+    # *********
+    # NEED TO DO SOMETHING SMART ABOUT PASSING obsdat.sW.sA (observed data sWsA ) to predict().
+    # predict() expects obsdat.sW.sA to be also of class DatNet.sWsA and will call on the same methods of DatNet.sWsA as does fit() (constructing bins, asking for data.frame, etc)
+    # If !is.null(f.g_name) then DatNet.g0$df.sW.sA IS NOT THE OBSERVED data (sWsA), but rather sWsA data sampled under known g_0.
+    # *********
+    # Option 1: Wipe out DatNet.g0$df.sW.sA with actually observed data - means that we can't use DatNet.g0$df.sW.sA in the future.
+    # Option 2: Create a new class DatNet.Obs of DatNet.sWsA - pain in the ass.
+    # *********
+    # Going with OPTION 1 for now:
+    if (!is.null(f.g0)) DatNet.g0$make.df.sWsA(p = 1, Kmax = k, nodes = node_l, f.g_name = NULL, f.g_args = NULL)
+    summeas.g0$predict(newdata = DatNet.g0) # DOESN'T HAVE TO BE CALLED IF (is.null(f.g0)), since PREDICATIONS ARE ALREADY SAVED for obsdat.sW.sA:
+    # old before change: summeas.g0$predict(newdata = obsdat.sW.sA)
+    # *********
+    # *********
+    # NOTE: BELOW CALL SHOULD BE MODIFIED TO PASSING datnetA (instead of dat.sA mat);
+    # this way predictAeqa() can still call datnetA$binirize;
+    # This is cleaner than the current implementation that requires calling make.bins_mtx_1() from inside predictAeqa())
+    h_vec.g0.new <- summeas.g0$predictAeqa(obsdat.sA = DatNet.g0$datnetA$dat.sVar) # *** DatNet.sWsA$datnetA IS TO BE RENAMED TO $O.datnetA for clarity ***
+    # old before change: h_vec.g0.new <- summeas.g0$predictAeqa(obsdat.sA = obsdat.sA)
+    # *********
 
     ##########################################
     message("fitting h under g_star...")
     ##########################################
-    fit.gstar_dat <- gen_sWsA_dat(p = n_samp_g0gstar, Kmax = k, nodes = node_l, datnetW = datnetW, datnetA = datnetA, 
-                                    f.g_name = f.g.star, f.g_args = f.g_args)    
-    # print("fit.gstar_dat: "); print(head(fit.gstar_dat)); 
-    
+    # temp setting: n_samp_g0gstar <- 10
+    DatNet.gstar <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)
+    DatNet.gstar$make.df.sWsA(p = n_samp_g0gstar, Kmax = k, nodes = node_l, f.g_name = f.g.star, f.g_args = f.g_args)
+    # fit.gstar_dat <- gen_sWsA_dat(p = n_samp_g0gstar, Kmax = k, nodes = node_l, datnetW = datnetW, datnetA = datnetA, 
+    #                               f.g_name = f.g.star, f.g_args = f.g_args)
+
+    print("DatNet.gstar stored sWsA df: "); 
+    print(dim(DatNet.gstar$df.sW.sA)); print(head(DatNet.gstar$df.sW.sA)); print(class(DatNet.gstar$df.sW.sA))
+    print("all intervals (for datnetA & datnetW) in DatNet.gstar: "); print(DatNet.gstar$cbin_intrvls)
+    print("all var types (for datnetA & datnetW) in DatNet.gstar: "); str(DatNet.gstar$type.sVar)
+
     summeas.gstar <- do.call(SummariesModel$new, summary_params)
-    summeas.gstar$fit(data = fit.gstar_dat)
-    summeas.gstar$predict(newdata = obsdat.sW.sA)
-    summeas.gstar$predictAeqa(obsdat.sA = obsdat.sA)
-    h_vec.gstar.new <- summeas.gstar$getcumprodAeqa()
+    summeas.gstar$fit(data = DatNet.gstar)
+    summeas.gstar$predict(newdata = DatNet.g0)
+    h_vec.gstar.new <- summeas.gstar$predictAeqa(obsdat.sA = DatNet.g0$datnetA$dat.sVar)  # *** DatNet.sWsA$datnetA IS TO BE RENAMED TO $O.datnetA for clarity ***
+
+    ###########################################
+    # 3) Calculate final h_bar (h_tilde) as ratio of h_gstar / h_gN and bound it
+    ##########################################
+    h_tilde.new <- h_vec.gstar.new / h_vec.g0.new
+    h_tilde.new[is.nan(h_tilde.new)] <- 0     # 0/0 detection
+    h_tilde.new <- bound(h_tilde.new, c(0,1/lbound))
+
+    df_h_bar_vals <- data.frame(cY.ID = .f.mkstrNet(DatNet.g0$df.sW.sA),
+                                h.star_c = h_vec.gstar.new,
+                                h_c = h_vec.g0.new,
+                                h = h_tilde.new
+                                )
+
+    print("predicted h for obs. data:"); print(head(df_h_bar_vals, 20))
+
+    fit_h_reg_obj <- list(k=k,
+                          m.gAi_vec_g = summeas.g0,
+                          m.gAi_vec_gstar = summeas.gstar,
+                          lbound=lbound,
+                          # determ_cols_Friend=determ_cols_Friend, # determ_cols_fitted=determ_cols, 
+                          cY_mtx_fitted = DatNet.g0$df.sW.sA
+                          )
+
+    return(list(df_h_bar_vals=df_h_bar_vals, fit_h_reg_obj=fit_h_reg_obj))
 
     ###########################################
     # alternative to above using a function call instead
@@ -453,8 +609,7 @@ fit.hbars.new <- function(data, h_fit_params) {
     #   if (!missing(newdata)) { # don't need to predict again if only need predictions for fit data
     #     summeas.g$predict(newdata = newdata)
     #   }
-    #   summeas.g$predictAeqa(obsdat.sA = obsdat.sA)
-    #   h_vec.g <- summeas.g$getcumprodAeqa()
+    #   h_vec.g <- summeas.g$predictAeqa(obsdat.sA = obsdat.sA)
     #   return(list(h_vec.g = h_vec.g, summeas.g = summeas.g))
     # }
     # h_g0.new <- fit.and.predict.h.new(Kmax = k, sA_nms = sA_nms, sW_nms = W_nms, hfitdat = fit.g0_dat, obsdat.sA = obsdat.sA)  # new method based on R6 classes:
@@ -464,30 +619,6 @@ fit.hbars.new <- function(data, h_fit_params) {
     # summeas.gstar <- h_gstar.new$summeas.g
     # h_vec.gstar.new <- h_gstar.new$h_vec.g
 
-
-    ###########################################
-    # 3) Calculate final h_bar (h_tilde) as ratio of h_gstar / h_gN and bound it
-    ##########################################
-    h_tilde.new <- h_vec.gstar.new / h_vec.g0.new
-    h_tilde.new[is.nan(h_tilde.new)] <- 0     # 0/0 detection
-    h_tilde.new <- bound(h_tilde.new, c(0,1/lbound))
-
-    df_h_bar_vals <- data.frame(cY.ID = .f.mkstrNet(obsdat.sW.sA), 
-                                h.star_c = h_vec.gstar.new,
-                                h_c = h_vec.g0.new,
-                                h = h_tilde.new
-                                )
-    print("predicted h for obs. data:"); print(head(df_h_bar_vals, 20))
-
-    fit_h_reg_obj <- list(k=k,
-                          m.gAi_vec_g = summeas.g0,
-                          m.gAi_vec_gstar = summeas.gstar,
-                          lbound=lbound,
-                          # determ_cols_Friend=determ_cols_Friend, # determ_cols_fitted=determ_cols, 
-                          cY_mtx_fitted=obsdat.sW.sA
-                          )
-
-    return(list(df_h_bar_vals=df_h_bar_vals, fit_h_reg_obj=fit_h_reg_obj))
 }
 
 # #---------------------------------------------------------------------------------

@@ -1,49 +1,69 @@
-library(assertthat)
-library(speedglm)
-library(R6)
-`%+%` <- function(a, b) paste0(a, b)  # cat function
 
-NewSummaryModel = function(reg, ...) { UseMethod("NewSummaryModel") } # Generic S3 constructor for the summary model classes
+
+# **********
+# TO DO (Continuous summary measures)
+# x) See how to generalize to pooled fits, k-specific fits, etc (use subset definitions + ?)
+# x) Add function to convert data_mtx to long format for SummaryM.pool
+# x) For SummaryM.pool how to define predict function?
+
+# **********
+# TO DO (ContinSummaryModel): 
+# * MOVE binarize() fun to DatNet and make it part of DatNet experience.
+# * Need to handle gvars$misval values for self$outvar (contin) when transforming to bins (in fit, predict, predictAeqa)...
+# * For x_cat the process is identical, except that normalize, define.intervals & make.ordinal is skipped.
+# * NEED TO TEST that make.bins_mtx_1 will do the right thing when x_cat is (0, ..., ncats) instead of (1, ..., ncats) (IT SHOULD WORK)
+
+# **********
+# TO DO (NewSummaryModel.contin):
+# * Need to find a way to pass nbins/bin_bymass/add.oldsubset for each contin/cat sA[j] from DatNet class...
+# * These args need to be generated in some automated and consistent way for all SummariesModel$new()
+# * Remove subset_expr definition from here, where is a more approapriate location?
+
+
+RegressionClass <- R6Class("RegressionClass",
+  class = TRUE,
+  portable = TRUE,
+  public = list(
+    pool.cont = FALSE,          # pool observations (long format) for binarized continous outcomes from different bins
+    useglm = TRUE,              # TRUE to fit reg with glm.fit(), FALSE to fit with speedglm.wfit
+    outvar.class = character(), # class of the outcome var: bin / cont / cat
+    outvar = character(),       # regression outcome variable name
+    predvars = character(),     # vector of regression covariate names (predictors)
+    subset = NULL,              # subset expression (evaluated to logical subset vector in the environment of the data)
+    initialize = function(outvar.class, outvar, predvars, subset) {
+      self$outvar.class <- outvar.class
+      class(self) <- c(self$outvar.class, class(self))
+      self$outvar <- outvar
+      self$predvars <- predvars
+      self$subset <- subset
+    }
+  ),
+  active = list(
+    reg = function() { list(outvar.class = self$outvar.class,
+                            outvar = self$outvar,
+                            predvars = self$predvars,
+                            subset = self$subset) }
+  )
+)
+
+NewSummaryModel = function(reg, datnet.sA, ...) { UseMethod("NewSummaryModel") } # Generic S3 constructor for the summary model classes
+
+NewSummaryModel.contin = function(reg, datnet.sA, ...) { # Summary model constructor for continuous outcome sA[j]
+  print("ContinSummaryModel constructor called...")
+  ContinSummaryModel$new(reg = reg, datnet.sA = datnet.sA, ...)
+  # Alternative name: ContOutModel
+}
+
+# NewSummaryModel.cat = function(reg, ...) { # Summary model constructor for categorical outcome sA[j]
+#   print("CatSummaryModel constructor called...")
+#   CatSummaryModel$new(...)
+# }
+
 NewSummaryModel.binary = function(reg, ...) {  # Summary model constructor for binary outcome sA[j]
   print("BinarySummaryModel constructor called...")
+  # BinarySummaryModel$new(glm = TRUE, reg = reg, ...) # fit a model with new object BinarySummaryModel
   BinarySummaryModel$new(glm = FALSE, reg = reg, ...) # fit a model with new object BinarySummaryModel
-  # BinarySummaryModel$new(glm = FALSE, reg = reg, data = data, subset = subset) # fit a model with new object BinarySummaryModel  
-}
-NewSummaryModel.cat = function(reg, ...) { # Summary model constructor for categorical outcome sA[j]
-  print("CatSummaryModel constructor called...")
-  CatSummaryModel$new(...)
-}
-NewSummaryModel.contin = function(reg, ...) { # Summary model constructor for continuous outcome sA[j]
-  print("ContinSummaryModel constructor called...")
-  nbins <- 10L  # no. of bins for contin sA[j]
-  # DEFINE THE NUMBER OF REGRESSIONS TO RUN, 
-  # NEW OUTVAR var names, etc
-  new.sA_class <- rep_len("binary", nbins)
-  new.sA_nms <- "BIN_"%+%(1:nbins)%+%"_"%+%reg$outvar
-  new.sW_nms <- reg$predvars
-
-  new.subsets_chr <- lapply(new.sA_nms, function(var) {"!misfun("%+%var%+%")"})  # subsetting by !gvars$misval on sA:
-  new.subset <- lapply(new.subsets_chr, function(subset_chr) {      
-                                            subset_expr <- try(parse(text=subset_chr)[[1]]) # parses chr into a call
-                                            if(inherits(subset_expr, "try-error")) stop("can't parse the subset formula", call.=FALSE)
-                                            subset_expr
-                                          })
-
-  ContinSummaryModel$new(sA_class = new.sA_class, sA_nms = new.sA_nms, sW_nms = new.sW_nms, subset = new.subset, ...)
-}
-
-NewSummaryModel.continPOOL = function(reg, ...) { # Summary model constructor for continuous outcome sA[j]
-  print("ContinSummaryModelPool constructor called...")
-  # DEFINE THE NUMBER OF REGRESSIONS TO RUN, 
-  # NEW OUTVAR var names, etc
-  reg$outvar
-  nbins <- 10L  # no. of bins for contin sA[j]
-  new.sA_class <- rep_len("binary", nbins)
-  new.sA_nms <- "BIN_"%+%reg$outvar
-  new.sW_nms <- reg$predvars
-  new.subset <- reg$subset
-  # (sA_class, sA_nms, sW_nms = new.sW_nms, subset, ...)
-  ContinSummaryModel$new(...)
+  # Alternative name: BinOutModel
 }
 
 
@@ -55,9 +75,6 @@ NewSummaryModel.continPOOL = function(reg, ...) { # Summary model constructor fo
 # Evaluates subset_exprs in the envirs of data and newdata data.frames
 # Calls BinarySummaryModel$new, assumes each sA[j] is binary in reg (sA[j] ~ \bar{sA[j-1]} + sW);
 ## ---------------------------------------------------------------------
-# TO DO 1: if (missing(sA_class)): init to a default (binary) vector of classes
-# TO DO 2: if (missing(sA_class)): automatic class detection?
-# TO DO 3: S3 dispatch for fit/predict based on sA_class[k_i] (reg$outvar.class)
 
 #' @title Class for defining, holding and fitting collections of summary measure models P(sA[j]|sW,\bar{sA}[j])
 #' @docType class
@@ -81,34 +98,22 @@ SummariesModel <- R6Class(classname = "SummariesModel",
   class = TRUE,
   public = list(
     n_regs = integer(),     # total no. of reg. models (logistic regressions)
-    # nodes = list(),         # list of node names in the data (Anode, Wnodes, nFnode, etc..); NOT USED YET
     regs_list = list(),     # List of regressions (summary measures) used for fitting. Each regression in regs_list is names in list(outvar =, predvar =)
-    # subset_regs = list(),   # list of subsetting exprs (one logical expr per reg); NOT USED ANYMORE
     sA_nms = character(),   # sA names
     sW_nms = character(),   # sW names
-    # Kmax = integer(),       # max n of Friends in the network; NOT USED YET
 
     initialize = function(sA_class, sA_nms, sW_nms, subset, ...) {
-    # initialize = function(Kmax, nodes, sA_class, sA_nms, sW_nms, subset, ...) {
-      # assert_that(is.count(Kmax))
-      # self$Kmax <- Kmax
-      # self$nodes <- nodes
-      assert_that(is.character(sA_nms))
-      assert_that(is.character(sW_nms))
-      self$n_regs <- n_regs <- length(sA_nms)  # Number of sep. logistic regressions, determines the fitting algorithm this object will use (sep.logist by k, pooled, etc):
-      # self$n_regs <- n_regs <- (Kmax + 1)
+      # assert_that(is.character(sA_nms))
       self$sA_nms <- sA_nms
       self$sW_nms <- sW_nms
-
+      self$n_regs <- n_regs <- length(self$sA_nms)  # Number of sep. logistic regressions, determines the fitting algorithm this object will use (sep.logist by k, pooled, etc):
       print("#----------------------------------------------------------------------------------");
       print("New SummariesModel object:"); 
       print("No. of regressions: " %+% self$n_regs)
-      print("sA_classes: "); print(sA_class)
-      print("sA_nms: "); print(sA_nms)
-      print("sW_nms: "); print(sW_nms)
-      # print("subsets: "); print(subset)
+      print("sA_classes: "); str(sA_class)
+      print("sA_nms: "); print(self$sA_nms)
+      print("sW_nms: "); print(self$sW_nms)
       print("#----------------------------------------------------------------------------------");
-      
 
       if (!missing(subset)) {
         if (length(subset) < n_regs) {
@@ -122,42 +127,34 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       }
 
       for (k_i in (1:n_regs)) {  # factorization by nFriends (k) value
-        sA_i_nm <- sA_nms[k_i] # A variable we are predicting
-        covars_nms <- c(sA_nms[-c(k_i:n_regs)], sW_nms) # dependent covars
-
-        reg <- list(outvar.class = sA_class[k_i], outvar = sA_i_nm, predvars = covars_nms, subset = subset[[k_i]])
-        class(reg) <- c(class(reg), reg$outvar.class)
-
-        # Declare new object for summary model P(sA[j]|\bar{sA}[j-1], sW}):
-        PsAsW.model <- NewSummaryModel(reg = reg) 
-        private$PsAsW.models <- append(private$PsAsW.models, list(PsAsW.model)) # save full fitted BinarySummaryModel:
+        sA_i_nm <- self$sA_nms[k_i] # A variable we are predicting
+        covars_nms <- c(self$sA_nms[-c(k_i:n_regs)], self$sW_nms) # dependent covars        
+        # Changed reg to object of RegressionClass:
+        reg <- RegressionClass$new(outvar.class = sA_class[[k_i]], outvar = sA_i_nm, predvars = covars_nms, subset = subset[[k_i]])
+        PsAsW.model <- NewSummaryModel(reg = reg, ...) # Constructor for new summary model P(sA[j]|\bar{sA}[j-1], sW}) object
+        private$PsAsW.models <- append(private$PsAsW.models, list(PsAsW.model))
         names(private$PsAsW.models)[k_i] <- "P(sA|sW)."%+%k_i
-
-        self$regs_list <- append(self$regs_list, list(reg)) # self$subset_regs <- append(self$subset_regs, subset[[k_i]])  # removed (added to reg list)
+        self$regs_list <- append(self$regs_list, list(reg))
       }
       names(self$regs_list)[1:n_regs] <- "reg."%+%1:n_regs
-
-      # names(self$subset_regs)[1:n_regs] <- "determ.reg."%+%1:n_regs
       invisible(self)
     },
+    show = function() {str(self$regs_list)},
     length = function(){ base::length(self$regs_list) },
     getfitted.pbins = function() { private$fitted.pbins },  # get all summaries objs
     getcumprodAeqa = function() { private$cumprodAeqa },  # get a vector of cum prod of P(sA[j]=a[j]|sW)
     fit = function(data) {  
-      n <- nrow(data)
-      for (k_i in seq_along(self$regs_list)) { # loop over all regressions in regs_list
-        # replaced below with:
-        private$PsAsW.models[[k_i]]$fit(data = data)
-        # pbin <- BinarySummaryModel$new(glm = FALSE, reg = reg, data = data, subset = subset) # fit a model with new object BinarySummaryModel
-        # pbin$fit(reg = reg, data = data, subset = subset) # fit a model with new object BinarySummaryModel  
-        
-        print("#----------------------------------------------------------------------------------");
-        print("SummariesModel$fit(data), private$PsAsW.models[[k_i]]:");
-        print(private$PsAsW.models[[k_i]]$show())
-        print("self$regs_list[[k_i]]: "); str(self$regs_list[[k_i]]);
-        print("PsAsW.models$datbin$getY: "); print(head(private$PsAsW.models[[k_i]]$datbin$getY))
-        print("PsAsW.models[[k_i]]$getsubset: "); print(head(private$PsAsW.models[[k_i]]$getsubset))
-        print("#----------------------------------------------------------------------------------");
+      # n <- nrow(data)
+      for (k_i in seq_along(self$regs_list)) { # loop over all regressions in regs_list        
+        private$PsAsW.models[[k_i]]$fit(data = data) # below is replaced with this
+        # print("#----------------------------------------------------------------------------------");
+        # print("SummariesModel$fit(data), private$PsAsW.models[[k_i]]:");
+        # print("k_i: "%+%k_i);
+        # print("self$regs_list[[k_i]]: "); str(self$regs_list[[k_i]]);
+        # print(private$PsAsW.models[[k_i]]$show())
+        # print("PsAsW.models$datbin$getY: "); print(head(private$PsAsW.models[[k_i]]$datbin$getY))
+        # print("PsAsW.models[[k_i]]$getsubset: "); print(head(private$PsAsW.models[[k_i]]$getsubset))
+        # print("#----------------------------------------------------------------------------------");
       }
       invisible(self)
     },
@@ -166,34 +163,30 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       if (missing(newdata)) { # ... Do nothing. Predictions for fit data are already saved ...
         return(invisible(self))
       }
-      n <- nrow(newdata)
       for (k_i in seq_along(self$regs_list)) { # loop over all regressions in regs_list
         private$PsAsW.models[[k_i]]$predict(newdata = newdata)
-        # reg <- self$regs_list[[k_i]] # subset_expr <- self$subset_regs[[k_i]]
         # private$fitted.pbins[[k_i]]$predict(newdata = newdata, subset = subset)
       }
       invisible(self)
     },
-    # use BinarySummaryModel objects (stored from prev call to fit()) to predict P(sA=obsdat.sA|sW)
+    # WARNING: This method cannot be chained together with other methods (s.a, class$predictAeqa()$fun())
+    # Use daughter objects (stored from prev call to fit()) to run predict on P(sA=obsdat.sA|sW)
+    # Invisibly return cumm. prob P(sA=sa|sW=sw)
     predictAeqa = function(obsdat.sA) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
       assert_that(is.matrix(obsdat.sA)) # check A: obsdat.sA is a matrix
       n <- nrow(obsdat.sA)
       cumprodAeqa <- rep_len(1, n)
       for (k_i in seq_along(self$regs_list)) { # loop over all regressions in regs_list
-        cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$predictAeqa(indA_i = obsdat.sA[, k_i])$getprobAeqa()
+        cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$predictAeqa(obsdat.sA = obsdat.sA[, k_i])
+        print("getting likelihood for: "%+%self$regs_list[[k_i]]$outvar)
       }
       private$cumprodAeqa <- cumprodAeqa
-      invisible(self)
+      invisible(cumprodAeqa)
     }
   ),
 
   active = list(
     actplhold = function() {}
-    # x2 = function(value) {
-    #   if (missing(value)) return(self$x * 2)
-    #   else self$x <- value/2
-    # },
-    # rand = function() {rnorm(1)}
   ),
 
   private = list(
@@ -203,7 +196,6 @@ SummariesModel <- R6Class(classname = "SummariesModel",
   )
 )
 
-
 ## ---------------------------------------------------------------------
 # Inherits from SummariesModel, allowing sA[j] in sA to be a continuous/categorical summary measure
 # Defines the fitting algorithm for sA[j] ~ \bar{sA[j-1]} + sW
@@ -212,142 +204,179 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 # Creates the appropriate dataset of discretized summary measures (BinsA[j][1],...,BinsA[j][M])?
 # Called from SummariesModel for contin sA[j]. Gets passed new subset definitions, e.g., (!mis(BinsA))
 ## ---------------------------------------------------------------------
-CatSummaryModel <- R6Class(classname = "CatSummaryModel",
-  inherit = SummariesModel,
-  portable = TRUE,
-  class = TRUE
-)
-
 ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
   inherit = SummariesModel,
   portable = TRUE,
   class = TRUE,
   public = list(
-    # remains unchanged: initialize = function(Kmax, nodes, sA_nms, sW_nms, subset, ...) {      
+    datnet.sA = NULL,
+    outvar = character(),     # the name of the continous outcome var (sA[j])
+    nbins = integer(),        # no. of bins for discretizing contin/cat sA[j]
+    # bin_bymass = TRUE,      # by default the bin cutoffs are determined using the quantiles of normalized sA[j]
+    bin_intrvls = NULL,       # intervals (cut-off points) that define bins, calculated at $fit(data) stage
+    bin_nms = NULL,
+
+    initialize = function(reg, datnet.sA, ...) {  # define settings for fitting contin sA and then call $new for super class (SummariesModel)         
+      # Define the number of bins (no. of regs to run), new outvar var names, prevars remain unchanged:
+      self$datnet.sA <- datnet.sA
+      self$outvar <- reg$outvar
+      self$nbins <- datnet.sA$nbins.sVar(reg$outvar)
+      self$bin_intrvls <- datnet.sA$get.sVar.intrvls(reg$outvar)
+
+      self$bin_nms <- new.sA_nms <- datnet.sA$bin.nms.sVar(reg$outvar) #old: new.sA_nms <- reg$outvar%+%"_"%+%"B."%+%(1:cont.reg_par$nbins)
+      new.sA_class <- as.list(rep_len(gvars$sVartypes$bin, self$nbins)); names(new.sA_class) <- new.sA_nms
+      bin.m.params <- list(sA_class = new.sA_class, sA_nms = new.sA_nms, sW_nms = reg$predvars)
+
+      # *) new.subsets:
+      # TO DO: Put this in a separate function (with var as arg + additional args) +
+      # move new.subsets def into another location (inside ContinSummaryModel$new()?)
+      add.oldsubset <- TRUE
+      new.subsets_chr <- lapply(new.sA_nms, function(var) {
+                                              newsub <- "!misfun("%+%var%+%")"
+                                              if (add.oldsubset) {
+                                                newsub <- newsub %+% " & (" %+% deparse(reg$subset) %+% ")"
+                                              }
+                                              newsub
+                                            })
+      new.subsets <- lapply(new.subsets_chr, function(subset_chr) {      
+                                                subset_expr <- try(parse(text=subset_chr)[[1]])
+                                                if(inherits(subset_expr, "try-error")) stop("can't parse the subset formula", call.=FALSE)
+                                                subset_expr
+                                              })
+      bin.m.params <- append(bin.m.params, list(subset = new.subsets))
 
 
-# # NORMALIZE:
-#       x <- (x - min(x)) / (max(x) - min(x))
-# # 2A) turn x into an ordinal (0, 1, 2, 3, ...) based on interval defn 1: bin x by equal length intervals of 0-1:
-#       intlen <- .1; # generates 10 intervals (intlen <- .2; intlen <- .5;)
-#       intvec <- seq(from = 0, to = 1, by=intlen)
-#       system.time(
-#         i <- data.frame(x = x, xcat = findInterval(x = x, vec = intvec, rightmost.closed = TRUE))
-#       )
-#       # for 100K, intlen=.1:
-#       # user  system elapsed 
-#       # 0.016   0.001   0.026 
-#       # length(unique(i$xcat)); hist(i$xcat)
-#       # 2B) turn x into an ordinal (0, 1, 2, 3, ...) based on interval defn 2: bin x by mass (quantiles on 0-1 as probs)
-#       system.time( {
-#         quantvec <- quantile(x=x, probs = intvec)
-#         i["xcatq"] <- findInterval(x = x, vec = quantvec, rightmost.closed = TRUE)    
-#       })      
-#       # length(unique(i$xcatq)); hist(i$xcatq)
+      # Combine list of params binparams from datnet.sA with additinal params passed in ...:
+      addl_params <- list(...)
+      bin.m.params <- append(bin.m.params, addl_params)
+      parnames <- names(bin.m.params)
+      if (length(bin.m.params) != 0 && (is.null(parnames) || any(parnames==""))) {
+        stop("please specify name for each attribute")
+      }
 
-# # 3) CREATE INDICATOR DUMMIES FOR ALL NON-BINARY SUMMARY MEASUREs in sA (do not touch sW)
-# # Approach 1: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
-      
-#       # ***
-#       # TO DO: Replace degenerate indicators with gvars$misval
-#       # The output needs to be a df because of subset evaluation
-#       # Is it possible to unify NetInd_i way of creating matrix (NA for missing friends) with this?
-#       # ***
+      print("new in continuous summary...")
+      print("contin sA name: "%+%self$outvar);
+      print("contin sA nbins"); print(self$nbins)
+      print("contin sA bin_intrvls"); print(self$bin_intrvls)
+      print("contin binned sA names: "); print(new.sA_nms)
+      print("Contin. new.subsets: "); str(new.subsets)
+      # print("contin bin_bymass? "%+%self$bin_bymass)
 
-#       cats <- sort(unique(i$xcat))
-#       bvarnmsnew <- "B"%+%"_"%+%cats[-length(cats)]
-#       system.time({
-#         dummies2 <- matrix(nrow=nrow(i), ncol=length(cats)-1)
-#         for(level in cats[-length(cats)]) {
-#             # dummies2[,level] <- as.integer(i$xcat <= level)
-#           # rewrite of above (***NOT TESTED***):
-#           subset_Bj <- i$xcat <= level
-#           dummies2[subset_Bj, level] <- as.integer(subset_Bj)
-#           dummies2[!subset_Bj, level] <- gvars$misval
-#         }
-#         colnames(dummies2) <- bvarnmsnew
-#       })
-#       head(dummies2)
-#       class(dummies2)
-#       class(dummies2[,1])
-#       # for 100K numeric RVs with intlen <- .1;
-#       #  user  system elapsed 
-#       # 0.037   0.006   0.054
-#       # 0.032   0.005   0.038 
-# # Approach 2 (model.matrix): a bit slower than manual
-#       # Creates B_j that jumps to 1 and then back to 0 (degenerate) and uses category 1 as ref (droped)
-#       # First need to make a factor from xcat; adds a column of 1's (removed manually)
-#       cats <- sort(unique(i$xcat))
-#       bvarnmsnew <- "B"%+%"_"%+%cats[-1]
-#       system.time({
-#         i$xcatf <- factor(i$xcat);
-#         dummies1 <- model.matrix(~i$xcatf);
-#         saveattrs <- attributes(dummies1)
-#         bvarnms <- colnames(dummies1)[-1]
-#         colnames(dummies1)[-1] <- bvarnmsnew
-#         # i <- data.frame(i, dummies1[,-1])
-#       })
-#       # Approach 2 manual. Creates B_j that jumps to 1 and then back to 0 (degenerate) and exclude the reference category (last)
-#       cats <- sort(unique(i$xcat))
-#       bvarnmsnew <- "B"%+%"_"%+%cats[-length(cats)]
-#       system.time({
-#         dummies2 <- matrix(nrow=nrow(i), ncol=length(cats)-1)
-#         for(level in cats[-length(cats)]) {
-#           dummies2[,level] <- as.integer(i$xcat == level)
-#         }
-#         colnames(dummies2) <- bvarnmsnew
-#       })
+      do.call(super$initialize, bin.m.params)
+      # super$initialize(...) # call the parent class contructor
+      # super$initialize(sA_class = new.sA_class, sA_nms = new.sA_nms, sW_nms = new.sW_nms, subset = new.subsets, ...) # call the parent class contructor
+    },
 
-
-
+    # binirize = function(contin.sAj) { # Transforms continous outcome sA[j] into matrix of discretized bin columns (sA[j] -> BinsA[1], ..., BinsA[M])
+    #   contin.sAj <- normalize(x = contin.sAj) # norm 0-1, this step is optional
+    #   if (is.null(self$bin_intrvls)) { # The intervals (cut-off points) defining bins need to be calculated only once and then saved:
+    #     self$bin_intrvls <- define.intervals(x = contin.sAj, nbins = self$nbins, bin_bymass = self$bin_bymass) # define cut-off points
+    #   }
+    #   ord.sAj <- make.ordinal(x = contin.sAj, intervals = self$bin_intrvls) # transform data (either define binary columns (BinsA[1],...,BinsA[M]) or pool the binaries into one colum dataset?)
+    #   # print("ord.sAj: "); print(ord.sAj)
+    #   bin.sAj_mat <- make.bins_mtx_1(x.ordinal = ord.sAj, self = self) # print("bin.sAj_mat: "); print(head(bin.sAj_mat))
+    #   make.bins_mtx_1(x.ordinal, nbins = self$nbins, bin.nms = ) { # Make dummy indicators for continuous x (sA[j])
+    #   return(bin.sAj_mat)
+    # },
 
     # Transforms data for continous outcome to discretized bins sA[j] -> BinsA[1], ..., BinsA[M] and calls $super$fit on that transformed data
     # Gets passed redefined subsets that exclude degenerate Bins (prev subset is defined for names in sA - names have changed though)
     fit = function(data) {
-      n <- nrow(data)
-      # ...
-      # transform data (either define binary columns (BinsA[1],...,BinsA[M]) or pool the binaries into one colum dataset)
-      # ...
-      data_t <- data
-      super$fit(data_t) # call parent fit method
+      print("fit in continuous summary...")
+      # data is of class datnet.sA
+      # data$datnetW$dat.sVar -> returns the matrix of sW
+      # data$datnetA$dat.sVar -> returns a matrix of sA
+      # data$get.df.sW.sA -> returns a data.frame of sWsA
+
+      # TO DO: SORT OUT SAVING / SUBSETING / RETURNING mat_bin in data 
+      # Evaluates subsets & return the correct data.frame to DatBin
+      mat_bin <- data$binirize.sVar(self$outvar)
+      # mat_bin <- data$datnetA$binirize.sVar(self$outvar)
+      # print("mat_bin"); print(head(mat_bin))
+      # print("data$bin_mat.sVar"); print(head(data$bin_mat.sVar))
+      # print("head(data$df.bin.sVar)"); print(head(data$df.bin.sVar))
+
+      super$fit(data) # call the parent class fit method
+
+      # OLD VERSION (when data was still a data.frame)
+      # data_t <- data.frame(cbind(self$binirize(data[, self$outvar]), data)) # need a consistent appraoch to creating / handling the dataset
+      # super$fit(data_t)
       invisible(self)
     },
-    # use BinarySummaryModel objects (stored from prev call to fit) to predict P(A=1|..) based on new cY_i matrix
+
     predict = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
       if (missing(newdata)) { # ... Do nothing. Predictions for fit data are already saved ...
         return(invisible(self))
       }
-      # ...
-      # transform newdata (either define binary columns (BinsA[1],...,BinsA[M]) or pool the binaries into one colum dataset)
-      # ...
-      newdata_t <- newdata
-      super$predict(newdata_t)
+      print("predict in continuous summary...")
+      # data is of class datnet.sA
+      # data$datnetW$dat.sVar -> returns the matrix of sW
+      # data$datnetA$dat.sVar -> returns a matrix of sA
+      # data$get.df.sW.sA -> returns a data.frame of sWsA
+
+      # NEW VERSION. mat_bin doesn't need to be saved (even though its invisibly returned). 
+      # mat_bin is automatically saved in datnet.sW.sA - potentially dangerous!!!
+      mat_bin <- newdata$binirize.sVar(self$outvar) # make.bins_mtx_1(make.ordinal(x, intervals), nbins, bin.nms)
+      # mat_bin <- newdata$datnetA$binirize.sVar(self$outvar) # make.bins_mtx_1(make.ordinal(x, intervals), nbins, bin.nms)
+      print("mat_bin"); print(head(mat_bin))
+      super$predict(newdata)
+
+      # OLD VERSION (when data was still a data.frame)
+      # newdata_t <- data.frame(cbind(self$binirize(newdata[, self$outvar]), newdata)) # need a consistent appraoch to creating / handling the dataset
+      # super$fit(data_t)
       invisible(self)
     },
-    # use BinarySummaryModel objects (stored from prev call to fit()) to predict P(sA=obsdat.sA|sW)
+
+    # WARNING: This method cannot be chained together with other methods (s.a, class$predictAeqa()$fun())
+    # Convert contin. sA vector into matrix of binary cols, then call parent class method: super$predictAeqa()
+    # Invisibly return cumm. prob P(sA=sa|sW=sw)
     predictAeqa = function(obsdat.sA) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
-      assert_that(is.matrix(obsdat.sA)) # check A: obsdat.sA is a matrix
-      n <- nrow(obsdat.sA)
-      # ...
-      # transform obsdat.sA (either define binary columns (BinsA[1],...,BinsA[M]) or pool the binaries into one colum dataset)
-      # ...
-      obsdat.sA_t <- obsdat.sA
-      obsdat.sA_t
-      invisible(self)
+      assert_that(is.vector(obsdat.sA)) # check A: obsdat.sA is a vector (continuous sA[j])
+      print("predictAeqa in continuous summary...")
+      
+      ordX <- make.ordinal(x = obsdat.sA, intervals = self$bin_intrvls)
+      # print("ordX"); print(head(ordX))
+      mat_bin <- make.bins_mtx_1(ordX, nbins = self$nbins, bin.nms = self$bin_nms)
+
+      # old way is still possible, since the original datnetA objct was saved as a field:
+      # cumprodAeqa <- super$predictAeqa(self$binirize(obsdat.sA))
+      cumprodAeqa <- super$predictAeqa(mat_bin)
+      invisible(cumprodAeqa)
+      # invisible(super$predictAeqa(self$binirize(obsdat.sA)))  # one line alternative to the above
     }
   ),
+  active = list(
+    cats = function() {seq_len(self$nbins)}
+  )
+)
 
+## ---------------------------------------------------------------------
+# Transforms data for continous outcome to discretized bins sA[j] -> BinsA[1], ..., BinsA[M] 
+# add a covariate BinInd (1,..,M), convert to long format (turn BinsA[1], ...., BinsA[M] into rows) 
+# then call $super$fit on transformed data?
+## ---------------------------------------------------------------------
+ContinSummaryModelPool <- R6Class(classname = "ContinSummaryModelPool",
+  inherit = ContinSummaryModel,
+  portable = TRUE,
+  class = TRUE,
+  public = list(
+    # Define settings for fitting contin sA and then call $new for super class (SummariesModel) 
+    initialize = function(...) { 
+      super$initialize(...) # call the parent class contructor
+    }
+  ),
   active = list(
     actplhold = function() {}
-    # x2 = function(value) {
-    #   if (missing(value)) return(self$x * 2)
-    #   else self$x <- value/2
-    # },
-    # rand = function() {rnorm(1)}
   ),
-
   private = list(
     fitted.pbins = list(),
     cumprodAeqa = NULL
   )
+)
+
+# THIS IS A BAD APPROACH (DEFINING SEPARATE CLASS FOR CAT). NEED TO HANDLE cat sA[j] INSIDE ContinSummaryModel
+CatSummaryModel <- R6Class(classname = "CatSummaryModel",
+  inherit = SummariesModel,
+  portable = TRUE,
+  class = TRUE
 )

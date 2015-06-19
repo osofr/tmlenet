@@ -1,19 +1,28 @@
 rm(list=ls())
 #------------------------------------
+# Packages / package functions used so far inside tmlenet:
+# If you are using just a few functions from another package, 
+# my recommendation is to note the package name in the Imports: field of the DESCRIPTION 
+# file and call the function(s) explicitly using ::, e.g., pkg::fun().
+
+# If you are using functions repeatedly, you can avoid :: by importing the function with @importFrom pgk fun. 
+# This also has a small performance benefit, because :: adds approximately 5 µs to function evaluation time.
+
+# Alternatively, if you are repeatedly using many functions from another package, you can import all of them using @import package.
+# This is the least recommended solution because it makes your code harder to read (you can’t tell where a function is coming from), 
+# and if you @import many packages, it increases the chance of conflicting function names.
+
+#-----------------------------------
 # ADD tmlenet SOURCE CODE
-# library(tmle)
-library(locfit)
-library(xtable)
-library(bigmemory)
-library(biganalytics)
-library(plyr)
-options(bigmemory.typecast.warning=FALSE)
-options(echo=TRUE)
-options(width = 180)
+library(R6)
+library(assertthat)
+# library(stringr)
+# library(speedglm)
+options(echo = TRUE)
+options(width = 160)
 
 library(devtools)
 load_all("../")	# load all R files in /R and datasets in /data. Ignores NAMESPACE.
-
 # source("BinarySummary_class.R")
 # source("DatNet_class.R")
 # source("Summaries_class.R")
@@ -35,6 +44,15 @@ f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 #***************************************************************************************
 # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (SIMULATION 3)
 #***************************************************************************************
+# library(tmle)
+library(locfit)
+library(xtable)
+library(bigmemory)
+library(biganalytics)
+library(plyr)
+options(bigmemory.typecast.warning=FALSE)
+
+
 kmax <- 6	# Max # of friends (K)?
 # simulate a dataset first
 source("./datgen_nets/sim3_datgen_k6.R")
@@ -137,7 +155,6 @@ tmlenet_K6out2 <- tmlenet(data=df_K6, Anode='A', Wnodes=Wnodes, Ynode='Y', nFnod
 
 tmlenet_K6out2$estimates$EY_g1.star$tmle_B
 tmlenet_K6out2$estimates$EY_g1.star$CI_tmle_B_iidIC
-
 
 
 #***************************************************************************************
