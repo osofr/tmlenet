@@ -1,3 +1,18 @@
+#-----------------------------------------------------------------------------
+# MAJOR CHANGES TO DatNet.sWsA CLASS STRUCTURE (06/18/2015):
+#-----------------------------------------------------------------------------
+# * gen_sWsA_dat() renamed to make.df.sWsA() and moved inside DatNet.sWsA class;
+# * The observed data is now always stored as $datnetW,$datnetA fields in every DatNet.sWsA object (under g_0 or g_star);
+# * DatNet.sWsA$new(datnetW,datnetW) only saves obs data objects datnetW and datnetW as fields;
+# * DatNet.sWsA$new() has to be called only twice: once for g_0 (g_N) and once for g_star;
+# * $make.df.sWsA() must be called to create $df.sW.sA ($df.sVar) - a data.frame of COMBINED sWsA;
+# * All binning / interval methods MUST BE called on DatNet.sWsA (NOT $datnetA, $datnetW) (inherited from DatNet);
+
+# * Both copies of DatNet.sWsA are storing datnetA/datnetW by reference - same copy;
+# * Changing datnetA/datnetW in one copy of DatNet.sWsA will result them being changed in the other copy of DatNet.sWsA as well.
+
+# * MOST IMPORTANTLY we can now get rid of the MC sim loop for evaling psi_n. Just use already sampled DatNet.gstar dataset and evaluate psi_n only once.
+
 
 
 #-----------------------------------------------------------------------------
@@ -24,8 +39,6 @@ copytoR6fields <- function(R6obj, ...) {
 ## ---------------------------------------------------------------------
 # TO DO: 
 # x) Finish sVar generation (from expressions)
-# x) Consider storing dat.sVar and dat.netVar as data.frames. Need to make dat.netVar into data.frame before sVar expression eval....
-  # Consider moving df.sVar and df.netVar from active binding to actual storage and dat.sVar / dat.netVar to active binding.
 # x) See if some of new() args can be dropped: (Odata, NetInd_k, Kmax, nodes, VarNodes, AddnFnode = FALSE, misValRepl = FALSE, ...) {
 # x) See if new() can be made to sample Odata[,Varnode] if f.g_name is supplied... 
   # This would allow making DatNet fully closed in, that is, its the only class where netVar and sVar data are contructed, given Odata and f.g_name...
@@ -35,7 +48,6 @@ copytoR6fields <- function(R6obj, ...) {
 #-----------------------------------------------------------------------------
   # x) Moved delayed eval. to be inside DatNet.sWsA$evalsubst
   # x) Delayed evaluation of subsets implies that data / newdata have to be data.frames at the time of subseting. 
-  # x) It might make more sense to save datnetA$dat.sVar & datnetW$dat.sVar as data.frames from the beginning - save some time on conversations back and forth.
   # x) See implementation of subset.data.frame and subset.matrix - there might be a way around it even for data=as.matrix(data)
 
 #-----------------------------------------------------------------------------
@@ -145,6 +157,7 @@ make.ordinal = function(x, intervals) {
 }
 # Remove the column naming for dummies_mat or keep for reference?
 make.bins_mtx_1 = function(x.ordinal, nbins, bin.nms) { # Make dummy indicators for continuous x (sA[j])
+# make.bins_mtx_1 = function(x.ordinal, nbins, bin.nms) { # Make dummy indicators for continuous x (sA[j])
   # Approach 1: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
   n <- length(x.ordinal)
   cats <- (1:nbins)
@@ -211,16 +224,22 @@ DatNet <- R6Class(classname = "DatNet",
     AddnFnode = FALSE,
     misValRepl = FALSE,
     ord.sVar = NULL,           # ordinal transform for regression outcome sVar
-    bin_mat.sVar = NULL,       # matrix of indicators for binarized regression outcome sVar
-    # names.netVar = character(),# column names of dat.netVar. Consider turning it into an active field (with arg)
+
+    # bin_mat.sVar = NULL,     # (ACTIVE BINDING) matrix of indicators for binarized regression outcome sVar
+    df.bin.sVar = NULL,		   # data.frame of indicators for binarized regression outcome sVar
+
     dat.netVar = NULL,         # matrix of network node values (+ node column itself) for all nodes in VarNodes
-    # names.sVar = character(),  # summary meaure names. Consider turning it into an active field (with arg)
-    dat.sVar = NULL,           # matrix of summary meaure values for each summary measure expression in sVar
+    # df.netVar = NULL,        # (ACTIVE BINIDNG) df of network node values (+ node column itself) for all nodes in VarNodes
+
+    # dat.sVar = NULL,         # (ACTIVE BINIDNG) Matrix of summary meaure values for each summary measure expression in sVar
+    df.sVar = NULL,            # data.frame of summary meaure values for each summary measure expression in sVar
+
     type.sVar = NULL,          # named list with sVar types: list(names.sVar[i] = "binary"/"categor"/"contin"), can be overridden
     norm.c.sVars = FALSE,      # flag = TRUE if want to normalize continous covariates
-    # nbins = list(),          # (MOVED TO ACTIVE BINDING) named list of total nbins for each "contin" sVar[i], can be overridden
+    # nbins = list(),          # (ACTIVE BINDING) named list of total nbins for each "contin" sVar[i], can be overridden
     cbin_intrvls = list(),     # named list of bin cutoffs for each "contin" sVar[i], can be overridden
-    # NEED TO SORT WHEN nOdata is needed....
+    
+    # NEED TO SORT OUT WHEN nOdata is needed....
     # nobs = NA_integer_,      # n of samples in the OBSERVED (original) data
     nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
 
@@ -262,7 +281,8 @@ DatNet <- R6Class(classname = "DatNet",
     # otherwise can pass type.sVar = list(sVar = NA, ...) or a value type.sVar = NA/gvars$sVartypes$bin/etc
     def_types_sVar = function(type.sVar = NULL) {
       if (is.null(type.sVar)) { # Detect the type of each sVar[i]: gvars$sVartypes$bin,  gvars$sVartypes$cat, gvars$sVartypes$cont
-        self$type.sVar <- detect.col.types(self$dat.sVar)
+        self$type.sVar <- detect.col.types(self$df.sVar)
+        
       } else {
         n.sVar <- length(self$names.sVar)
         len <- length(type.sVar)
@@ -281,15 +301,14 @@ DatNet <- R6Class(classname = "DatNet",
     },
     # *** MAKE A PRIVATE METHOD ***
     # Normalize continuous sVars
-    # This could be memory-costly. Alternative is a for loop over cols in self$dat.sVar
+    # This could be memory-costly. Alternative is a for loop over cols in self$df.sVar
     norm_c_sVars = function() {
       names.c.sVar <- self$names.c.sVar
       if (length(names.c.sVar) == 0L) return(invisible(self))
 
       if (self$norm.c.sVars && (length(names.c.sVar) > 0)) {
         for (name.c.sVar in names.c.sVar) {
-          self$dat.sVar[, name.c.sVar] <- normalize_sVar(self$dat.sVar[, name.c.sVar])
-          # self$dat.sVar[, names.c.sVar] <- normalize_matsVar(self$dat.sVar[, names.c.sVar, drop = FALSE])
+          self$df.sVar[, name.c.sVar] <- normalize_sVar(self$df.sVar[, name.c.sVar])
         }
       }
       invisible(self)
@@ -297,7 +316,7 @@ DatNet <- R6Class(classname = "DatNet",
     # Define the summary measures (NOT IMPLEMENTED. )
     # For now can only specify summary measure as subsets of netVar columns
     # *** TO DO:
-    # Apply the summary measure functions / expression to dat.netVar to OBTAIN dat.sVar columns
+    # Apply the summary measure functions / expression to dat.netVar to OBTAIN df.sVar columns
     # Select only sW columns in hform_g0 and hfrom_gstar or use all?
     # type.sVar acts as a flag: only detect types when !is.null
     make_sVar = function(names.sVar = NULL, type.sVar = NULL, norm.c.sVars = FALSE) {
@@ -307,19 +326,22 @@ DatNet <- R6Class(classname = "DatNet",
       assert_that(is.character(names.sVar))
       # to be replaced with new sVar names that aren't nec. part of netVar:
       assert_that(all(names.sVar %in% self$names.netVar)) 
-      n.sVar <- length(names.sVar)      
-      self$dat.sVar <- self$dat.netVar[, names.sVar]
+      n.sVar <- length(names.sVar)   
+
+      dfnetVar <- self$df.netVar
+      self$df.sVar <- dfnetVar[, names.sVar]
+      # self$dat.sVar <- self$dat.netVar[, names.sVar]
+
       # MAKE def_types_sVar an active binding? calling self$def_types_sVar <- type.sVar assigns, calling self$def_types_sVar defines.
       self$def_types_sVar(type.sVar) # Define the type of each sVar[i]: bin, cat or cont
       # PUT IT OUTSIDE OF make_sVar as a separate public method?
-      if (norm.c.sVars) { # normalize continuous and non-missing sVars, overwrite their columns in dat.sVar with normalized [0,1] vals
+      if (norm.c.sVars) { # normalize continuous and non-missing sVars, overwrite their columns in df.sVar with normalized [0,1] vals
         self$norm.c.sVars <- norm.c.sVars  
         self$norm_c_sVars()
       }
       invisible(self)
     },
-    # MAKE INTO AN ACTIVE BINDING???? 
-    # YES. Add arg (overwrite = FALSE) 
+    # MAKE INTO AN ACTIVE BINDING????  # YES. Add arg (overwrite = FALSE) 
     # if (!overwrite) and length(self$cbin_intrvls) > 0 => return(self$cbin_intrvls), otherwise recalculate, overwrite self$cbin_intrvls and return(self$cbin_intrvls)
     # *** TO DO ***: Make sure that a categorical var is only binned when ncats > nbins
     # Define the bin cut-off intervals for continous sVars
@@ -338,7 +360,7 @@ DatNet <- R6Class(classname = "DatNet",
         cbin_intrvls <- vector(mode = "list", length = length(names.c.sVar))
         names(cbin_intrvls) <- names.c.sVar
         for (idx in seq_along(names.c.sVar)) {
-            cbin_intrvls[[idx]] <- define.intervals(x = self$dat.sVar[, names.c.sVar[idx]], nbins = nbins, bin_bymass = bin_bymass)
+            cbin_intrvls[[idx]] <- define.intervals(x = self$df.sVar[, names.c.sVar[idx]], nbins = nbins, bin_bymass = bin_bymass)
         }
         self$cbin_intrvls <- cbin_intrvls
       }
@@ -366,7 +388,7 @@ DatNet <- R6Class(classname = "DatNet",
                                         VarNm = "determ.g_true", misval = gvars$misval)
       # determ_cols <- (determ_cols_user | determ_cols_Friend)
       determ_cols <- determ_cols_user
-      self$dat.sVar <- cbind(determ_cols, self$dat.sVar)
+      self$df.sVar <- cbind(determ_cols, self$df.sVar)
       determ_cols_type <- as.list(rep_len(gvars$sVartypes$bin, ncol(determ_cols)))
       names(determ_cols_type) <- colnames(determ_cols)
       self$type.sVar <- c(determ_cols_type, self$type.sVar)
@@ -378,49 +400,49 @@ DatNet <- R6Class(classname = "DatNet",
       invisible(self)
     },
     fixmiss_sVar = function() {
-      self$dat.sVar[gvars$misfun(self$dat.sVar)] <- gvars$misXreplace
+      self$df.sVar[gvars$misfun(self$df.sVar)] <- gvars$misXreplace
       invisible(self)
     },
     # --------------------------------------------------
-    # Methods for directly handling one continous/categorical sVar in self$dat.sVar;
+    # Methods for directly handling one continous/categorical sVar in self$df.sVar;
     # No checking of incorrect input is performed, use at your own risk!
     # --------------------------------------------------
-    norm.sVar = function(name.sVar) { normalize_sVar(self$dat.sVar[, name.sVar]) },  # return normalized 0-1 sVar
-    set.sVar = function(name.sVar, new.sVar) { self$dat.sVar[, name.sVar] <- new.sVar },
-    get.sVar = function(name.sVar) { self$dat.sVar[, name.sVar] },
+    norm.sVar = function(name.sVar) { normalize_sVar(self$df.sVar[, name.sVar]) },  # return normalized 0-1 sVar
+    set.sVar = function(name.sVar, new.sVar) { self$df.sVar[, name.sVar] <- new.sVar },
+    get.sVar = function(name.sVar) { self$df.sVar[, name.sVar] },
     set.sVar.type = function(name.sVar, new.type) { self$type.sVar[[name.sVar]] <- new.type },
     get.sVar.type = function(name.sVar) { if (missing(name.sVar)) { self$type.sVar } else { self$type.sVar[[name.sVar]] } },
-    detect.sVar.intrvls = function(name.sVar, nbins = gvars$nbins, bin_bymass = TRUE) { define.intervals(x = self$dat.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass) },
+    detect.sVar.intrvls = function(name.sVar, nbins = gvars$nbins, bin_bymass = TRUE) { define.intervals(x = self$df.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass) },
     set.sVar.intrvls = function(name.sVar, new.intrvls) { self$cbin_intrvls[[name.sVar]] <- new.intrvls },
     get.sVar.intrvls = function(name.sVar) { if (missing(name.sVar)) { self$cbin_intrvls } else { self$cbin_intrvls[[name.sVar]] } },
     # Need to find a way to over-ride nbins for categorical vars (allowing to set to more than ncats)!
     nbins.sVar = function(name.sVar) { if (missing(name.sVar)) { self$all.nbins } else { length(self$get.sVar.intrvls(name.sVar)) - 1 } },
     bin.nms.sVar = function(name.sVar) { name.sVar%+%"_"%+%"B."%+%(1L:self$nbins.sVar(name.sVar)) }, # Return names of bins indicators for sVar
     make.ord.sVar = function(name.sVar, intervals = self$get.sVar.intrvls(name.sVar)) {  # create vector of ordinals out of cont. sVar
-      self$ord.sVar <- make.ordinal(x = self$dat.sVar[, name.sVar], intervals = intervals) 
+      self$ord.sVar <- make.ordinal(x = self$df.sVar[, name.sVar], intervals = intervals) 
       invisible(self$ord.sVar)
     },
     binirize.sVar = function(name.sVar, intervals = self$get.sVar.intrvls(name.sVar), nbins = self$nbins.sVar(name.sVar), bin.nms = self$bin.nms.sVar(name.sVar)) {  # return matrix of bin indicators for ordinal
-      self$bin_mat.sVar <- make.bins_mtx_1(x.ordinal = self$make.ord.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
-      invisible(self$bin_mat.sVar)
+      self$df.bin.sVar <- data.frame(make.bins_mtx_1(x.ordinal = self$make.ord.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms))
+      invisible(self$df.bin.sVar)
     }
   ),
   active = list(
     names.netVar = function() { colnames(self$dat.netVar) },
-    names.sVar = function() { colnames(self$dat.sVar) },
+    names.sVar = function() { colnames(self$df.sVar) },
     names.c.sVar = function() { names(self$type.sVar[self$type.sVar %in% gvars$sVartypes$cont]) }, # names of cont sVars
     all.nbins = function() { lapply(self$cbin_intrvls, function(int) length(int)-1) },
     ncols.netVar = function() { length(self$names.netVar) },
     ncols.sVar = function() { length(self$names.sVar) },
     df.netVar = function() { data.frame(self$dat.netVar) },    # convert matrix dat.netVar to a data.frame
-    df.bin.sVar = function() { data.frame(self$bin_mat.sVar) },
-    df.sVar = function() { data.frame(self$dat.sVar) },        # convert matrix dat.sVar to a data.frame
+    dat.sVar = function() { as.matrix(self$df.sVar) },		   # convert df df.sVar to a matrix
+    # bin_mat.sVar = function() { as.matrix(self$df.bin.sVar) },
     emptydat.netVar = function() {self$dat.netVar <- NULL },   # wipe out dat.netVar
-    emptydat.sVar = function() { self$dat.sVar <- NULL }       # wipe out dat.sVar
+    emptydf.sVar = function() { self$df.sVar <- NULL }       # wipe out df.sVar
   ),
   private = list(
     # dat.netVar = NULL,
-    # dat.sVar = NULL,
+    # df.sVar = NULL,
     placeholder = list()
   )
 )
@@ -435,7 +457,7 @@ DatNet <- R6Class(classname = "DatNet",
 # x) MAKE DatNet.sWsA inherit from DatNet and DO NOT REPLICATE ANY FIELDS THAT ALREADY EXIST IN DatNet!
 # x) df.sW.sA can be A LOT SMARTER and memory efficient. 
     # If we know the covariates that are needed it might do the subsetting $df.sW.sA(covars)
-    # Then first select those covariate from datnetW$dat.sVar and datnetA$dat.sVar and return only what's needed.
+    # Then first select those covariate from datnetW$df.sVar and datnetA$df.sVar and return only what's needed.
 
 DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
   inherit = DatNet,
@@ -445,10 +467,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     datnetW = NULL,   # *** RENAME TO O.datnetW for clarity ***
     datnetA = NULL,   # *** RENAME TO O.datnetA for clarity ***
     # **********
-    # dat.sVar - (inherited): now stores the combined data.frame of cbind(data.frame(dat.sW), data.frame(dat.sA))
+    # df.sVar - (inherited): now stores the combined data.frame of cbind(data.frame(dat.sW), data.frame(dat.sA))
     # this way ALL the methods and active bindings of DatNet are valid in DatNet.sWsA for the combined data.frame
     # **********
-    df.sW.sA = NULL, # assigned to self$dat.sVar for compatibility with old functions
+    df.sW.sA = NULL, # assigned to self$df.sVar for compatibility with old functions
+    # **********
+
     initialize = function(datnetW, datnetA, ...) {
       print("entered DatNet.sWsA constructor")
       assert_that("DatNet" %in% class(datnetW))
@@ -459,29 +483,22 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     },
     # x) Note that if this feature is to be open to the user, eval() has to be done in the parent.frame of the calling function, not baseenv().
     # x) Same with summary measures: need to eval them in the calling environment (in addition to the envir of data.frame(netW,netA))
-    evalsubst = function(subsetexpr) {
-      # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):
+    evalsubst = function(subsetexpr) { # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):      
+      # print("DatNet.sWsA evalsubst....")
+      # print("self$df.sW.sA"); print(head(self$df.sW.sA))
+      # print("self$df.bin.sVar"); print(head(self$df.bin.sVar))
       res <- try(eval(subsetexpr, envir = c(self$df.sW.sA, self$df.bin.sVar, as.list(gvars)), enclos = baseenv())) # to evaluate vars not found in data in baseenv()      
-
       # Eval the expression in the environments of 3 data.frames + global constants "gvars"):
       # res <- try(eval(subsetexpr, envir = c(self$datnetW$df.sVar, self$datnetA$df.sVar, self$datnetA$df.bin.sVar, as.list(gvars)), enclos = baseenv())) # to evaluate vars not found in data in baseenv()
-
       # res <- try(eval(subst_call, envir = data, enclos = parent.frame())) # to evaluate vars not found in data in parent.frame()
       # old:# res <- try(eval(subst_call, envir = c(lapply(TD_vnames, I), node_func), enclos=anchor_evn))  # evaluate modified_call in the df namespace with custom '[' function  
      return(res)
     },
-    get.df.sW.sA = function(rowsubset = TRUE, covars, outvar) { # return a list with vector outvar and data.frame covars
-      # datnetW <- self$datnetW 
-      # datnetA <- self$datnetA
-      # df.bin.sVar <- self$datnetA$df.bin.sVar
+    get.df.sW.sA = function(rowsubset = TRUE, covars) { # return a data.frame with covars (predictors)
       df.bin.sVar <- self$df.bin.sVar
-      # sel.sW <- TRUE
-      # sel.sA <- TRUE
       sel.sWsA <- TRUE
       sel.binsA = NULL # columns to select from binned continuos var matrix (if it was previously constructed)
       if (!missing(covars)) {
-        # sel.sW <- datnetW$names.sVar[(datnetW$names.sVar %in% covars)]
-        # sel.sA <- datnetA$names.sVar[(datnetA$names.sVar %in% covars)]
         sel.sWsA <- colnames(self$df.sW.sA)[(colnames(self$df.sW.sA) %in% covars)]
         if (!is.null(df.bin.sVar)) {
           sel.binsA <- colnames(df.bin.sVar)[(colnames(df.bin.sVar) %in% covars)]
@@ -492,10 +509,14 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       if (length(sel.binsA)>0) {
         dfsel <- cbind(df.bin.sVar[rowsubset, sel.binsA, drop = FALSE], dfsel)
       }
-
       # VERSION 1:
-      # This version is probably more memory friendly, but could have longer running time.
+      # This version is probably more memory friendly, but takes longer time to run
       # Allows datnetW to to be stored with only nrow = nobs(Odata), while datnetA has nrow = p*nobs(Odata) under g_star
+      # datnetW <- self$datnetW 
+      # datnetA <- self$datnetA
+      # sel.sW <- TRUE
+      # sel.sA <- TRUE      
+      # df.bin.sVar <- self$datnetA$df.bin.sVar
       # print(class(df.bin.sVar)); print(dim(df.bin.sVar)); print(head(df.bin.sVar))
       # print(class(datnetA$df.sVar)); print(dim(datnetA$df.sVar))
       # print(class(datnetW$df.sVar)); print(dim(datnetW$df.sVar))
@@ -523,18 +544,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       } else {
         stop("outcome variable not found")
       }
-    },    
-    # older version
-    # getoutvar = function(rowsubset = TRUE, var) {
-    #   if (var %in% self$datnetA$names.sVar) {
-    #     self$datnetA$dat.sVar[rowsubset, var]
-    #   } else if (var %in% colnames(self$datnetA$df.bin.sVar)) {
-    #     self$datnetA$df.bin.sVar[rowsubset, var]
-    #   } else {
-    #     stop("outcome variable not found")
-    #   }
-    # },
-
+    }, 
     # NEW 06/16/15: No longer need to cbind both datasets until last moment. 
     # Can be done with cbind(data.frame(), data.frame()) inside DatNet.sW.sA
     # This function should just return DatNet.sWsA with datnetAstar that cotanis the final matrix dat.sA with n*p rows
@@ -552,11 +562,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       # Can assigns types and intervals to itself, since DatNet.sWsA inherits from DatNet
       self$type.sVar <- c(datnetW$type.sVar, datnetA$type.sVar)
       self$cbin_intrvls <- c(datnetW$cbin_intrvls, datnetA$cbin_intrvls)
-      if (is.null(f.g_name)) {  # set df.sW.sA to observed data (sW,sA) if g.fun is.null
-        dat.sWsA <- cbind(datnetW$dat.sVar, datnetA$dat.sVar)
+      if (is.null(f.g_name)) {  # set df.sW.sA to observed data (sW,sA) if g.fun is.null      	
+        df.sWsA <- cbind(datnetW$df.sVar, datnetA$df.sVar) # assigning summary measures as data.frames:
       } else {  # sample A from g function in f.g_name
-        dat.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sW.sA
-        colnames(dat.sWsA) <- self$names.sWsA
+        df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sW.sA
+        colnames(df.sWsA) <- self$names.sWsA
+        df.sWsA <- data.frame(df.sWsA)
         for (i in seq_len(p)) {
           Avec.df <- data.frame(Anode = f.gen.A.star(Kmax, datnetW$dat.netVar, f.g_name, f.g_args), stringsAsFactors = FALSE)
           colnames(Avec.df)[1] <- nodes$Anode
@@ -567,11 +578,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           #   datnetAstar$add.dat.netVar(Odata = Avec.df)
           # }
           datnetAstar$make_sVar(names.sVar = datnetA$names.sVar) # create summary measures sA
-          dat.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetAstar$dat.sVar)
+          # Assigin summary measures as data.frames:
+          df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$df.sVar, datnetAstar$df.sVar)[,]
         }
       }
-      self$dat.sVar <- data.frame(dat.sWsA)
-      self$df.sW.sA <- self$dat.sVar # for compatibility with old functions
+      self$df.sVar <- df.sWsA
+      self$df.sW.sA <- self$df.sVar # for compatibility with older functions
       return(invisible(self))
     }
   ),
@@ -580,8 +592,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     nobs = function() { nrow(self$df.sW.sA) }
   ),
   private = list(
-    # dat.netVar = NULL,
-    # dat.sVar = NULL,
     placeholder = list()
   )
 )

@@ -301,6 +301,47 @@ notest.evalsubset2dfs <- function() {
 }
 
 
+test.density.sA <- function() {
+  nsamp <- 1000
+  `%+%` <- function(a, b) paste0(a, b)
+  library(simcausal)
+
+  rbivNorm <- function(n, whichbiv, norms, mu, var1 = 1, var2 = 1, rho = 0.7) {
+    whichbiv <- whichbiv[1]; var1 <- var1[1]; var2 <- var2[1]; rho <- rho[1]
+    sigma <- matrix(c(var1, rho, rho, var2), nrow = 2)
+    Scol <- chol(sigma)[, whichbiv]
+    bivX <- (Scol[1] * norms[, 1] + Scol[2] * norms[, 2]) + mu
+    bivX
+  }
+
+  D <- DAG.empty()
+  D <-
+  D + node("W1", distr = "rbern", prob = 0.5) + 
+      node("W2", distr = "rbern", prob = 0.3) + 
+      node("W3", distr = "rbern", prob = 0.3) +
+      node("A1.norm1", distr = "rnorm", mean = 0, sd = 1) + 
+      node("A1.norm2", distr = "rnorm", mean = 0, sd = 1) + 
+      node("alpha", t = 0:1, distr = "rconst", 
+                const = {if(t == 0) {log(0.6)} else {log(1.0)}}) + 
+      node("A1", t = 0:1, distr = "rbivNorm", whichbiv = t + 1, 
+                norms = c(A1.norm1, A1.norm2), 
+                mu = {if (t == 0) {0} else {-0.30 * A1[t-1]}}) + 
+
+      node("A2", t = 0:1, distr = "rbern", 
+                prob = plogis(alpha[t] + 
+                              log(5)*A1[t] + {if(t == 0) {0} else {log(5)*A2[t-1]}})) + 
+      node("Y", t = 1, distr = "rnorm", 
+                mean = (0.98 * W1 + 0.58 * W2 + 0.33 * W3 + 
+                        0.98 * A1[t] - 0.37 * A2[t]),
+                sd = 1)
+  D <- set.DAG(D)
+  datO <- sim(D, n = nsamp)
+  head(datO)
+  
+}
+
+
+
 test.bugfixes <- function() {
 }
 
