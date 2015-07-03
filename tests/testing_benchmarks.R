@@ -234,44 +234,4 @@ speed
 
 
 
-#---------------------------------------------------------------------
-### A possible bug in R6. Active binding is called when calling print(obj1) / obj1
-# Fixed. Use github version of the package
-#---------------------------------------------------------------------
-DatNet <- R6Class(classname = "DatNet",
-  portable = TRUE,
-  class = TRUE,
-  public = list(
-    names.netVar = character(), 
-    dat.netVar = NULL,
-    nobs = NA_integer_,        # n of samples in the OBSERVED (original) data
-    initialize = function(...) {
-      self$nobs <- 5
-      self$names.netVar <- c("a", "b", "c")
-      self$dat.netVar <- matrix(rnorm(self$nobs*self$netVarcols), nrow = self$nobs, ncol = self$netVarcols)
-      invisible(self)
-    }
-  ),
-  active = list(
-    netVarcols = function() { length(self$names.netVar) },
-    emptydat.netVar = function() {
-      self$dat.netVar <- NULL
-    }
-  ),
-  private = list(
-    placeholder = list()
-  )
-)
-
-obj1 <- DatNet$new()
-obj1$dat.netVar
-obj1
-
-obj1$dat.netVar
-obj1
-
-
-
-
-
 

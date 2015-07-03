@@ -1,6 +1,10 @@
 ### --- Test setup ---
- 
+
 if(FALSE) {
+  # DEBUGGING:
+  # memory & speed profiling
+  # Rprof("tmle_run_memuse.out", memory.profiling=TRUE)
+
   library("RUnit")
   library("roxygen2")
   library("devtools")
@@ -23,7 +27,7 @@ if(FALSE) {
   system("R CMD check --as-cran tmlenet_0.0.9.tar.gz") # check R package tar ball prior to CRAN submission
       ## system("R CMD check --no-manual --no-vignettes tmlenet") # check without building the pdf manual and not building vignettes
       ## system("R CMD build tmlenet --no-build-vignettes")
-      ## system("R CMD build tmlenet")  
+      ## system("R CMD build tmlenet")
   # devtools::use_travis() # SET UP TRAVIS CONFIG FILE
   # INSTALLING FROM SOURCE:
   # install.packages("./tmlenet_0.0.9.tar.gz", repos = NULL, type="source", dependencies=TRUE)
@@ -188,8 +192,8 @@ reg_test <- RegressionClass$new(outvar.class = gvars$sVartypes$bin,
 
 test.continous.sA <- function() {
     # I) Build network vectors: (W, W_netF_1, ..., W_netF_k) for each W in Wnodes by PRE-ALLOCATING netW_full:
-    datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, AddnFnode = TRUE)
-    # datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, AddnFnode = TRUE, misValRepl = TRUE)
+    datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, addnFnode = TRUE)
+    # datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, addnFnode = TRUE, misValRepl = TRUE)
     netW_full <- datnetW$dat.netVar
     print("datnetW$ncols.netVar: "%+%datnetW$ncols.netVar);
     # print("datnetW$names.netVar: "); print(datnetW$names.netVar)
@@ -275,32 +279,6 @@ test.continous.sA <- function() {
 }
 
 
-notest.evalsubset2dfs <- function() {
-  # Testing eval'ing logical expressions in envirs of two data.frames with different number of rows.
-  mat1 <- matrix(c(0,1,1,1,0), nrow = 5, ncol = 2)
-  colnames(mat1) <- c("A1", "A2")
-  mat2 <- matrix(c(2,3), nrow = 15, ncol = 4)
-  colnames(mat2) <- c("B1", "B2", "B3", "B4")
-  # using env as lists from df(mat1) and df(mat2) put together (mat1 and mat2 have diff no. of rows)
-  (testenv1 <- c(data.frame(mat1), data.frame(mat2)))
-  # using env as one data.frame put together (result has the same no. of rows)
-  (testenv2 <- cbind(data.frame(mat1), data.frame(mat2)))
-  subsetexpr1 <- parse(text = "A1 == 1")[[1]]
-  eval(subsetexpr1, envir = testenv1, enclos = baseenv())
-  # [1] FALSE  TRUE  TRUE  TRUE FALSE 
-  subsetexpr2 <- parse(text = "B1 == 2")[[1]]
-  eval(subsetexpr2, envir = testenv1, enclos = baseenv())
-  # [1]  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE
-  subsetexpr3 <- parse(text = "(B1 == 2) & (A1 == 1)")[[1]] # automatically repeates the result of the first logical expr (B1 == 2)
-  (resenv1 <- eval(subsetexpr3, envir = testenv1, enclos = baseenv()))  
-  # [1] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE
-  (resenv2 <- eval(subsetexpr3, envir = testenv2, enclos = baseenv()))
-  # [1] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE
-  all.equal(resenv1, resenv2) # works as expected
-  # [1] TRUE 
-}
-
-
 test.density.sA <- function() {
   nsamp <- 1000
   `%+%` <- function(a, b) paste0(a, b)
@@ -339,6 +317,185 @@ test.density.sA <- function() {
   head(datO)
   
 }
+
+
+notest.evalsubset2dfs <- function() {
+  # Testing eval'ing logical expressions in envirs of two data.frames with different number of rows.
+  mat1 <- matrix(c(0,1,1,1,0), nrow = 5, ncol = 2)
+  colnames(mat1) <- c("A1", "A2")
+  mat2 <- matrix(c(2,3), nrow = 15, ncol = 4)
+  colnames(mat2) <- c("B1", "B2", "B3", "B4")
+  # using env as lists from df(mat1) and df(mat2) put together (mat1 and mat2 have diff no. of rows)
+  (testenv1 <- c(data.frame(mat1), data.frame(mat2)))
+  # using env as one data.frame put together (result has the same no. of rows)
+  (testenv2 <- cbind(data.frame(mat1), data.frame(mat2)))
+  subsetexpr1 <- parse(text = "A1 == 1")[[1]]
+  eval(subsetexpr1, envir = testenv1, enclos = baseenv())
+  # [1] FALSE  TRUE  TRUE  TRUE FALSE 
+  subsetexpr2 <- parse(text = "B1 == 2")[[1]]
+  eval(subsetexpr2, envir = testenv1, enclos = baseenv())
+  # [1]  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE  TRUE
+  subsetexpr3 <- parse(text = "(B1 == 2) & (A1 == 1)")[[1]] # automatically repeates the result of the first logical expr (B1 == 2)
+  (resenv1 <- eval(subsetexpr3, envir = testenv1, enclos = baseenv()))  
+  # [1] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE
+  (resenv2 <- eval(subsetexpr3, envir = testenv2, enclos = baseenv()))
+  # [1] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE
+  all.equal(resenv1, resenv2) # works as expected
+  # [1] TRUE 
+}
+
+test.NetIndClass <- function() {
+	# ----------------------------------------------------------------------------------------
+	# TESTING NetIndClass CLASS
+	# ----------------------------------------------------------------------------------------
+	k <- 2
+	dftestW <- data.frame(W = as.integer(c(6,7,8,9,10))) # W_netF1 = rep(6,5), W_netF2 = rep(8,5)
+	dftestA <- data.frame(A = as.integer(c(1,2,3,4,5))) # , A_netF1 = rep(1,5), A_netF2 = rep(3,5)
+	class(dftestW$W)
+	class(dftestA$A)
+
+	NET_id <- c(rep("1 3", nrow(dftestW)-1), "1")
+	class(dftestW$A)
+	dftest1 <- data.frame(dftestW, dftestA, NETID = NET_id)
+	is.factor(dftest1$NETID)
+	netindcl <- NetIndClass$new(Odata = dftest1, Kmax = k, NETIDnode = "NETID")
+
+	netindcl$NetInd_k
+	"matrix" %in% class(netindcl$NetInd_k)
+	"integer" %in% class(netindcl$NetInd_k[,1])
+
+	dftest2 <- data.frame(dftestW, dftestA, NETID = NET_id, stringsAsFactors = FALSE)
+	is.character(dftest2$NETID)
+	netindcl <- NetIndClass$new(Odata = dftest2, Kmax = k, NETIDnode = "NETID")
+
+	netindcl$NetInd_k
+	"matrix" %in% class(netindcl$NetInd_k)
+	"integer" %in% class(netindcl$NetInd_k[,1])
+}
+
+# TESTING sVar expressions parser:
+test.DefineEval.sVar <- function() {
+
+  # ----------------------------------------------------------------------------------------
+  # TEST DATA:
+  # ----------------------------------------------------------------------------------------
+  `%+%` <- function(a, b) paste0(a, b)
+  k <- 2
+  dftestW <- data.frame(W = as.integer(c(6,7,8,9,10)))
+  dftestA <- data.frame(A = as.integer(c(1,2,3,4,5))) 
+  NET_id <- c(rep("1 3", nrow(dftestW)-1), "1 ")
+  # NET_id <- c(rep("1 3", nrow(dftestW)-1), "1")
+  class(dftestW$W)
+  class(dftestA$A)
+
+  dfnet <- data.frame(dftestW, W_netF1 = rep(6,5), W_netF2 = c(rep(8,4), NA), dftestA, A_netF1 = rep(1,5), A_netF2 = c(rep(3,4), NA))
+  dfnet
+
+  # ----------------------------------------------------------------------------------------
+  # TESTING sVar expressions parser
+  # ----------------------------------------------------------------------------------------
+  dftest <- data.frame(dftestW, dftestA, NETID = NET_id)
+  NetInd_cl <- NetIndClass$new(Odata = dftest, Kmax = k, NETIDnode = "NETID")
+  NetInd_cl$Kmax
+  NetInd_cl$NetInd_k
+  NetInd_cl$nF
+  NetInd_cl$mat.nF
+
+  # **** Example TESTING Kmax substitute ****
+  defsVar.expr0 <- def.sW.g0(sA.1 = A[[Kmax]])
+  (evaled.sVar.expr0 <- defsVar.expr0$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  (evaled.sVar.expr0 <- defsVar.expr0$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl, addnFnode = TRUE)$mat.sVar)
+
+  # Example 0.
+  defsVar.expr0 <- def.sW.g0(sA.1 = A)
+  all(as.vector(evaled.sVar.expr0) == dftest$A)
+
+  (evaled.sVar.expr0 <- defsVar.expr0$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  defsVar.expr0 <- def.sW.g0(A)
+  (evaled.sVar.expr0 <- defsVar.expr0$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  defsVar.expr0 <- def.sW.g0(A[[0]])
+  (evaled.sVar.expr0 <- defsVar.expr0$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)  
+
+  defsVar.expr0 <- def.sW.g0(A[[0:Kmax]])
+  (evaled.sVar.expr0 <- defsVar.expr0$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)  
+
+  class(defsVar.expr0)
+  class(evaled.sVar.expr0) 
+  is.matrix(evaled.sVar.expr0)
+
+  # Example 1.
+  defsVar.expr1 <- def.sW.g0(sA.1 = rowSums(A[[0:k]]))
+  (evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  # w/ NA for missing vars:
+  (evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl, misXreplace = gvars$misval)$mat.sVar)
+  is.na(evaled.sVar.expr1[5,1])
+  (evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl, misXreplace = 999)$mat.sVar)
+  evaled.sVar.expr1[5,1]==1005
+
+  # Example 2. Using a variable to pass sVar expression.
+  (testexpr_call <- quote(rowSums(A[[0:k]])))  
+  # (defsVar.expr2 <- def.sW.g0(W = testexpr_call)) # doesn't work
+  defsVar.expr2 <- def.sW.g0(sA.1 = eval(testexpr_call))
+  class(defsVar.expr2$sVar.exprs[[1]])
+  (evaled.sVar.expr2 <- defsVar.expr2$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  res1 <- as.integer(c(5, 6, 7, 8, 6))
+
+  evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar
+  all.equal(evaled.sVar.expr1, evaled.sVar.expr2)
+  all(res1 == as.vector(evaled.sVar.expr1))
+
+  # Example 3. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression.
+  defsVar.expr1 <- def.sW.g0(W = W[[0:k]])
+  (evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+
+  defsVar.expr1 <- def.sW.g0(W[[0:k]])  
+  (evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+
+  is.matrix(evaled.sVar.expr1)
+  class(evaled.sVar.expr1)  # [1] "matrix"
+  dim(evaled.sVar.expr1)  # [1] 5 3
+  all(evaled.sVar.expr1[,1] == dftest$W)
+  defsVar.expr2 <- def.sW.gstar(W = W[[0:k]])
+  class(defsVar.expr2)
+  (evaled.sVar.expr2 <- defsVar.expr2$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  all.equal(evaled.sVar.expr1, evaled.sVar.expr2)
+
+  # Example 4a. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression that is a combination of different Vars in Odata.
+  defsVar.expr <- def.sA(sA.1 = W[[0:k]] + rowSums(A[[1:k]]))
+  (evaled.sVar.expr <- defsVar.expr$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  class(evaled.sVar.expr)
+  colnames(evaled.sVar.expr)
+
+  testres1_cl <- def.sA(netW = W[[0:k]])
+  (evaled.testres1 <- testres1_cl$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  testres2_cl <- def.sA(sA.1 = rowSums(A[[1:k]]))
+  evaled.testres2 <- testres2_cl$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar
+  all((evaled.testres1 + as.vector(evaled.testres2)) == evaled.sVar.expr)
+
+  # Example 4b. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression that is a combination of different Vars in Odata.
+  defsVar.expr <- def.sW.g0(W = "W[[0:k]] + rowSums(A[[1:k]])")
+  class(defsVar.expr$sVar.exprs[["W"]])
+  defsVar.expr$sVar.exprs[["W"]]
+  (evaled.sVar.expr2 <- defsVar.expr$parse.sVar(data.df = dftest,  NetInd_cl = NetInd_cl)$mat.sVar)
+  all(evaled.sVar.expr2==evaled.sVar.expr)
+
+  # Example 5. sum of prod of netA and netW:
+  defsVar.expr <- def.sA(sumAWnets = rowSums(A[[1:k]] * W[[1:k]]))
+  (evaled.sVar.expr <- defsVar.expr$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+  all(as.integer(as.vector(evaled.sVar.expr)) == c(30,30,30,30,6))
+
+  # Example 6. More than one summary measure
+  defsVar.expr <- def.sA(A = A, sumAnets = rowSums(A[[1:k]]), sumAWnets = rowSums(A[[1:k]] * W[[1:k]]))
+  (evaled.sVar.expr <- defsVar.expr$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+
+  # Example 7. No names
+  defsVar.expr <- def.sA(A, sumAnets = rowSums(A[[1:k]]), sumAWnets = rowSums(A[[1:k]] * W[[1:k]]))
+  (evaled.sVar.expr <- defsVar.expr$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+
+  defsVar.expr <- def.sA(A[[0:Kmax]], sumAnets = rowSums(A[[1:k]]), sumAWnets = rowSums(A[[1:k]] * W[[1:k]]))
+  (evaled.sVar.expr <- defsVar.expr$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
+}
+
 
 
 

@@ -5,15 +5,17 @@
 # *) (W^s,A^s) will be defined by a list of R expressions, captured with substitute() like node() in simcausal
 
 # (I) CREATE 2 data.frames OF SUMMARY MEASURES: sW, sA
-      # Approach:
+			# Approach I :
+			# Delayed evaluation that builds net.sVar data only for covariates involved in the def. of summary measure sVar.expr
+      # Approach II :
       # Build a data.frame (cYmtx) of all network covariates (A,netA,W,netW), applying .f.allCovars for each W and A.
       # For each expression in (W_i^s[j1], A_i^s[j2]), eval it in the environment of cYmtx, for j1=1,...,s1, j2=1,...,s2.
       # EACH component of W_i^s and A_i^s is a number (column) that is a tranformation of the network data.frame cYmtx
       # e.g., let W=(W1,W2), let W_i^s=(W1, W2, W1*W2 + W1[1]*W2[1] + W1[2]*W1[2] + ..., nFriends) - 4 dimensional summary measure.
       # W1=W1[0] - i's W1, W1[1] - W1 of i's 1st friend, W1[2] - W1 for i's 2nd friends, etc....
       # Run .f.allCovars2 separately for each of the 4 components of W_i^s above, result is a summary measure data.frame of 4 dimensions (columns)
-      # Could save memory: run .f.allCovars only for vars that are netVar part of summary measures W_i^s[j], j=1,..s.
       # Could save memory, but longer runtime: recreate cYmtx for each W_i^s[j] and run .f.allCovars only for netVars in W_i^s[j].
+      # Need a common syntax for summary measures that is consistent with simcausal
 
 # (II) DISCRETIZE ALL CONTINUOUS SUMMARY MEASUREs in sA (do not touch Ws) - SEE BELOW
 # A: create NBins dummy indicators
@@ -21,33 +23,14 @@
       # Bins: 1) Define B_j as equal length intervals on 0-1? or 2) Use quantiles, for an even mass distribution between bins?
       # Continuous - scaled to 0-1
       # Could define indicators as cdf or prob mass function, no difference (see approach 1 & 2 below)!
- 
 # B (POOLED): create NBins dummy indicators, create a covariate for BIN_j (order of the bin) and pool different BIN_j as P(BIN_j | sW)
-      # ...NEED ALGORITHM...
 
 # (IV) FIT P(sA|sW) for summary measures sA[j], j=1,...,s (or P(summaryA[j],j=1,...,s | summaryW))
 
 # (V) FOR GIVEN (sA,sW)=(sa,sw) PREDICT P(sA=sa|sW=sw)?
 # Resulting object needs to build a likelihood for (sa,sw) based on discretized models for (sA,sW)...
 
-# (VI) Delayed evaluation for defining subsets 
-# (returns a logical vector that will be used for subseting rows of the data)
-
-
-# ------------------------------------------------------------------------------
-# TEST DATASET
-# Need a generate a continous summary measure (s.a., rnorm), conditional on covariates
-# Test that its correctly estimatated by comparing MSE?
-# ------------------------------------------------------------------------------
-datatest <- data.frame(
-                      W = rbinom(100, 1, prob=.5), 
-                      A = rbinom(100, 1, prob=.2),
-                      sA = rnorm(100),
-                      Y = rbinom(100, 1, prob=.7), 
-                      nFriends = rbinom(100, 5, prob=0.2)
-                      )
-nodes <- list(Anode = "A", Wnode = "W", Ynode = "Y", nFnode = "nFriends")
-datatest$sA
+# (VI) Delayed evaluation for defining subsets  (returns a logical vector that will be used for subseting rows of the data)
 
 
 # ------------------------------------------------------------------------------

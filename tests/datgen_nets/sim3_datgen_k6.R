@@ -34,23 +34,23 @@ library(stringr)
 # Additionally add individual rate of infection (interceptY)
 # Alternative can assume that no one in the network of i is infected & untreated then Risk_i=0
 # p_YRisk[sum_friendY_Ws==0] <- 0
-netvar <- function(varnm, fidx) { # OUTPUT format: netVarnm_j
-  cstr <- function(varnm, fidx) {
-    slen <- length(fidx)
-    lstr <- vector(mode = "character", length = slen)
-    rstr <- vector(mode = "character", length = slen)
-    netidxstr <- !(fidx %in% 0L)
-    lstr[netidxstr] <- "net"    
-    rstr[netidxstr] <- str_c('_', fidx[netidxstr])
-    return(str_c(lstr, varnm, rstr))
-  }
-  if (length(varnm) > 1) {
-    return(unlist(lapply(varnm, cstr, fidx)))
-  } else {
-    return(cstr(varnm, fidx))
-  }
-}
-netvar2 <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
+# netvar.old <- function(varnm, fidx) { # OUTPUT format: netVarnm_j
+#   cstr <- function(varnm, fidx) {
+#     slen <- length(fidx)
+#     lstr <- vector(mode = "character", length = slen)
+#     rstr <- vector(mode = "character", length = slen)
+#     netidxstr <- !(fidx %in% 0L)
+#     lstr[netidxstr] <- "net"    
+#     rstr[netidxstr] <- str_c('_', fidx[netidxstr])
+#     return(str_c(lstr, varnm, rstr))
+#   }
+#   if (length(varnm) > 1) {
+#     return(unlist(lapply(varnm, cstr, fidx)))
+#   } else {
+#     return(cstr(varnm, fidx))
+#   }
+# }
+netvar <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
   cstr <- function(varnm, fidx) {
     slen <- length(fidx)
     rstr <- vector(mode = "character", length = slen)
@@ -65,7 +65,7 @@ netvar2 <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
     return(cstr(varnm, fidx))
   }
 }
-# netvar2("W", (0:6))
+# netvar("W", (0:6))
 # get network A's & W's as a matrix
 .f.redefineCov <- function(k, Var, VarNm, Net_vect, misval = 0L) {
 	#get all friends Ws as a matrix of dim(n,k) filling unused cols with zeros
@@ -79,7 +79,7 @@ netvar2 <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
 		netVar_full <- .f.netCovar(Var, Net_vect)
 		if (k>1) netVar_full <- t(netVar_full)  
 		netVarNm <- paste("net", VarNm, "_", sep="")
-		netVar_names <- netvar2(VarNm, c(1:k))
+		netVar_names <- netvar(VarNm, c(1:k))
 	}
 	Var_names <- c(VarNm, netVar_names)	
 	d <- cbind(Var, netVar_full)
@@ -101,9 +101,9 @@ netvar2 <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
 	qform_NetVars <- NULL
 	if (miss) k <- k_miss
 	if (k > 0) { 
-		qform_NetVarsW2A <- str_c(netvar2("W2", (1:k)), "*", "(1-",netvar2("A", (1:k)), ")")
+		qform_NetVarsW2A <- str_c(netvar("W2", (1:k)), "*", "(1-",netvar("A", (1:k)), ")")
 		qform_NetVarsW2A <- paste("I(", paste(qform_NetVarsW2A, collapse="+"), ")", sep="")
-		qform_NetVarsW3 <- netvar2("W3", (1:k))
+		qform_NetVarsW3 <- netvar("W3", (1:k))
 		qform_NetVarsW3 <- paste("I(", paste(qform_NetVarsW3, collapse="+"), ")", sep="")
 		qform_NetVars <- paste(c(qform_NetVarsW2A, qform_NetVarsW3), collapse="+")
 	}
@@ -115,9 +115,9 @@ netvar2 <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
 	gform_NetVars <- NULL
 	if (miss) k <- k_miss
 	if (k > 0) {	
-		gform_NetVars1 <- netvar2("W1", (1:k))
-		gform_NetVars2 <- netvar2("W2", (1:k))
-		gform_NetVars3 <- netvar2("W3", (1:k))
+		gform_NetVars1 <- netvar("W1", (1:k))
+		gform_NetVars2 <- netvar("W2", (1:k))
+		gform_NetVars3 <- netvar("W3", (1:k))
 		if (!miss) gform_NetVars <- c(gform_NetVars1, gform_NetVars2, gform_NetVars3, "nFriends")
 	}
 	gform <- paste("A ~ ", paste(c(gform_Vars, gform_NetVars), collapse = " + "),collapse = "")
@@ -157,9 +157,9 @@ f.A <- function(k, data, ...) {
   	W2 <- data$W2
   	W3 <- data$W3
   	
-	netW1 <- data[,netvar2("W1", (1:k))]
-	netW2 <- data[,netvar2("W2", (1:k))]
-	netW3 <- data[,netvar2("W3", (1:k))]
+	netW1 <- data[,netvar("W1", (1:k))]
+	netW2 <- data[,netvar("W2", (1:k))]
+	netW3 <- data[,netvar("W3", (1:k))]
 
   	.f_evalA_mtx <- function(W1, W2, W3, netW1, netW2, netW3, n, nFriends, ...) {
 	  	sum_friendWs <- matrix(0, nrow=n, ncol=1)
@@ -204,7 +204,7 @@ f.A_xlevelNi <- function(data, x_Ni_low, x_Ni_high, ...) {
 f.A_cutt_offW <- function(k, data, cutt_offW, ...) {	
   	n <- nrow(data)
   	W1 <- data$W1
-  	netW1 <- data[,netvar2("W1", (1:k))]
+  	netW1 <- data[,netvar("W1", (1:k))]
   	sum_friendWs <- matrix(0, nrow=n, ncol=1)
 	for (k_ind in (1:dim(netW1)[2])) {
 		sum_friendWs <- sum_friendWs + netW1[, k_ind]
