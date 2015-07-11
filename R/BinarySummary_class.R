@@ -1,10 +1,10 @@
 #-----------------------------------------------------------------------------
 # TO DO: 
 #-----------------------------------------------------------------------------
-# - #todo 35 (NewSummaryModel.binary) +0: Change constructor arg glm to be only inside reg
+# - #todo 35 (NewSummaryModel.binary) +0: Change constructor arg glm to be always inside reg object
 # - (Low priority) Consider merging these two classes into one (BinDat & BinOutModel)
 
-logitlinkinv <- function (eta) .Call(stats:::"C_logit_linkinv", eta) # use this glm logitlink inverse function
+logitlinkinv <- function (eta) .Call(stats:::"C_logit_linkinv", eta) # glm logitlink inverse fun
 logisfit <- function(datsum_obj) UseMethod("logisfit") # Generic for fitting the logistic model
 # S3 method for glm binomial family fit, takes BinDat data object:
 logisfit.glmS3 <- function(datsum_obj) {
@@ -30,11 +30,11 @@ logisfit.speedglmS3 <- function(datsum_obj) { # S3 method for speedglm binomial 
 	Xmat <- datsum_obj$getXmat
 	Y_vals <- datsum_obj$getY
 
-	print("dims of glm data:")
-	print(dim(Xmat));
-	print("head(Xmat)");; print(head(Xmat));
-	print(length(Y_vals)); 
-	print(head(Y_vals))
+	# print("dims of glm data:")
+	# print(dim(Xmat));
+	# print("head(Xmat)");; print(head(Xmat));
+	# print(length(Y_vals)); 
+	# print(head(Y_vals))
 
 	if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA's and avoid throwing exception
 	  m.fit <- list(coef = rep_len(NA_real_, ncol(Xmat)))
@@ -43,7 +43,8 @@ logisfit.speedglmS3 <- function(datsum_obj) { # S3 method for speedglm binomial 
 	  # m.fit <- speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), sparse = TRUE)
 	}
 	fit <- list(coef = m.fit$coef, linkfun = logitlinkinv, fitfunname = "speedglm")
-	print("fit"); print(fit)
+	# print("fit"); print(fit)
+
 	class(fit) <- c(class(fit), c("speedglmS3"))
 	return(fit)
 }
@@ -58,6 +59,22 @@ summary.BinOutModel <- function(binoutmodel) {
 	assert_that(binoutmodel$is.fitted)
 	fit <- binoutmodel$getfit
 	append(list(reg = binoutmodel$show()), fit)
+}
+
+#-----------------------------------------------------------------------------
+# TO DO: Incorporate this inside BinDat / BinOutModel classes, to be called when reg object field !is.null(form)
+# Formula based glm model fit 
+#-----------------------------------------------------------------------------
+f_est <- function(d, form, family) {
+  ctrl <- glm.control(trace = FALSE, maxit = 1000)
+    SuppressGivenWarnings({
+              m <- glm(as.formula(form),
+                  data = d,
+                  family = family,
+                  control = ctrl)
+              },
+              GetWarningsToSuppress())
+    return(m)
 }
 
 ## ---------------------------------------------------------------------
@@ -128,18 +145,17 @@ BinDat <- R6Class(classname = "BinDat",
 		show = function() {
 			"P(" %+% self$outvar %+% "|" %+% paste(self$predvars, collapse=",") %+% ")"
 		},
-		newdata = function(newdata, ...) {
+
+		newdata = function(newdata, getoutcome = FALSE, ...) {
 			assert_that(is.DatNet.sWsA(newdata)) # old: assert_that(is.data.frame(newdata)||is.matrix(newdata))
-			self$setdata(data = newdata, ...)
+			self$setdata(data = newdata, getoutcome = getoutcome, ...)
 			invisible(self)
 		},
 		# TO DO: move to private method...
         # Sets X_mat, Yvals, evaluates subset and performs correct subseting of data
-		setdata = function(data, ...) {
+		setdata = function(data, getoutcome, ...) {
 			assert_that(is.DatNet.sWsA(data))
-
 			self$n <- data$nobs
-
 			if (is.logical(self$subset_expr)) {self$subset_idx <- self$subset_expr}
 			if (is.call(self$subset_expr)) {
 				self$subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
@@ -147,7 +163,7 @@ BinDat <- R6Class(classname = "BinDat",
 				assert_that((length(self$subset_idx) == self$n) || (length(self$subset_idx) == 1L))
 				# e.g., subset <- TRUE means select all rows or subset <- "(nFriends==3)"
 			}
-			private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Will always be a vector
+			if (getoutcome) private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Always a vector
 
 			if (sum(self$subset_idx) == 0L) {  # When nrow(X_mat) == 0L avoids exception (when nrow == 0L => prob(A=a) = 1)
 				private$X_mat <- matrix(, nrow = 0L, ncol = (length(self$predvars) + 1))
@@ -155,9 +171,12 @@ BinDat <- R6Class(classname = "BinDat",
 			} else {
 				private$X_mat <- as.matrix(cbind(Intercept = 1, data$get.dat.sWsA(self$subset_idx, self$predvars)))
 				# To find and replace misvals in X_mat:
-				# private$X_mat[private$X_mat == gvars$misval] <- gvars$misXreplace
+				if (self$reg$ReplMisVal0) {
+					private$X_mat[gvars$misfun(private$X_mat)] <- gvars$misXreplace	
+				}
 			}
 		},
+
 		# Generic prediction fun for logistic regression coefs, predicts P(A=1|newXmat)
 		# No need for S3 for now, until need different pred. funs for different classes
 		# Does not handle cases with deterministic Anodes in the original data..
@@ -216,13 +235,13 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 			class(self$bindat) <- c(class(self$bindat), self$glmfitclass)
 			# can also use: self$bindat <- BinDat$new(glm = self$glmfitclass, ...)
 			# or: self$bindat <- BinDat$new(self, ...) (passing self might get confusing)
-			print("New BinOutModel:"); print(self$show())
+			print("Init BinOutModel:"); print(self$show())
 			invisible(self)
 		},
 
 		fit = function(overwrite = FALSE, data, ...) { # Move overwrite to a field? ... self$overwrite
 			if (!overwrite) assert_that(!self$is.fitted) # do not allow overwrite of prev. fitted model unless explicitely asked
-			self$bindat$newdata(newdata = data, ...) # populate bindat with X_mat & Y_vals
+			self$bindat$newdata(newdata = data, getoutcome = TRUE, ...) # populate bindat with X_mat & Y_vals
 			# ... additional checks & assertions... # ... add try() to below: # ... add checks for testing a successful fit
 			private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() # alternative 2 is to apply data_obj method / method that fits the model
 			self$is.fitted <- TRUE
@@ -239,7 +258,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 			if (missing(newdata)) {
 				return(invisible(self))
 			}
-			self$bindat$newdata(newdata = newdata, ...) # re-populate bindat with new X_mat & Y_vals
+			self$bindat$newdata(newdata = newdata, getoutcome = FALSE, ...) # re-populate bindat with new X_mat & Y_vals
 			private$probA1 <- self$bindat$logispredict(m.fit = private$m.fit) # overwrite probA1 with new predictions:
 			invisible(self) # returning self allows chaining object manipulations
 		},
@@ -271,15 +290,16 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 			invisible(private$probAeqa)
 		},
 		
-		show = function() {self$bindat$show()}
+		show = function() {self$bindat$show()},
+		setprobA1 = function(probA1) { private$probA1 <- probA1 }
 	),
 	active = list(
-		getfit = function() {private$m.fit},
-		getprobA1 = function() {private$probA1},
-		# getprobAeqa = function() {private$probAeqa},
-		getsubset = function() {self$bindat$subset_idx},
-		getoutvarval = function() {self$bindat$getY},
-		getoutvarnm = function() {self$bindat$outvar}
+		getfit = function() { private$m.fit },
+		getprobA1 = function() { private$probA1 },
+		# getprobAeqa = function() { private$probAeqa },
+		getsubset = function() { self$bindat$subset_idx },
+		getoutvarval = function() { self$bindat$getY },
+		getoutvarnm = function() { self$bindat$outvar }
 	),
 	private = list(
 		m.fit = list(), # the model fit (coefficients)

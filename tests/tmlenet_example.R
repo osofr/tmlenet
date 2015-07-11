@@ -74,34 +74,51 @@ mean(df_K6$A) # [1] 0.198
 mean(df_K6$Y) # [1] 0.435
 mean(df_K6$nFriends) # [1] 3.307
 
-Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
-# netW1_sum, netW2_sum, netW3_sum are summary measures...
-# Define these using expressions, s.a., 
-# W2[[0]] just means W2
-# W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax
-# sum(W2[[1:Kmax]]) is netW2_sum
-# sW <- c(W1, W2, W3, sum(W1[ , 1:Kmax]), sum(W2[ , 1:Kmax]), sum(W3[ , 1:Kmax]))
 
-# For deault, no need to define def.sW.gstar, only when requested, otherwise def.sW.gstar = def_sW_g0
-def_sW_g0 <- def.sW(W1[[0]], W2[[0:Kmax]], W3[[0:Kmax]],
-							netW1_sum = rowSums(W1[[1:Kmax]]),
-							netW2_sum = rowSums(W2[[1:Kmax]]),
-							netW3_sum = rowSums(W3[[1:Kmax]]))
+# --------------------------------------------------
+# SUMMARY MEASURES
+# --------------------------------------------------
+# Defined with R expressions, s.a.,  W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax; sum(W2[[1:Kmax]]) is netW2_sum
+def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
+				def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+# Examples of various summary measures:
+	# TO USE true g0 (including all vars g0 depends on):
+	# def_sW <- def.sW(netW1 = W1[[0:Kmax]], noname = TRUE) + 
+	# 			def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
+	# 				def.sW(netW3 = W3[[1:Kmax]], noname = TRUE) + 
+	# 				def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+# def_sW <- def.sW(W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+# def_sW <- def.sW(W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = FALSE)
+# def_sW <- def.sW(W1[[0]], W2[[0:Kmax]], W3[[0:Kmax]],
+# 							netW1_sum = rowSums(W1[[1:Kmax]]),
+# 							netW2_sum = rowSums(W2[[1:Kmax]]),
+# 							netW3_sum = rowSums(W3[[1:Kmax]]))
+# def_sW <- def.sW(W1[[0]], W2[[0]], W3[[0]])
+# def_sW <- def.sW(W1 = W1, W2 = W2, W3 = W3) # vs 2
+# def_sW <- def.sW("W1[[0]]", "W2[[0]]", "W3[[0]]") # vs 3
+# def_sW$sVar.exprs
+# def_sW$sVar.expr.names
+# def_sW$ReplMisVal0
+# def_sW$sVar.misXreplace
+# def_sW$sVar.noname
 
-def_sW_gstar <- def.sW(W1[[0]], W2[[0]], W3[[0]], type.g0 = FALSE)
-# def_sW_gstar <- def.sW(W1 = W1, W2 = W2, W3 = W3, type.g0 = FALSE) # vs 2
-# def_sW_gstar <- def.sW("W1[[0]]", "W2[[0]]", "W3[[0]]", type.g0 = FALSE) # vs 3
-def_sA <- def.sA("A[[0:Kmax]]", sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))
-# def_sA <- def.sA(A[[0:Kmax]], sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))
+def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceMisVal0 = TRUE) +
+			def.sA(netA = A[[0:Kmax]], noname = TRUE)
+			
+			
+# def_sA <- def.sA(netA = A[[0:Kmax]], noname = TRUE)
+# def_sA <- def.sA("A[[0:Kmax]]", sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))
 
 # NOT WRITTEN YET. Will evaluate the summary measures applied to the (O)bserved data (data.frame):
-# res <- eval.summaries(summaries = def.summW.g0, Odata = df_K6, Kmax = kmax, NETIDnode = "Net_str", IDnode = "IDs")
-# ....
+# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax, NETIDnode = "Net_str", IDnode = "IDs")
 # NOT WRITTEN YET. Need some kind of object that will hold intermediate inputs until tmlenet function if called...
-# ....
+
 # Qform <- "Y ~ I(netW2_1*(1-netA_1)+netW2_2*(1-netA_2)+netW2_3*(1-netA_3)+netW2_4*(1-netA_4)+netW2_5*(1-netA_5)+netW2_6*(1-netA_6))+I(netW3_1+netW3_2+netW3_3+netW3_4+netW3_5+netW3_6)"
-(Qform <- "Y ~ I(" %+% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") %+% ")" %+% "+"  %+% "I("  %+% paste(netvar("W3", (1:6)), collapse = "+") %+% ")")
-# (Qform <- "Y ~ sum_1mAW2_nets + netW3_sum")
+(Qform <- "Y ~ I(" %+% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") %+% ")" %+% "+"  %+% "netW3_sum")
+# def_sQ <- def.sQ(netW3_sum = rowSums(W3[[1:Kmax]]), sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceMisVal0 = TRUE)
+
+# (Qform <- "Y ~ I(" %+% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") %+% ")" %+% "+"  %+% "I("  %+% paste(netvar("W3", (1:6)), collapse = "+") %+% ")")
+# (Qform <- "Y ~ netW3_sum + sum_1mAW2_nets")
 (gform <- "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends")
 (hform <- "sA ~ " %+% paste(netvar("W2", (1:6)), collapse = "+") %+% " + netW3_sum + nFriends")
 
@@ -109,22 +126,54 @@ def_sA <- def.sA("A[[0:Kmax]]", sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1
 # Example 1. Mean population outcome under deterministic intervention A=0 with 6 friends
 # CAN RETIRE Qform, gform & hform -> fully replaced by summary measures
 #----------------------------------------------------------------------------------
+Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
+head(df_K6)
+
+# #todo 62 (tmlenet) +0: verify that old and new as. Vars are equivalent
 system.time(
 tmlenet_K6out2 <- tmlenet(data = df_K6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
-						Kmax = kmax, IDnode = "IDs", NETIDnode = "Net_str", Qform = Qform, gform = gform, hform = hform,
-						f_g1star = f.A_0, args_f_g1star = NULL, nQ.MCsims = 10, ng.MCsims = 10, alphaTMLE_B_only = FALSE,
-						sW.g0 = def_sW_g0, sW.gstar = def_sW_gstar, sA = def_sA))
+						Kmax = kmax, IDnode = "IDs", NETIDnode = "Net_str",
+						f_gstar1 = f.A_0,
+
+						# f_g0 = f.A,	# tested, works
+
+						sW = def_sW, sA = def_sA,
+						Qform = Qform, hform = hform, #gform = gform,  # remove
+						# new way to specify regressions:
+						Qform.new = "Y ~ netW3_sum + sum_1mAW2_nets",
+						hform.new = "netA ~ netW2 + netW3_sum + nFriends",
+						hform.gstar.new = "netA ~ netW3_sum",
+						gform.new = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
+						onlyTMLE_B = FALSE,  # remove
+						n_MCsims = 10
+						))
+						# nQ.MCsims = 10, ng.MCsims = 10, # removed
 						# alternative way to pass summary measures:
-						# sW.g0 = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
-						# sW.gstar = NULL, 
+						# sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
 						# sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
-						
+
+# # NEW INTERFACE FOR SPECIFYING hform, Qform, gform:
+# testform1 <- as.formula("sA + sA2 ~ sW1 + netW3_sum")
+# testform2 <- as.formula("netA ~ netW2 + netW3_sum")
+# testform <- testform1
+# testterms <- terms(testform)
+# # Getting predictor sW names:
+# (sW.names <- attributes(testterms)$term.labels)
+# sW.names.alt <- colnames(attributes(testterms)$factors)
+# assert_that(all(sW.names == sW.names.alt))
+# # Getting outcome sA names:
+# (out.var <- rownames(attributes(testterms)$factors)[1]) # character string
+# out.vars.form <- as.formula(". ~ " %+% out.var)
+# out.vars.terms <- terms(out.vars.form)
+# (sA.names <- attributes(out.vars.terms)$term.labels)
+
 # N=1,000
 # new h method has no subsetting (include degenerate outcome sA):
 						   # old:     # new:
 # epsilon (covariate)      0.02549743 0.04468718
 # alpha (intercept)        0.05410938 0.09888994
 # iptw epsilon (covariate) 0.03556655 0.03556655
+
 			# old:		# new:
 # tmle_A     0.5053725 0.5116754
 # tmle_B     0.5051903 0.5119461
@@ -134,6 +183,7 @@ tmlenet_K6out2 <- tmlenet(data = df_K6, Anode = "A", Wnodes = Wnodes, Ynode = "Y
 # iptw       0.4910014 0.4910014
 # iid.iptw   0.4429414 0.4429414
 # mle        0.4970377 0.4970377
+
 # with h method is subsetting (excluding degenerate outcome sA):
                              # old: 	# new:
 # epsilon (covariate)      0.02549743 0.02549743
@@ -150,35 +200,28 @@ tmlenet_K6out2 <- tmlenet(data = df_K6, Anode = "A", Wnodes = Wnodes, Ynode = "Y
 # iid.iptw   0.4429414 0.4429414
 # mle        0.4970377 0.4970377
 
-# set.seed(543)
-# df_K6 <-gendata_pop(nC=1, n_arr=2000, k_arr=kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL))
-# N=2,000
-							# old:		# new:
-# epsilon (covariate)      -0.01458956 -0.008449511
-# alpha (intercept)        -0.03196439 -0.019919747
-# iptw epsilon (covariate) -0.01916955 -0.019169554
-			# old:		# new:
-# tmle_A     0.4931451 0.4950080
-# tmle_B     0.4931283 0.4948037
-# iid.tmle_B 0.4379087 0.4379087
-# tmle_iptw  0.4900913 0.4900913
-# iptw_h     0.4816697 0.4865285
-# iptw       0.4634407 0.4634407
-# iid.iptw   0.4389123 0.4389123
-# mle        0.4975765 0.4975765
+# ================================================================
+# NEW INTERFACE FINAL RESULTS WITH MC EVAL (FULL MATCH TO OLD)
+# gIPTW and TMLE_gIPTW AREN'T YET IMPLEMENTED
+# ================================================================
+#                         h_iptw
+# epsilon (covariate) 0.02549743
+# alpha (intercept)   0.05410938
+# [1] "time to run MCS: "
+#    user  system elapsed 
+#   0.099   0.014   0.112 
+# [1] "fWi_star_A and fWi_star_B"
+# fWi_star_A fWi_star_B 
+# -0.5053725 -0.5051903 
+# [1] "new MC.ests"
+#               estimates
+# psi_mle       0.4970377
+# psi_tmle_A    0.5053725
+# psi_tmle_B    0.5051903
+# psi_tmle_iptw 0.0000000
+# psi_iptw_h    0.5065960
+# psi_iptw      0.0000000
 
-# Verifying the old way of spec. Qform and new summary measures give the same answer:
-# [1] "m.Q.init"
-# Coefficients:
-# (Intercept)  
-# -0.9049
-# I(W2_netF1 * (1 - A_netF1) + W2_netF2 * (1 - A_netF2) + W2_netF3 * (1 - A_netF3) + W2_netF4 * (1 - A_netF4) + W2_netF5 * (1 - A_netF5) + W2_netF6 * (1 - A_netF6))  
-# 1.8026  
-# I(W3_netF1 + W3_netF2 + W3_netF3 + W3_netF4 + W3_netF5 + W3_netF6)  
-# -1.3216  
-# Coefficients:
-#    (Intercept)  sum_1mAW2_nets       netW3_sum  
-#        -0.9049          1.8026         -1.3216  
 
 tmlenet_K6out2$estimates$EY_g1.star$tmle_B
 tmlenet_K6out2$estimates$EY_g1.star$CI_tmle_B_iidIC

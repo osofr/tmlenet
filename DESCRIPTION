@@ -6,6 +6,7 @@ Description: Targeted Maximum Likelihood Estimation (TMLE) of treatment/censorin
 Depends: 
     R (>= 3.2.0)
 Imports:
+    data.table,
     assertthat,
     speedglm, 
     R6,

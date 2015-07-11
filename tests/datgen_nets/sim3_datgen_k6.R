@@ -69,7 +69,7 @@ netvar <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
 # get network A's & W's as a matrix
 .f.redefineCov <- function(k, Var, VarNm, Net_vect, misval = 0L) {
 	#get all friends Ws as a matrix of dim(n,k) filling unused cols with zeros
-	.f.netCovar <-function(Covar, Net) sapply(Net, function(netwk) 
+	.f.netCovar <-function(Covar, Net) sapply(Net, function(netwk)
 	  											c(Covar[netwk],
 	  												rep.int(misval, k-length(netwk))))
 	netVar_full <- NULL
@@ -114,7 +114,7 @@ netvar <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
 .f.gform <- function(k, k_miss=1, gform_Vars, miss=F) {
 	gform_NetVars <- NULL
 	if (miss) k <- k_miss
-	if (k > 0) {	
+	if (k > 0) {
 		gform_NetVars1 <- netvar("W1", (1:k))
 		gform_NetVars2 <- netvar("W2", (1:k))
 		gform_NetVars3 <- netvar("W3", (1:k))
@@ -152,31 +152,28 @@ f.A <- function(k, data, ...) {
   	coeff_A_W3friend <- -0.7
 
   	n <- nrow(data)
-  	nFriends <- data$nFriends
-  	W1 <- data$W1
-  	W2 <- data$W2
-  	W3 <- data$W3
-  	
+
+  	W1 <- data[,"W1"]
 	netW1 <- data[,netvar("W1", (1:k))]
 	netW2 <- data[,netvar("W2", (1:k))]
 	netW3 <- data[,netvar("W3", (1:k))]
 
-  	.f_evalA_mtx <- function(W1, W2, W3, netW1, netW2, netW3, n, nFriends, ...) {
-	  	sum_friendWs <- matrix(0, nrow=n, ncol=1)
+  	.f_evalA_mtx <- function(netW1, netW2, netW3, n, ...) {
+	  	sum_friendWs <- matrix(0, nrow = n, ncol = 1)
 		for (k_ind in (1:dim(netW1)[2])) {
-			sum_friendWs <- sum_friendWs + netW1[, k_ind]*coeff_A_W1friend +
-											netW2[, k_ind]*coeff_A_W2friend +
-											netW3[, k_ind]*coeff_A_W3friend											
+			sum_friendWs <- sum_friendWs + netW1[, k_ind] * coeff_A_W1friend +
+											netW2[, k_ind] * coeff_A_W2friend +
+											netW3[, k_ind] * coeff_A_W3friend
 		}
 		return(sum_friendWs)
   	}
   	# P(A) component from individual infection risk (W1)
 	indivW <- coeff_A_W * W1
- 	sum_friendWs <- .f_evalA_mtx(W1, W2, W3, netW1, netW2, netW3, n, nFriends, ...)
+ 	sum_friendWs <- .f_evalA_mtx(netW1, netW2, netW3, n, ...)
   	probA <- plogis(Intercept_A + indivW + sum_friendWs)
-  	# No deterministic treatments
- 	return(probA)
+ 	return(probA) # No deterministic treatments
 }
+
 # Set x% of community to A=1 (returns probability P(A=1))
 f.A_x <- function(data, x, ...) rep(x, nrow(data))
 # Set x% of community to A=1 only among W2=1
@@ -185,7 +182,7 @@ f.A_x <- function(data, x, ...) rep(x, nrow(data))
 f.A_xlevelW2_1 <- function(data, x, ...) {
 	# print("x"); print(x)
   	n <- nrow(data)
-  	W2 <- data$W2
+  	W2 <- data[, "W2"]
   	pA <- rep(0,n)
 	pA[which(W2==1)] <- x
   	return(pA)
@@ -193,7 +190,7 @@ f.A_xlevelW2_1 <- function(data, x, ...) {
 # Set x% of community to A=1 based on connectivity |N_i|= {low, high}, based on median
 f.A_xlevelNi <- function(data, x_Ni_low, x_Ni_high, ...) {	
   	n <- nrow(data)
-  	nFriends <- data$nFriends	
+  	nFriends <- data[, "nFriends"]
     Ni_med = quantile(nFriends, 0.5)
   	x <- rep(0,n)
 	x[which(nFriends<= Ni_med)] <- x_Ni_low
@@ -203,7 +200,7 @@ f.A_xlevelNi <- function(data, x_Ni_low, x_Ni_high, ...) {
 # Deterministically set A=1 based on cutt-off value for Ws or if W_i = 1
 f.A_cutt_offW <- function(k, data, cutt_offW, ...) {	
   	n <- nrow(data)
-  	W1 <- data$W1
+  	W1 <- data[,"W1"]
   	netW1 <- data[,netvar("W1", (1:k))]
   	sum_friendWs <- matrix(0, nrow=n, ncol=1)
 	for (k_ind in (1:dim(netW1)[2])) {

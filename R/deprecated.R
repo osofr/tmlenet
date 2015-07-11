@@ -1,23 +1,6 @@
 
 # (DEPRECATED)
 #-----------------------------------------------------------------------------
-# Fit glm based on formula in "form"
-#-----------------------------------------------------------------------------
-f_est <- function(d, form, family) {
-  ctrl <- glm.control(trace=FALSE, maxit=1000)
-    SuppressGivenWarnings({
-              m <- glm(as.formula(form),
-                  data=d,
-                  family=family,
-                  control=ctrl)
-              },
-              GetWarningsToSuppress())
-    return(m)
-}
-
-
-# (DEPRECATED)
-#-----------------------------------------------------------------------------
 # USE glm.fit FUNCTION FOR FASTER FITTING of LOGISTIC REG TAKES DESIGN MAT AND Y VECTOR
 #-----------------------------------------------------------------------------
 .f.est_binom_fast <- function(X_mat, Y_vals) {
@@ -303,7 +286,7 @@ fit.hbars.old <- function(data, h_fit_params) {
     #---------------------------------------------------------------------------------
     # replace with p adaptive to k: p <- 100*(2^k)
     n <- nrow(data)
-    n_samp_g0gstar <- h_fit_params$n_samp_g0gstar 
+    n_samp_g0gstar <- h_fit_params$n_samp_g0gstar
     family <- h_fit_params$family
     k <- h_fit_params$Kmax
     node_l <- h_fit_params$node_l
@@ -314,7 +297,7 @@ fit.hbars.old <- function(data, h_fit_params) {
     h_logit_sep_k=h_fit_params$h_logit_sep_k
     h_user=h_fit_params$h_user; h_user_fcn=h_fit_params$h_user_fcn; hform=h_fit_params$hform
     # m.gN=h_fit_params$m.g0N # not used
-    f.g.star=h_fit_params$f.g.star; f.g_args=h_fit_params$f.g_args
+    f.gstar=h_fit_params$f.gstar; f.g_args=h_fit_params$f.g_args
     f.g0=h_fit_params$f.g0; f.g0_args=h_fit_params$f.g0_args
     fit_fastmtx <- TRUE
     gform <- h_fit_params$gform
@@ -401,7 +384,7 @@ fit.hbars.old <- function(data, h_fit_params) {
     # produces a matrix (not df, so needs to be converted for faster glm.fit)
     t1 <- system.time(
       fit.gstar_dat <- get_hfit_data(k = k, Anode = Anode, NetInd_k = NetInd_k, 
-                                      netW = netW, f.g_name = f.g.star, f.g_args = f.g_args,
+                                      netW = netW, f.g_name = f.gstar, f.g_args = f.g_args,
                                       p = n_samp_g0gstar)
     )
     # determ_cols may change under gstar, e.g., when P_g^*(A=1|W)=1 for some W
@@ -439,6 +422,228 @@ fit.hbars.old <- function(data, h_fit_params) {
 }
 
 
+#---------------------------------------------------------------------------------
+# G-Comp & TMLEs: Use Monte-Carlo to estimate psi under stochastic g^* 
+#---------------------------------------------------------------------------------
+  # For given data, take Q[Y|cY]=m.Q.init and calcualte est. of psi under g*=f.gstar using Monte-Carlo integration:
+  # * W_i can be iid or not (in latter case W are not resampled);
+  # * Draw from the distributions of W and g*(A|W), keeping N_i constant, recalculate cY and cA each time;
+  # * Recalculate Y^c under g^*
+  # * Repeat nrep times and average.
+#---------------------------------------------------------------------------------
+get.MCS_ests.old <- function(data, MC_fit_params, fit_h_reg_obj) {
+  family <- MC_fit_params$family
+
+  onlyTMLE_B <- MC_fit_params$onlyTMLE_B
+  n <- nrow(data)
+  k <- MC_fit_params$Kmax
+  n_MCsims <- MC_fit_params$n_MCsims
+  lbound <- MC_fit_params$lbound
+  max_npwt <- MC_fit_params$max_npwt
+  max.err_eps <- MC_fit_params$max.err_eps
+
+  node_l <- MC_fit_params$node_l
+  nFnode <- node_l$nFnode
+  Anode <- node_l$Anode
+  Ynode <- node_l$Ynode
+  iidW_flag <- MC_fit_params$iidW_flag
+  NetInd_k <- MC_fit_params$NetInd_k
+
+  m.Q.init <- MC_fit_params$m.Q.init
+  m.Q.star_h_A <- MC_fit_params$m.Q.star_h_A
+  m.Q.star_h_B <- MC_fit_params$m.Q.star_h_B
+  m.Q.star_iptw <- MC_fit_params$m.Q.star_iptw
+  m.g0N  <- MC_fit_params$m.g0N
+  f.gstar <- MC_fit_params$f.gstar
+  f.g_args <- MC_fit_params$f.g_args
+  f.g0 <- MC_fit_params$f.g0
+  f.g0_args <- MC_fit_params$f.g0_args
+
+  # 02/07/12 Eliminated the need to make two passes through the data for monte-carlo # Creates one matrix of all Q(Y|W_i)
+  .f_ests_all <- function(NetInd_k, emp_netW) {
+    .f.gen.reps <- function(nrep, NetInd_k, emp_netW)   {
+      # Generate full sample   c=(A,W) under g* (and iid or not for Ws)
+       .f.gen.sample <- function(NetInd_k, n) {
+        if (iidW_flag) {  # Version 1: Resample W's with replacement
+          resamp_idx <- sample(c(1:n), n, replace=TRUE)
+          netW <- NULL # get all network W's from the original data under resampled IDs
+          for (Wnode in node_l$Wnodes) {
+            netW <- data.frame(cbind(netW, .f.allCovars(k, NetInd_k, data[resamp_idx,Wnode], Wnode)))
+          }
+          full_dfW <- netW
+        } else {
+        # Version 2: No resampling of W's (W's are indep. but not iid, using NPMLE that puts mass 1 on all obs i=1,...,N)
+          resamp_idx <- c(1:n)
+          full_dfW <- emp_netW
+        }
+        nFriend <- subset(data, select=nFnode) # nFriends (network) is never resampled
+        # print("full_dfW"); print(head(full_dfW,10))
+        resamp_A <- f.gen.A.star(k, data.frame(full_dfW, subset(data, select=nFnode)), f.gstar, f.g_args)
+        full_dfA <- .f.allCovars(k, NetInd_k, resamp_A, Anode)
+        determ_df <-  data.frame(determ.g=data$determ.g[resamp_idx], determ.Q=data$determ.Q[resamp_idx]) # get deterministic nodes, also resampled, since fcn of W's
+        Y_resamp <- subset(data, select=Ynode) # use observed Y's - INCORRECT, BASED ON NEW W (iidW=TRUE), deterministic Y's might change values
+        
+        resamp_data <- data.frame(full_dfW, full_dfA, Y_resamp, nFriend, determ_df)
+        # print("resamp_data"); print(head(resamp_data))
+        return(resamp_data)
+      }
+
+      # MLE - Predict E[Y|g_star] (QY.init) for each i, based on the initial model for E[Y|C^Y] (m.Q.init)
+      .f_pred_barQ.init <- function(m.Q.init, samp_data) {
+        #deterministic nodes for Q
+        determ.Q <- samp_data$determ.Q
+        # MLE Subs Estimator (est probY based on model for Q_Y)
+        # predict only for those not infected at bsl, W2==0
+        #************************************************
+        # QY <- rep_len(1, nrow(samp_data))
+        QY <- predict(m.Q.init, newdata=samp_data, type="response")
+        QY[determ.Q] <- samp_data[determ.Q, Ynode]  # will be incorrect when W's are resampled
+        #************************************************
+        # QY[!determ.Q] <- predict(m.Q.init, newdata=samp_data[!determ.Q,], type="response")
+        return(QY)
+      }
+      # TMLE - Predict E[Y|g_star] (QY.star) for each i, based on the coefficient epsilon update model for E[Y|C^Y] (m.Q.star_h_A)      
+      .f_pred_barQ.star_A <- function(QY.init, samp_data) {
+        h_bars <- pred.hbars.old(samp_data, fit_h_reg_obj, NetInd_k)
+        h_iptw <- h_bars$df_h_bar_vals$h
+        determ.Q <- samp_data$determ.Q
+        if (!is.na(coef(m.Q.star_h_A))) {
+          off <- qlogis(QY.init)
+          QY.star <- plogis(off + coef(m.Q.star_h_A)*h_iptw)
+          #************************************************
+          # print("determ.Q"); print(sum(determ.Q))
+          #************************************************
+          # QY.star[determ.Q] <- 1
+          QY.star[determ.Q] <- samp_data[determ.Q, Ynode] # will be incorrect when W's are resampled
+          #************************************************
+          return(QY.star)
+        } else {
+          return(QY.init)
+        }
+      }
+      # TMLE B - Predict E[Y|g_star] (QY.star) for each i, based on the intercept epsilon update model for E[Y|C^Y] (m.Q.star_h_B)
+      .f_pred_barQ.star_B <- function(QY.init, samp_data) {
+        determ.Q <- samp_data$determ.Q
+        if (!is.na(coef(m.Q.star_h_B))) {
+          off <- qlogis(QY.init)
+          QY.star_B <- plogis(off + coef(m.Q.star_h_B))
+          #************************************************
+          # QY.star[determ.Q] <- 1
+          QY.star_B[determ.Q] <- samp_data[determ.Q, Ynode]  # will be incorrect when W's are resampled
+          # print("QY.star_B"); print(QY.star_B)
+          #************************************************
+          return(QY.star_B)
+        } else {
+          return(QY.init)
+        }
+      }
+      # get an estimate of fi_W (hold ALL W's fixed at once) - a component of TMLE Var
+      .f.gen.fi_W <- function(NetInd_k, emp_netW) {
+        determ_df <-  data.frame(determ.g=data$determ.g, determ.Q=data$determ.Q)
+        resamp_A <- f.gen.A.star(k, data.frame(emp_netW,subset(data, select=nFnode)), f.gstar, f.g_args)
+        samp_dataA <- .f.allCovars(k, NetInd_k, resamp_A, Anode)
+        resamp_A_fixW <- data.frame(emp_netW, samp_dataA, subset(data, select=c(nFnode, Ynode)), determ_df)
+        # *******fi_W based on Q,N.init model ******
+        QY.init_fixW <- .f_pred_barQ.init(m.Q.init, resamp_A_fixW)
+        fi_W_init <- QY.init_fixW   # vers 2
+        # *******fi_W based on Q,N.star models (A & B) ******
+        if (onlyTMLE_B) {
+          QY.star_fixW_A <- rep_len(0, nrow(resamp_A_fixW))
+          QY.star_fixW_B <- .f_pred_barQ.star_B(QY.init_fixW, resamp_A_fixW)
+        } else {
+          QY.star_fixW_A <- .f_pred_barQ.star_A(QY.init_fixW, resamp_A_fixW)
+          QY.star_fixW_B <- .f_pred_barQ.star_B(QY.init_fixW, resamp_A_fixW)
+        }
+        return(list(fi_W_init=fi_W_init, fi_W_star_A=QY.star_fixW_A, fi_W_star_B=QY.star_fixW_B))
+      }
+      # IPTW NETWORK TMLE
+      .f.gen_TMLEnetIPTW <- function(QY.init, samp_data, NetInd_k) {
+        g_iptw <- iptw_est(k=k, data=samp_data, node_l=node_l, m.gN=m.g0N, f.gstar=f.gstar, f.g_args=f.g_args, 
+                            family=family, NetInd_k=NetInd_k, lbound=lbound, max_npwt=max_npwt, f.g0=f.g0, f.g0_args=f.g0_args)
+        determ.Q <- samp_data$determ.Q
+        if (!is.na(coef(m.Q.star_iptw))) {
+          off <- qlogis(QY.init)
+          QY.star <- plogis(off + coef(m.Q.star_iptw)*g_iptw)
+          #************************************************
+          # QY.star[determ.Q] <- 1
+          QY.star[determ.Q] <- samp_data[determ.Q, Ynode]
+          #************************************************
+          return(QY.star)
+        }
+      }
+      #-------------------------------------------
+      # Main body of .f.gen.reps()
+      #-------------------------------------------
+      resamp_d <- .f.gen.sample(NetInd_k, n) # Get a random sample of all A and W
+      QY_gstar_mle <- .f_pred_barQ.init(m.Q.init, resamp_d) # QY.init (G-Comp estimator) - est probY based on model for Q_Y
+      #-------------------------------------------
+      if (onlyTMLE_B) {
+        QY_gstar_TMLE_A <- rep_len(0, n) # NETWORK TMLE A (adjusted by coefficient epsilon on h_bar ratio)
+        QY_gstar_TMLE_B <- .f_pred_barQ.star_B(QY_gstar_mle, resamp_d) # NETWORK TMLE B (adjusted by intercept epsilon where h_bar were used as weights)
+        QY_gstar_TMLE_IPTW <- rep_len(0, n) # IPTW NETWORK TMLE
+      } else {
+        QY_gstar_TMLE_A <- .f_pred_barQ.star_A(QY_gstar_mle, resamp_d) # NETWORK TMLE A (adjusted by coefficient epsilon on h_bar ratio)
+        QY_gstar_TMLE_B <- .f_pred_barQ.star_B(QY_gstar_mle, resamp_d) # NETWORK TMLE B (adjusted by intercept epsilon where h_bar were used as weights)
+        QY_gstar_TMLE_IPTW <- .f.gen_TMLEnetIPTW(QY_gstar_mle, resamp_d, NetInd_k) # IPTW NETWORK TMLE
+      }
+      fi_Ws_list <- .f.gen.fi_W(NetInd_k, emp_netW) # Get fi_W - hold W fixed to observed values
+
+      # Put all estimators together and add names (defined in G_D_W_1_nms outside of this function):
+      mean_psis_all <- c(mean(QY_gstar_mle), mean(QY_gstar_TMLE_A), mean(QY_gstar_TMLE_B), mean(QY_gstar_TMLE_IPTW), 
+                        fi_Ws_list$fi_W_init, fi_Ws_list$fi_W_star_A, fi_Ws_list$fi_W_star_B)
+      names(mean_psis_all) <- G_D_W_1_nms
+      return(mean_psis_all)
+    } # end of .f.gen.reps()
+
+    #-------------------------------------------
+    # Main body of .f_ests_all()
+    #-------------------------------------------
+    all_ests_reps <- t(sapply(seq(n_MCsims), .f.gen.reps, NetInd_k, emp_netW))
+    return(all_ests_reps)
+  }
+  #---------------------------------------------------------------------------------
+  # Main body of a fcn get.MCS_ests(): MC evalution of the estimators
+  #---------------------------------------------------------------------------------
+  # Names of all the estimators calculated during MC simulation:
+  G_D_W_1_nms <- c("gcomp_mle", "tmle_A","tmle_B", "tmle_iptw",
+                  paste("fWi_init_", c(1:n), sep = ""),
+                  paste("fWi_star_A_", c(1:n), sep = ""),
+                  paste("fWi_star_B_", c(1:n), sep = ""))
+  
+  #---------------------------------------------------------------------------------
+  # Creating matrix of W's (fixed at observed Ws, for evalution of fi_W)
+  netW <- NULL
+  for (Wnode in node_l$Wnodes) {
+    netW <- data.frame(cbind(netW, .f.allCovars(k, NetInd_k, data[,Wnode], Wnode)))
+  }
+  emp_netW <- netW
+
+  #---------------------------------------------------------------------------------
+  # Allow this part to loop, until desired MCS prob_epsilon for all estimators is reached:
+  nrepeat <- 1
+  psis_reps <- NULL
+  G_comp_D_star_W_reps <- NULL
+  repeat {
+    G_comp_D_star_W_reps <- rbind(G_comp_D_star_W_reps, .f_ests_all(NetInd_k, emp_netW))
+    # G_comp_D_star_W_reps <- rbind(G_comp_D_star_W_reps, .f_ests_all(NetInd_k, NetVec_k_D_Wi, NetVec_D_fullsamp))
+    psi_est_mean <- apply(G_comp_D_star_W_reps, 2, mean, na.rm = T)
+    psi_est_var <- apply(G_comp_D_star_W_reps, 2, var, na.rm = T)
+    psi_percerr <- 2 * abs(psi_est_mean * max.err_eps) # estimate the maximum allowed epsilon for each estimator, based pre-defined % error:  
+    # prob_epsilon <- psi_est_var / ((n_MCsims*nrepeat) * (max.err_eps)^2)
+    prob_percerr <- psi_est_var / ((n_MCsims*nrepeat) * (psi_percerr)^2)
+    prob_percerr[psi_est_var < 0.0001] <- 0.0001
+    fin_ests_sel <- c(1:3) # final vec of estimators for which error is measured
+    if ( (all(prob_percerr[fin_ests_sel] < 0.05)) | (nrepeat >= 100)) {
+      break
+    }
+    nrepeat <- nrepeat + 1
+  }   
+  # print("nrepeat"); print(nrepeat)
+  return(psi_est_mean)
+}
+
+
+
 # (DEPRECATED)
 #---------------------------------------------------------------------------------
 # Estimate h_bar under g_0 and g* given observed data and vector of c^Y's
@@ -472,12 +677,14 @@ get_all_ests.old <- function(data, est_obj) {
   df_h_bar_vals <- h_bars$df_h_bar_vals
   fit_h_reg_obj <- h_bars$fit_h_reg_obj
   h_iptw <- df_h_bar_vals$h
+
+  print("time to fit old h_bars:"); print(fit.hbars_t)
+  print("old h est:"); print(head(df_h_bar_vals))
+
   Y_IPTW_h <- Y
   Y_IPTW_h[!determ.Q] <- Y[!determ.Q] * h_iptw[!determ.Q]
-  # print("IPW Est (h)"); print(mean(Y_IPTW_h))
+  print("IPW Est (h)"); print(mean(Y_IPTW_h))
 
-  print("time to fit h_bars"); print(fit.hbars_t)
-  print("h est"); print(head(df_h_bar_vals))
   # print("time to fit h_bars new"); print(fit.hbars_t.new)
   # print("h est new"); print(head(h_bars.new$df_h_bar_vals))
 
@@ -504,7 +711,7 @@ get_all_ests.old <- function(data, est_obj) {
   #************************************************
 	# 02/16/13: IPTW estimator (Y_i * prod_{j \in Fi} [g*(A_j|c^A)/g0_N(A_j|c^A)])
 	g_iptw <- iptw_est(k = est_obj$Kmax, data = data, node_l = node_l, m.gN = est_obj$m.g0N,
-                      f.g.star = est_obj$f.g.star, f.g_args = est_obj$f.g_args, family = est_obj$family,
+                      f.gstar = est_obj$f.gstar, f.g_args = est_obj$f.g_args, family = est_obj$family,
                       NetInd_k = est_obj$NetInd_k, lbound = est_obj$lbound, max_npwt = est_obj$max_npwt,
                       f.g0 = est_obj$f.g0, f.g0_args = est_obj$f.g0_args)
   Y_IPTW_net <- Y
@@ -536,7 +743,7 @@ get_all_ests.old <- function(data, est_obj) {
                           h_tilde = df_h_bar_vals$h))
 
   # run M.C. evaluation estimating psi under g^*:
-  syst1 <- system.time(MCS_res <- get.MCS_ests(data = data,  MC_fit_params = MC_fit_params, fit_h_reg_obj = fit_h_reg_obj))
+  syst1 <- system.time(MCS_res <- get.MCS_ests.old(data = data,  MC_fit_params = MC_fit_params, fit_h_reg_obj = fit_h_reg_obj))
 	print("time to run MCS: "); print(syst1);
 
   #************************************************
@@ -560,6 +767,11 @@ get_all_ests.old <- function(data, est_obj) {
   fWi_star_A <- fWi_star_A - psi_tmle_A
   fWi_star_B <- fWi_star_B - psi_tmle_B
   print("fWi_star_A and fWi_star_B"); print(c(fWi_star_A=mean(fWi_star_A), fWi_star_B=mean(fWi_star_B)));
+
+  MC.ests <- rbind(psi_mle, psi_tmle_A, psi_tmle_B, psi_tmle_iptw, psi_iptw_h, psi_iptw)
+  colnames(MC.ests) <- "estimates"
+  rownames(MC.ests) <- c("psi_mle", "psi_tmle_A", "psi_tmle_B", "psi_tmle_iptw", "psi_iptw_h", "psi_iptw")
+  print("old MC.ests"); print(MC.ests)
 
   return(list( tmle_A = psi_tmle_A,
                tmle_B = psi_tmle_B,

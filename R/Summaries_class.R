@@ -15,33 +15,37 @@
 # TO DO (ContinSummaryModel, binirize)
 # * (***BUG***) Currently make.bins_mtx_1 fails on binary A with automatic bin detection (all values are placed in last (2nd) bin)
 # * Need to handle gvars$misval values for self$outvar (contin) when transforming to bins (in fit, predict, predictAeqa)...
-# * For x_cat the process is identical, except that normalize, define.intervals & make.ordinal is skipped
+# * For x_cat the process is identical, except that normalize, define.intervals() & discretize() is skipped
 # * Need to test that make.bins_mtx_1 will do the right thing when x_cat is (0, ..., ncats) instead of (1, ..., ncats) (IT SHOULD WORK)
 
 RegressionClass <- R6Class("RegressionClass",
 	class = TRUE,
 	portable = TRUE,
 	public = list(
-    useglm = TRUE,              # (Future vs.) TRUE to fit reg with glm.fit(), FALSE to fit with speedglm.wfit
-		family = NULL, 				      # (Future vs.) to run w/ other than "binomial" family	
 		outvar.class = character(), # class of the outcome var: bin / cont / cat
 		outvar = character(),       # regression outcome variable name
 		predvars = character(),     # vector of regression covariate names (predictors)
 		subset = NULL,              # subset expression (later evaluated to logical vector in the envir of the data)
-		nbins = NULL,               # for cont. outvar, copied by ContinSummaryModel$new from O.datnetA$nbins.sVar(reg$outvar)
-		bin_nms = NULL,
-		pool.cont = FALSE,          # pool observations (long format) for binarized continous outcomes from different bins
-		initialize = function(outvar.class = gvars$sVartypes$bin, outvar, predvars, subset, useglm = TRUE) {
+    ReplMisVal0 = FALSE,        # if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0)
+    nbins = NULL,               # for cont. outvar, copied by ContinSummaryModel$new from O.datnetA$nbins.sVar(reg$outvar)
+    bin_nms = NULL,             # column names for bin indicators
+    useglm = TRUE,              # (NOT IMPLEMENTED) TRUE to fit reg with glm.fit(), FALSE to fit with speedglm.wfit
+		pool.cont = FALSE,          # (NOT IMPLEMENTED) pool binned cont outvar obs into long format (adding bin_n as a covaraite)
+    family = NULL,              # (NOT IMPLEMENTED) to run w/ other than "binomial" family
+    form = NULL,                # (NOT IMPLEMENTED) reg formula, if provided run using the usual glm / speedglm functions
+		initialize = function(outvar.class = gvars$sVartypes$bin, outvar, predvars, subset, useglm = TRUE, ReplMisVal0 = FALSE, form = NULL) {
 			self$outvar.class <- outvar.class
 			class(self) <- c(self$outvar.class, class(self))
 			self$outvar <- outvar
 			self$predvars <- predvars
 			self$subset <- subset
 			self$useglm <- useglm
+      self$ReplMisVal0 <- ReplMisVal0
+      # self$form <- form # NOT IMPLEMENTED
 		}
 	),
 	active = list(
-		reg = function() {
+		get.reg = function() {
 			list(outvar.class = self$outvar.class,
 				outvar = self$outvar,
 				predvars = self$predvars,
@@ -64,10 +68,10 @@ NewSummaryModel.contin <- function(reg, O.datnetA, ...) { # Summary model constr
 # }
 
 # Summary model constructor for binary outcome sA[j]
-NewSummaryModel.binary = function(reg, ...) {
-	print("BinOutModel constructor called...")
-	BinOutModel$new(glm = TRUE, reg = reg, ...) # fit a model with new object BinOutModel using glm.fit
-	# BinOutModel$new(glm = FALSE, reg = reg, ...) # fit a model with new object BinOutModel using speedglm.wfit
+NewSummaryModel.binary <- function(reg, ...) {
+	# print("BinOutModel constructor called...")
+	# BinOutModel$new(glm = TRUE, reg = reg, ...) # fit a model with new object BinOutModel using glm.fit
+	BinOutModel$new(glm = FALSE, reg = reg, ...) # fit a model with new object BinOutModel using speedglm.wfit
 	# Alternative name: BinOutModel
 }
 
@@ -107,13 +111,13 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		initialize = function(sA_class, sA_nms, sW_nms, subset, ...) {
 			self$sA_nms <- sA_nms
 			self$sW_nms <- sW_nms
-			self$n_regs <- n_regs <- length(self$sA_nms)  # Number of sep. logistic regressions, determines the fitting algorithm this object will use (sep.logist by k, pooled, etc):
+			self$n_regs <- n_regs <- length(self$sA_nms) # Number of sep. logistic regressions to run
 			print("#----------------------------------------------------------------------------------");
-			print("New SummariesModel object:"); 
+			print("New SummariesModel object:");
 			print("No. of regressions: " %+% self$n_regs)
-			print("sA_classes: "); str(sA_class)
-			print("sA_nms: "); print(self$sA_nms)
-			print("sW_nms: "); print(self$sW_nms)
+			# print("sA_classes: "); str(sA_class)
+			print("sA_nms: " %+% paste(self$sA_nms, collapse = ", "))
+			print("sW_nms: " %+% paste(self$sW_nms, collapse = ", "))
 			print("#----------------------------------------------------------------------------------");
 
 			if (!missing(subset)) {
@@ -127,12 +131,13 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 				subset <- rep_len(list(TRUE), n_regs)
 			}
 
-			for (k_i in (1:n_regs)) {  # factorization by nFriends (k) value
+      # factorize by dimensionality of the outcome variable (sA_nms):
+			for (k_i in 1:n_regs) {
 				sA_i_nm <- self$sA_nms[k_i] # A variable we are predicting
 				covars_nms <- c(self$sA_nms[-c(k_i:n_regs)], self$sW_nms) # dependent covars
-
-				# Changed reg to object of RegressionClass:
-				reg <- RegressionClass$new(outvar.class = sA_class[[k_i]], outvar = sA_i_nm, predvars = covars_nms, subset = subset[[k_i]])
+				# Changed reg ReplMisVal0 = TRUE for cases when sA is a combination of netA & continuous sA[j]
+				reg <- RegressionClass$new(outvar.class = sA_class[[k_i]], outvar = sA_i_nm, predvars = covars_nms, subset = subset[[k_i]], ReplMisVal0 = TRUE)
+        # reg <- RegressionClass$new(outvar.class = sA_class[[k_i]], outvar = sA_i_nm, predvars = covars_nms, subset = subset[[k_i]])
 				PsAsW.model <- NewSummaryModel(reg = reg, ...) # Constructor for new summary model P(sA[j]|\bar{sA}[j-1], sW}) object
 				private$PsAsW.models <- append(private$PsAsW.models, list(PsAsW.model))
 				names(private$PsAsW.models)[k_i] <- "P(sA|sW)."%+%k_i
@@ -152,7 +157,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		  if (missing(newdata)) { # ... Do nothing. Predictions for fit data are already saved ...
 		    return(invisible(self))
 		  }
-		  print("length(private$PsAsW.models)"); print(length(private$PsAsW.models))
+		  # print("length(private$PsAsW.models)"); print(length(private$PsAsW.models))
 		  for (k_i in seq_along(private$PsAsW.models)) { # loop over all regressions in PsAsW.models
 		    private$PsAsW.models[[k_i]]$predict(newdata = newdata)
 		  }
@@ -167,7 +172,6 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 			n <- obs.DatNet.sWsA$nobs
 			cumprodAeqa <- rep_len(1, n)
 			for (k_i in seq_along(private$PsAsW.models)) { # loop over all regressions in PsAsW.models
-				print("getting the likelihood for outvar: "); print(private$PsAsW.models[[k_i]]$reg$outvar)
 				cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$predictAeqa(obs.DatNet.sWsA = obs.DatNet.sWsA)
 			}
 			private$cumprodAeqa <- cumprodAeqa
@@ -272,22 +276,22 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       # data$dat.sVar -> returns a combined df / mat? of sWsA (no subsetting, no covar sel)
       # data$get.dat.sWsA(rowsubset, covars) -> returns a processed df / mat? of sWsA
 
-      # NOTE, THIS LINE IS VERY IMPORTANT 
+      # NOTE, THIS LINE IS VERY IMPORTANT
       # IF bins were defined inside ContinSummaryModel$new(), they will be saved in O.datnetA and DatNet.sWsA will not see them
       # unless the intervals are copied from O.datnetA
       data$copy.cbin.intrvls()
-
       print("intervals after data$copy.cbin.intrvls() in ContinSummaryModel$fit: "); print(data$get.sVar.intrvls(self$outvar))
-      print("data$dat.sVar for: " %+% self$outvar); print(head(data$dat.sVar))
-      print("currently active binirized sVar: " %+% data$active.bin.sVar)
+      print("current active bin sVar: " %+% data$active.bin.sVar)
+      # Saves binned matrix to DatNet.sWsA:
+      data$binirize.sVar(self$outvar) # Note, don't need to save mat_bin here, its already saved inside DatNet.sWsA: # mat_bin <- data$binirize.sVar(self$outvar)
+      
+      print("active bin sVar after calling binirize.sVar: " %+% data$active.bin.sVar)
 
-      # Evaluates subsets & saves correct matrix to DatNet.sWsA
-      data$binirize.sVar(self$outvar) # Note, don't need to save mat_bin here, its already saved inside DatNet.sWsA
-      # mat_bin <- data$binirize.sVar(self$outvar)
-      print("binirized data for: " %+% self$outvar)
-      print("currently active binirized sVar: " %+% data$active.bin.sVar)
-
-      print(head(data$binirize.sVar(self$outvar)))
+      ord.sVar <- data$discretize.sVar(self$outvar)
+      print("data$dat.sVar for: " %+% self$outvar); print(head(data$dat.sVar, 5))
+      print("binned dataset for: " %+% self$outvar); print(head(cbind(ord.sVar, data$binirize.sVar(self$outvar)), 5))      
+      print("freq count for original variable: "); print(table(data$dat.sVar[, self$outvar]))
+      print("freq count for transformed ord.sVar: "); print(table(ord.sVar))
 
       super$fit(data) # call the parent class fit method
       message("fit for " %+% self$outvar %+% " var succeeded...")

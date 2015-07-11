@@ -129,8 +129,8 @@ nettest$getNetInd <- NULL
 # sAnorm <- normalize(x = rnorm(100000))
 # # sAnorm <- normalize(x = datatest$sA)
 # (ints_list <- define.intervals(x = sAnorm, nbins = self$nbins))
-# xcat_bylen = make.ordinal(x = sAnorm, intervals = ints_list$intbylen)  # 1: x as categorical for intervals def by equal len 0-1
-# xcat_bymass = make.ordinal(x = sAnorm, intervals = ints_list$intbymass) # 2: x as categorical for intervals def by equal mass 0-1
+# xcat_bylen = discretize(x = sAnorm, intervals = ints_list$intbylen) # NOTE: x as categorical for intervals def by equal len 0-1
+# xcat_bymass = discretize(x = sAnorm, intervals = ints_list$intbymass) # NOTE x as categorical for intervals def by equal mass 0-1
 # # data.frame(sAnorm, xcat_bylen, xcat_bymass)
 # hist(xcat_bylen)
 # hist(xcat_bymass)
@@ -374,7 +374,7 @@ test.NetIndClass <- function() {
 }
 
 # TESTING sVar expressions parser:
-test.DefineEval.sVar <- function() {
+test.Define_sVar <- function() {
 
   # ----------------------------------------------------------------------------------------
   # TEST DATA:
@@ -420,7 +420,7 @@ test.DefineEval.sVar <- function() {
   (evaled.sVar.expr0 <- defsVar.expr0$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)  
 
   class(defsVar.expr0)
-  class(evaled.sVar.expr0) 
+  class(evaled.sVar.expr0)
   is.matrix(evaled.sVar.expr0)
 
   # Example 1.
@@ -433,7 +433,7 @@ test.DefineEval.sVar <- function() {
   evaled.sVar.expr1[5,1]==1005
 
   # Example 2. Using a variable to pass sVar expression.
-  (testexpr_call <- quote(rowSums(A[[0:k]])))  
+  (testexpr_call <- quote(rowSums(A[[0:k]])))
   # (defsVar.expr2 <- def.sW.g0(W = testexpr_call)) # doesn't work
   defsVar.expr2 <- def.sW.g0(sA.1 = eval(testexpr_call))
   class(defsVar.expr2$sVar.exprs[[1]])
@@ -448,7 +448,7 @@ test.DefineEval.sVar <- function() {
   defsVar.expr1 <- def.sW.g0(W = W[[0:k]])
   (evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
 
-  defsVar.expr1 <- def.sW.g0(W[[0:k]])  
+  defsVar.expr1 <- def.sW.g0(W[[0:k]])
   (evaled.sVar.expr1 <- defsVar.expr1$parse.sVar(data.df = dftest, NetInd_cl = NetInd_cl)$mat.sVar)
 
   is.matrix(evaled.sVar.expr1)
