@@ -4,7 +4,7 @@
 
 # data.table
 #' @author Oleg Sofrygin, Mark J. van der Laan
-#' @description ...TO COMPLETE...
+#' @description ...TO BE COMPLETED...
 #' @name tmlenet-package
 NULL
 
@@ -14,7 +14,7 @@ NULL
 
 #------------------------------------
 # v0.2 Adding R6 classes for h estimation and syntax for arbitrary summary measures
-# 05/18/14 
+# 07/11/15
 # NETWORK TMLE
 # authors: Oleg Sofrygin <sofrygin@berkeley.edu> and Mark van der Laan <laan@berkeley.edu>
 #------------------------------------
@@ -262,7 +262,7 @@ get_all_ests <- function(datNetObs, est_params_list) {
   off <- qlogis(QY.init)  # offset
 
   #************************************************
-  # ESTIMATORS
+  # ESTIMATORS:
   #************************************************
 
   #************************************************

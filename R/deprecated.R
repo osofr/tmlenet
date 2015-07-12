@@ -1,3 +1,161 @@
+# Get summary measures for one or two tmlenet objects 
+#(SEs, p-values, CIs)
+# If two objects, include effect measures (additive effect, relative risk, odds ratio)
+# summary.tmlenet <- function(object, control.object=NULL, 
+            # estimator=ifelse(object$gcomp, "gcomp", "tmle"), ...) {
+  # #object is treatment, control.object is control
+  # if (! is.null(control.object) && class(control.object) != "tmlenet") 
+        # stop("the control.object argument to summary.tmlenet must be of class tmlenet")
+  # if (! estimator %in% c("tmle", "iptw", "gcomp", "naive")) stop("estimator should be one of: tmle, iptw, gcomp, naive")
+  # treatment.summary <- NULL
+  # if (! is.null(control.object)) {
+    # control.summary <- GetSummary(control.object$estimates[estimator], control.object$IC[[estimator]], loggedIC=FALSE)
+    # effect.measures <- GetEffectMeasures(est0=control.object$estimates[estimator], 
+                                          # IC0=control.object$IC[[estimator]], 
+                                          # est1=object$estimates[estimator], 
+                                          # IC1=object$IC[[estimator]])
+    # effect.measures.summary <- lapply(effect.measures, function (x) GetSummary(x$est, x$IC, x$loggedIC))
+  # } else {
+    # control.summary <- effect.measures.summary <- NULL
+  # }
+  # ans <- list(treatment=treatment.summary, control=control.summary, 
+              # effect.measures=effect.measures.summary, treatment.call=object$call, 
+              # control.call=control.object$call, estimator=estimator)
+  # class(ans) <- "summary.tmlenet"
+  # return(ans)
+# }
+
+# # Get summary measures for tmlenet parameters (standard errors, p-values, confidence intervals)
+# summary.tmlenet <- function(object, estimator=ifelse(object$gcomp, "gcomp", "tmle"), ...) 
+# {
+#   if (! estimator %in% c("tmle", "iptw", "gcomp")) stop("estimator should be one of: tmle, iptw, gcomp")  
+#   n <- nrow(IC)
+#   v <- apply(IC, 2, var)
+#   std.dev <- sqrt(v/n)
+#   pval <- 2 * pnorm(-abs(estimate / std.dev))
+#   CI <- GetCI(estimate, std.dev)
+#   cmat <- cbind(estimate, std.dev, CI, pval)
+#   dimnames(cmat) <- list(names(estimate), c("Estimate", "Std. Error", "CI 2.5%", "CI 97.5%", "p-value"))
+#   ans <- list(cmat=cmat, estimator=estimator)
+#   class(ans) <- "summary.tmlenet"
+#   return(ans)
+# }
+
+
+# # Print method for summary.tmlenet
+# print.summary.tmlenet <- function(x, ...) {
+#   cat("Estimator: ", x$estimator, "\n")
+#   if (x$estimator=="gcomp") {cat("Warning: inference for gcomp is not accurate! It is based on TMLE influence curves.\n")}
+#   if (is.null(x$control)) {
+#     PrintCall(x$treatment.call)
+#     PrintSummary(x$treatment)
+#   } else {
+#     cat("\nControl ")
+#     PrintCall(x$control.call)
+#     cat("Treatment ")
+#     PrintCall(x$treatment.call)
+#     cat("Treatment Estimate:\n")
+#     PrintSummary(x$treatment)
+#     cat("\nControl Estimate:\n")
+#     PrintSummary(x$control)
+#     cat("\nAdditive Effect:\n")
+#     PrintSummary(x$effect.measure$ATE)
+#   }
+#   invisible(x)
+# }
+
+# # Print method for tmlenet
+# print.tmlenet <- function(x, ...) {
+#   PrintCall(x$call)
+#   cat("TMLE Estimate: ", x$estimates["tmle"], "\n")
+#   invisible(x)
+# }
+
+# # Print a call
+# PrintCall <- function(cl) {
+#   cat("Call:  ", paste(deparse(cl), sep = "\n", collapse = "\n"), "\n\n", sep = "")
+# }
+
+# Print estimate, standard error, p-value, confidence interval
+# PrintSummary <- function(x) {
+#   cat("   Parameter Estimate: ", signif(x$estimate, 5))
+#   cat("\n    Estimated Std Err: ", signif(x$std.dev^2, 5))
+#   cat("\n              p-value: ", ifelse(x$pvalue <= 2*10^-16, "<2e-16",signif(x$pvalue, 5)))
+#   cat("\n    95% Conf Interval:",paste("(", signif(x$CI[1], 5), ", ", signif(x$CI[2], 5), ")", sep=""),"\n")
+#   invisible(x)
+# }
+
+# # Calculate estimate, SE, p-value, confidence interval
+# GetSummary <- function(estimate, IC, loggedIC) {
+#   if (is.null(IC)) {
+#     std.dev <- NA
+#   } else {
+#     n <- length(IC)
+#     std.dev <- sqrt(var(IC) / n)
+#   }
+#   if (loggedIC) {
+#     pvalue <- 2 * pnorm(-abs(log(estimate) / std.dev))
+#     CI <- exp(GetCI(log(estimate), std.dev))
+#   } else {
+#     pvalue <- 2 * pnorm(-abs(estimate / std.dev))
+#     CI <- GetCI(estimate, std.dev)
+#   }
+  
+#   return(list(estimate=estimate, std.dev=std.dev, pvalue=pvalue, CI=CI))
+# }
+
+# # Calculate 95% confidence interval
+# GetCI <- function(estimate, std.dev) {
+#   x <- qnorm(0.975) * std.dev
+#   CI <- cbind("2.5%"=estimate - x, "97.5%"=estimate + x)
+#   return(CI)
+# }
+
+# # Calculate Average Treatment Effect
+# GetEffectMeasures <- function(est0, IC0, est1, IC1) {  
+#   names(est0) <- names(est1) <- NULL
+#   ATE <- est1 - est0
+#   if (is.null(IC0)) {
+#     ATE.IC <- NULL
+#   } else {
+#     ATE.IC <- -IC0 + IC1
+#   }
+#   return(list(ATE=list(est=ATE, IC=ATE.IC, loggedIC=FALSE)))
+# }
+
+
+# Run GLM or SuperLearner (in future vs) for fitting initial Q and g
+# old call: (data, form, family)
+# Estimate <- function(form, d, subs, family, newdata, SL.library) {
+#   f <- as.formula(form)
+#   if (any(is.na(d[subs, LhsVars(f)]))) stop("NA in Estimate")
+#   # stats <- CalcRegressionStats(d, f, subs)
+#   if (is.null(SL.library) || length(RhsVars(f)) == 0) { #in a formula like "Y ~ 1", call glm
+#     #estimate using GLM
+#     if (sum(subs) > 1) {
+#       SuppressGivenWarnings({
+#         m <- glm(f, data=d, subset=subs, family=family, control=glm.control(trace=FALSE, maxit=1000))
+#         predicted.values <- predict(m, newdata=newdata, type="response")
+#       }, GetWarningsToSuppress())
+#     } else {
+#       #glm breaks when sum(subs) == 1
+#       predicted.values <- rep(d[subs, LhsVars(f)], nrow(newdata))
+#     }
+#   } else {
+#     #estimate using SuperLearner
+#     if (family == "quasibinomial") family <- "binomial"
+#     #remove aliased columns from X - these can cause problems if they contain NAs and the user is expecting the column to be dropped
+#     rhs <- setdiff(RhsVars(f), rownames(alias(f, data=d[subs,])$Complete))  
+#     #remove NA values from newdata - these will output to NA anyway and cause errors in SuperLearner
+#     new.subs <- apply(newdata[, rhs, drop=FALSE], 1, function (x) !any(is.na(x)))
+    
+#     m <- SuperLearner(Y=d[subs, LhsVars(f)], X=d[subs, rhs, drop=FALSE], SL.library=SL.library, 
+#                       verbose=FALSE, family=family, newX=newdata[new.subs, rhs, drop=FALSE])
+#     predicted.values <- rep(NA, nrow(newdata))
+#     predicted.values[new.subs] <- m$SL.predict
+#   }
+#   return(list(values=predicted.values, model=m))
+# }
 
 # (DEPRECATED)
 #-----------------------------------------------------------------------------
@@ -694,8 +852,9 @@ get_all_ests.old <- function(data, est_obj) {
   ctrl <- glm.control(trace = FALSE, maxit = 1000)
   SuppressGivenWarnings(m.Q.star_reg_A <- glm(Y ~ -1 + h_iptw + offset(off), data = data.frame(Y = data[, Ynode], off = off, h_iptw = h_iptw),
                                 						subset = !determ.Q, family = est_obj$family, control = ctrl), GetWarningsToSuppress(TRUE))
-	QY.star <- Y
-	if (!is.na(coef(m.Q.star_reg_A))) QY.star <- plogis(off + coef(m.Q.star_reg_A) * h_iptw)
+	# QY.star <- Y
+  QY.star_A <- Y
+	if (!is.na(coef(m.Q.star_reg_A))) QY.star_A <- plogis(off + coef(m.Q.star_reg_A) * h_iptw)
 
   #************************************************
   # TMLE B: estimate the TMLE update via weighted univariate ML (espsilon is intercept)
@@ -729,11 +888,8 @@ get_all_ests.old <- function(data, est_obj) {
   rownames(parsubmodel_fits) <- c("epsilon (covariate)", "alpha (intercept)", "iptw epsilon (covariate)")
   print("parsubmodel_fits"); print(parsubmodel_fits)
 
-  #************************************************
-  # Monte-Carlo (MC) evaluation for all plug-in estimators (TMLE & Gcomp), under stochastic intervention g^*:
-  # TO DO: create a MC specific object with defined structure: models on Q's, data info, etc...
-  # TO DO: create a MC evaluation that can work for any g^*
-	#************************************************
+
+  # run M.C. evaluation estimating psi under g^*:
   MC_fit_params <- append(est_obj,
                       list(m.Q.star_h_A = m.Q.star_reg_A,
                           m.Q.star_h_B = m.Q.star_reg_B,
@@ -742,46 +898,52 @@ get_all_ests.old <- function(data, est_obj) {
                           hgN = df_h_bar_vals$h_c,
                           h_tilde = df_h_bar_vals$h))
 
-  # run M.C. evaluation estimating psi under g^*:
   syst1 <- system.time(MCS_res <- get.MCS_ests.old(data = data,  MC_fit_params = MC_fit_params, fit_h_reg_obj = fit_h_reg_obj))
-	print("time to run MCS: "); print(syst1);
 
-  #************************************************
-  # TO DO: come up with a better way to handle various estimators below:
-  psi_mle <- MCS_res[names(MCS_res) == "gcomp_mle"]
+  print("time to run old MCS: "); print(syst1);
+
   psi_tmle_A <- MCS_res[names(MCS_res) == "tmle_A"]
   psi_tmle_B <- MCS_res[names(MCS_res) == "tmle_B"]
   psi_tmle_iptw <- MCS_res[names(MCS_res) == "tmle_iptw"]
   psi_iptw_h <- mean(Y_IPTW_h)  # IPTW estimator based on h - clever covariate
-  psi_iptw <- mean(Y_IPTW_net)  # IPTW estimator based on full g factorization (prod(g))
+  psi_iptw_g <- mean(Y_IPTW_net)  # IPTW estimator based on full g factorization (prod(g))
+  psi_mle <- MCS_res[names(MCS_res) == "gcomp_mle"]
+
+  ests <- as.vector(c(psi_tmle_A, psi_tmle_B, psi_tmle_iptw, psi_iptw_h, psi_iptw_g, psi_mle))
+  estnames <- c(      "tmle_A",   "tmle_B",   "tmle_g_iptw", "h_iptw",   "g_iptw", "mle")  
+  names(ests) <- estnames
+  ests_mat <- matrix(0L, nrow = length(ests), ncol = 1)
+  ests_mat[, 1] <- ests
+  rownames(ests_mat) <- estnames; colnames(ests_mat) <- "estimate"
+
+  wts_mat <- matrix(0L, nrow = length(h_iptw), ncol = 2)
+  colnames(wts_mat) <- c("h_wts", "g_wts")
+  wts_mat[, "h_wts"] <- h_iptw
+  # wts_mat[, "g_wts"] <- g_iptw
 
   # COMPONENTS OF ASYMPTOTIC VARIANCE FOR TMLE_NET (E_g^*[\bar{Q}_0(A^s,W^s|W^s)]-\psi_0):
   # SUBSTRACT overall estimate of psi_0 from fW_i i-specific components
-  fWi_init <- MCS_res[agrep("fWi_init_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
-  fWi_init_A <- fWi_init - psi_tmle_A
-  fWi_init_B <- fWi_init - psi_tmle_B
-  fWi_init_tmleiptw <- fWi_init - psi_tmle_iptw
+  fWi_mat <- matrix(0L, nrow = nrow(data), ncol = 3)
+  colnames(fWi_mat) <- c("fWi_Qinit", "fWi_Qstar_A", "fWi_Qstar_B")
+  fWi_mat[,"fWi_Qinit"] <- MCS_res[agrep("fWi_init_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
+  fWi_mat[,"fWi_Qstar_A"] <- MCS_res[agrep("fWi_star_A_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
+  fWi_mat[,"fWi_Qstar_B"] <- MCS_res[agrep("fWi_star_B_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
 
-  fWi_star_A <- MCS_res[agrep("fWi_star_A_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
-  fWi_star_B <- MCS_res[agrep("fWi_star_B_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
-  fWi_star_A <- fWi_star_A - psi_tmle_A
-  fWi_star_B <- fWi_star_B - psi_tmle_B
-  print("fWi_star_A and fWi_star_B"); print(c(fWi_star_A=mean(fWi_star_A), fWi_star_B=mean(fWi_star_B)));
+  QY_mat <- matrix(0L, nrow = nrow(data), ncol = 3)
+  colnames(QY_mat) <- c("QY.init", "QY.star_A", "QY.star_B")
+  QY_mat[,"QY.init"] <- QY.init
+  QY_mat[,"QY.star_A"] <- QY.star_A
+  QY_mat[,"QY.star_B"] <- QY.star_B
 
-  MC.ests <- rbind(psi_mle, psi_tmle_A, psi_tmle_B, psi_tmle_iptw, psi_iptw_h, psi_iptw)
-  colnames(MC.ests) <- "estimates"
-  rownames(MC.ests) <- c("psi_mle", "psi_tmle_A", "psi_tmle_B", "psi_tmle_iptw", "psi_iptw_h", "psi_iptw")
-  print("old MC.ests"); print(MC.ests)
+  print(c(fWi_init_A = mean(fWi_mat[,"fWi_Qinit"] - ests["tmle_A"]), fWi_init_B = mean(fWi_mat[,"fWi_Qinit"] - ests["tmle_B"])));
+  print(c(fWi_star_A = mean(fWi_mat[,"fWi_Qstar_A"] - ests["tmle_A"]), fWi_star_B = mean(fWi_mat[,"fWi_Qstar_B"] - ests["tmle_B"])));
 
-  return(list( tmle_A = psi_tmle_A,
-               tmle_B = psi_tmle_B,
-               tmle_iptw = psi_tmle_iptw,
-               iptw_h = psi_iptw_h,
-               iptw = psi_iptw,
-               mle = psi_mle,
-               fWi_init_A = fWi_init_A, fWi_star_A = fWi_star_A,
-               fWi_init_B = fWi_init_B, fWi_star_B = fWi_star_B,
-               fWi_init_tmleiptw = fWi_init_tmleiptw,
-               h_iptw = h_iptw, iptw_reg = g_iptw,
-               QY.init = QY.init, QY.star = QY.star))
+  print("old MC.ests vec: "); print(ests)
+  print("old MC.ests mat: "); print(ests_mat)
+
+  return(list( ests_mat = ests_mat,
+               wts_mat = wts_mat,
+               fWi_mat = fWi_mat,
+               QY_mat = QY_mat
+              ))
 }

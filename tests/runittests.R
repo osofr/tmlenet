@@ -193,21 +193,11 @@ reg_test <- RegressionClass$new(outvar.class = gvars$sVartypes$bin,
 test.continous.sA <- function() {
     # I) Build network vectors: (W, W_netF_1, ..., W_netF_k) for each W in Wnodes by PRE-ALLOCATING netW_full:
     datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, addnFnode = TRUE)
-    # datnetW <- DatNet$new(Odata = data, NetInd_k = NetInd_k, Kmax = k, nodes = node_l, VarNodes = node_l$Wnodes, addnFnode = TRUE, misValRepl = TRUE)
-    netW_full <- datnetW$dat.netVar
-    print("datnetW$ncols.netVar: "%+%datnetW$ncols.netVar);
-    # print("datnetW$names.netVar: "); print(datnetW$names.netVar)
-    # ...
     # II) APPLY THE SUMMARY MEASURE FUNCTIONS / EXPRESSION TO netW_full to OBTAIN sW columns SELECT ONLY sW columns in hform_g0 and hfrom_gstar or use all? 
-    sW_nms <- W_nms # change that to the actual names of summary measures in sW or entire expressions sW
     obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms, norm.c.sVars = TRUE)$dat.sVar
-    print("head(obsdat.sW)"); print(head(obsdat.sW))
-    print("datnetW$type.sVar: "); str(datnetW$type.sVar)
-    print("datnetW$names.c.sVar: "); print(datnetW$names.c.sVar)
     datnetW$def_cbin_intrvls()
     print("Detected intervals: "); print(datnetW$cbin_intrvls)
     print("Detected nbins: "); print(datnetW$nbins)
-
     oldncats1 <- set.maxncats(5)
     oldnbins1 <- set.nbins(10)
     print("No normalization. Binning by mass")
@@ -278,8 +268,36 @@ test.continous.sA <- function() {
     set.nbins(oldnbins1)
 }
 
+test.simplefit.density.sA <- function() {
+  `%+%` <- function(a, b) paste0(a, b)
+  nsamp <- 1000
+  library(simcausal)
 
-test.density.sA <- function() {
+  D <- DAG.empty()
+  D <-
+  D + node("W1", distr = "rbern", prob = 0.5) +
+      node("W2", distr = "rbern", prob = 0.3) +
+      node("W3", distr = "rbern", prob = 0.3) +
+      node("sA1", distr = "rnorm", mean = (0.98 * W1 + 0.58 * W2 + 0.33 * W3), sd = 1) +
+      node("probsA2", distr = "rconst", const = plogis(W1 + W2 - 0.5*W3 - 0.5*sA1)) + 
+      node("sA2", distr = "rbern", prob = plogis(W1 + W2 - 0.5*W3 - 0.5*sA1))
+  D <- set.DAG(D)
+  datO <- sim(D, n = nsamp, rndseed = 12345)
+
+  head(datO)
+  hist(datO$probsA2)
+
+  def_sW <- def.sW(W1="W1", W2="W2", W3="W3", A1_0="A1_0", A2_0="A2_0")
+  def_sA <- def.sA(sA1="sA1", sA2="sA2")
+
+  # #todo 68 (testing) +0: estimate sA using fit.hbars function, verify the fit is correct w/ MSE and plots
+  # #todo 69 (testing) +0: use this test for building a dataset & running tmlenet, making sure the resuts are the same
+
+  # Need to define datNetObs & est_params_list to call fit.hbars:
+  
+}
+
+test.fullfit.density.sA <- function() {
   nsamp <- 1000
   `%+%` <- function(a, b) paste0(a, b)
   library(simcausal)
@@ -294,28 +312,69 @@ test.density.sA <- function() {
 
   D <- DAG.empty()
   D <-
-  D + node("W1", distr = "rbern", prob = 0.5) + 
-      node("W2", distr = "rbern", prob = 0.3) + 
+  D + 
+      # W1, W2, W3, A1_0, A2_0 will play the role of sW:
+      node("W1", distr = "rbern", prob = 0.5) +
+      node("W2", distr = "rbern", prob = 0.3) +
       node("W3", distr = "rbern", prob = 0.3) +
-      node("A1.norm1", distr = "rnorm", mean = 0, sd = 1) + 
-      node("A1.norm2", distr = "rnorm", mean = 0, sd = 1) + 
-      node("alpha", t = 0:1, distr = "rconst", 
-                const = {if(t == 0) {log(0.6)} else {log(1.0)}}) + 
-      node("A1", t = 0:1, distr = "rbivNorm", whichbiv = t + 1, 
-                norms = c(A1.norm1, A1.norm2), 
-                mu = {if (t == 0) {0} else {-0.30 * A1[t-1]}}) + 
+      node("A1.norm1", distr = "rnorm", mean = 0, sd = 1) +
+      node("A1.norm2", distr = "rnorm", mean = 0, sd = 1) +
+      node("alpha", t = 0:1, distr = "rconst",
+                const = {if(t == 0) {log(0.6)} else {log(1.0)}}) +
 
-      node("A2", t = 0:1, distr = "rbern", 
-                prob = plogis(alpha[t] + 
-                              log(5)*A1[t] + {if(t == 0) {0} else {log(5)*A2[t-1]}})) + 
-      node("Y", t = 1, distr = "rnorm", 
-                mean = (0.98 * W1 + 0.58 * W2 + 0.33 * W3 + 
+      # A1_1, A2_1, Y1_1 will play the role of sA:
+      node("A1", t = 0:1, distr = "rbivNorm", whichbiv = t + 1,
+                norms = c(A1.norm1, A1.norm2),
+                mu = {if (t == 0) {0} else {-0.30 * A1[t-1]}}) +
+      node("A2", t = 0:1, distr = "rbern",
+                prob = plogis(alpha[t] + log(5)*A1[t] + {if(t == 0) {0} else {log(5)*A2[t-1]}})) +
+      node("Y1", t = 1, distr = "rnorm",
+                mean = (0.98 * W1 + 0.58 * W2 + 0.33 * W3 +
+                        0.98 * A1[t] - 0.37 * A2[t]),
+                sd = 1) +
+
+      # outcome:
+      node("Y2", t = 1, distr = "rnorm",
+                mean = (Y1[t] + 0.98 * W1 + 0.58 * W2 + 0.33 * W3 +
                         0.98 * A1[t] - 0.37 * A2[t]),
                 sd = 1)
+
   D <- set.DAG(D)
-  datO <- sim(D, n = nsamp)
+  datO <- sim(D, n = nsamp, rndseed = 12345)
   head(datO)
-  
+
+  hist(datO$A1_0)
+  hist(datO$A1_1)
+  plot(density(datO$A1_0))
+  lines(density(datO$A1_1))
+
+  hist(datO$Y1_1)
+  hist(datO$Y2_1)
+  plot(density(datO$Y1_1))
+  lines(density(datO$Y2_1))
+
+  kmax <- 1
+  def_sW <- def.sW(W1="W1", W2="W2", W3="W3", A1_0="A1_0", A2_0="A2_0")
+
+  def_sA <- def.sA(A1_0="A1_1", A2_0="A2_1", Y1_1="Y1_1")
+
+  tmlenet_res <- tmlenet(data = datO, Anode = "A2_1", Wnodes = c("W1", "W2", "W3", "A1_0", "A2_0"), Ynode = "Y2_1",
+                          Kmax = kmax, IDnode = "ID", NETIDnode = "ID",
+                          f_gstar1 = f.A_0,
+                          sW = def_sW, sA = def_sA,
+                          # Qform = Qform, hform = hform, #gform = gform,  # remove
+                          # new way to specify regressions:
+                          Qform.new = "Y2_1 ~ W1 + W2 + W3 + A1_0 + A2_0 + A1_1 + A2_1 + Y1_1",
+                          hform.new = "A1_1 + A2_1 + Y1_1 ~ W1 + W2 + W3 + A1_0 + A2_0",
+                          hform.gstar.new = "A1_1 + A2_1 + Y1_1 ~ W1 + W2 + W3 + A1_0 + A2_0",
+                          gform.new = "A2 ~ W1 + W2 + W3 + A1_0 + A2_0",
+                          opt.params = list(
+                            onlyTMLE_B = TRUE,  # remove
+                            # f_g0 = f.A, # tested, works
+                            n_MCsims = 10
+                          )
+                          )
+
 }
 
 
@@ -375,7 +434,6 @@ test.NetIndClass <- function() {
 
 # TESTING sVar expressions parser:
 test.Define_sVar <- function() {
-
   # ----------------------------------------------------------------------------------------
   # TEST DATA:
   # ----------------------------------------------------------------------------------------

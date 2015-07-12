@@ -1,4 +1,3 @@
-`%+%` <- function(a, b) paste0(a, b)  # cat function
 gvars <- new.env(parent = emptyenv())
 gvars$verbose <- FALSE      # verbose mode (print all messages)
 gvars$misval <- NA_integer_ # the default missing value for observations
@@ -60,23 +59,6 @@ is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
 # character vector of network names is returned. If varnm is also a vector, a 
 # character vector for all possible combinations of (varnm x fidx) is returned.
 #-----------------------------------------------------------------------------
-#### permanently switched to netvar below ####
-# netvar.old <- function(varnm, fidx) { # OUTPUT format: netVarnm_j
-#   cstr <- function(varnm, fidx) {
-#     slen <- length(fidx)
-#     lstr <- vector(mode = "character", length = slen)
-#     rstr <- vector(mode = "character", length = slen)
-#     netidxstr <- !(fidx %in% 0L)
-#     lstr[netidxstr] <- "net"    
-#     rstr[netidxstr] <- str_c('_', fidx[netidxstr])
-#     return(str_c(lstr, varnm, rstr))
-#   }
-#   if (length(varnm) > 1) {
-#     return(unlist(lapply(varnm, cstr, fidx)))
-#   } else {
-#     return(cstr(varnm, fidx))
-#   }
-# }
 # OUTPUT format: Varnm_net.j:
 netvar <- function(varnm, fidx) {
   cstr <- function(varnm, fidx) {
@@ -145,6 +127,8 @@ f.gen.A.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
 }
 
 #------------------------------------------------------------------------------
+# NOT FINISHED
+# # todo 65 (iptw_est) +0: rework iptw_est functions for new package structure
 # IPTW ESTIMATOR (est Y_g_star based on weights g_star(A|W)/g_N(A|W) )
 #------------------------------------------------------------------------------
 iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial", NetInd_k, lbound=0, max_npwt=50, f.g0=NULL, f.g0_args=NULL, iidIPTW=FALSE) {
@@ -206,55 +190,45 @@ iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial"
 	return(ipweights)
 }
 
-# (NOT FINISHED)
+#' @title Predict the h weights under g_0 and g_star using existing m.h.fit model fit
+#' @docType function
+#' @name pred.hbars
+##' @export
+# fit models for m_gAi
 pred.hbars <- function(newdatnet = NULL, m.h.fit) {
     NetInd_k <- newdatnet$netind_cl$NetInd_k
     lbound <- m.h.fit$lbound
-
     # netA_names <- m.h.fit$m.gAi_vec_g$sA_nms
     # determ_cols_Friend <- m.h.fit$determ_cols_Friend # Should this be saved in m.gAi_vec_g and m.gAi_vec_gstar objects instead?
-
     # if (!is.null(newdatnet)) {
     #   determ.g_user <- newdatnet$determ.g
     #   determ_cols_user <- .f.allCovars(k, NetInd_k, determ.g_user, "determ.g_true")
     #   determ_cols <- (determ_cols_user | determ_cols_Friend)
     # }
-
     if (is.null(newdatnet)) {    # use original fitted data for prediction
       # ... NOT IMPLEMENTED ...
       # newdatnet <- m.h.fit$cY_mtx_fitted
       # determ_cols <- m.h.fit$determ_cols_fitted
     }
-
-    # indA <- as.matrix(newdatnet[, netA_names])
     # PASS ENTIRE newdatnet which will get subset, rather than constructing cY_mtx...
-    # newdatnet <- cbind(determ_cols, newdatnet)
-    # print("head(newdatnet):"); print(head(newdatnet))
-    # cY_mtx <- cbind(determ_cols, as.matrix(newdatnet[, c(node_l$nFnode, W_nms, netA_names)]))
-
     # if (h_user==FALSE) {
       h_gN <- m.h.fit$summeas.g0$predict(newdata = newdatnet)$predictAeqa(obs.DatNet.sWsA = newdatnet)
       h_gstar <- m.h.fit$summeas.gstar$predict(newdata = newdatnet)$predictAeqa(obs.DatNet.sWsA = newdatnet)
     # }
-
     h_gstar_gN <- h_gstar / h_gN
     h_gstar_gN[is.nan(h_gstar_gN)] <- 0     # 0/0 detection
     h_gstar_gN <- bound(h_gstar_gN, c(0,1/lbound))
-
     dat_hest <- data.frame(cY.ID = 0,
                           h_gstar = h_gstar,
                           h_gN = h_gN,
                           h_gstar_gN = h_gstar_gN
                           )
-
     return(list(dat_hest = dat_hest))
 }
 
 
-# x) Create a class out of fit.hbars()?
 #' @title Defining and fitting the clever covariate h under g_0 and g_star, i.e. models P(sA[j]|sW,\bar{sA}[j])
 #' @docType function
-# @format An R6 class object.
 #' @name fit.hbars
 # @importFrom assertthat assert_that is.count
 ##' @export
@@ -457,11 +431,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
                                     sW_nms = sW.g0_nms,
                                     subset = subsets_expr,
                                     O.datnetA = O.datnetA)
-  # NO LONGER USED:
-  # summary_params <- list(sA_class = sA_class, sA_nms = O.datnetA$names.sVar,
-  #                         sW_nms = O.datnetW$names.sVar, 
-  #                         subset = subsets_expr, O.datnetA = O.datnetA)
-  # summeas.g0 <- do.call(SummariesModel$new, summary_params)
 
   # print("all intervals DatNet.g0$datnetA: "); print(DatNet.g0$datnetA$cbin_intrvls)
   # print("all intervals (for O.datnetA & O.datnetW) in DatNet.g0: "); print(DatNet.g0$cbin_intrvls)
@@ -469,19 +438,17 @@ fit.hbars <- function(datNetObs, est_params_list) {
   summeas.g0$fit(data = DatNet.g0)
 
   # *********
-  # STILL NEED TO PASS obsdat.sW.sA (observed data sWsA) to predict() funs.
+  # NEED TO PASS obsdat.sW.sA (observed data sWsA) to predict() funs.
   # predict() expects obsdat.sW.sA to be also of class DatNet.sWsA and will call on the same methods of DatNet.sWsA as does fit() (constructing bins, asking for data.frame, etc)
   # If !is.null(f.g_name) then DatNet.g0$dat.sWsA IS NOT THE OBSERVED data (sWsA), but rather sWsA data sampled under known g_0.
   # Option 1: Wipe out DatNet.g0$dat.sWsA with actually observed data - means that we can't use DatNet.g0$dat.sWsA in the future.
   # Option 2: Create a new class DatNet.Obs of DatNet.sWsA - pain in the ass...
   # Going with OPTION 1 for now:
-  # *********
 
-  # if (!is.null(f.g0)) DatNet.g0$make.dat.sWsA(p = 1, f.g_name = NULL, f.g_args = NULL) already generated datNetObs in tmlenet
+  # Already generated datNetObs in tmlenet:
   summeas.g0$predict(newdata = datNetObs) # DOESN'T HAVE TO BE CALLED if (is.null(f.g0)), since PREDICATIONS ARE ALREADY SAVED for obsdat.sW.sA:
   # *********
   h_gN <- summeas.g0$predictAeqa(obs.DatNet.sWsA = datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
-  # h_gN <- summeas.g0$predictAeqa(obsdat.sA = DatNet.g0$O.datnetA$dat.sVar)
   # *********
 
   message("================================================================")
@@ -506,16 +473,9 @@ fit.hbars <- function(datNetObs, est_params_list) {
                                       subset = subsets_expr,
                                       O.datnetA = O.datnetA)
 
-  # NO LONGER USED:
-  # summeas.gstar <- do.call(SummariesModel$new, summary_params)
-
   summeas.gstar$fit(data = DatNet.gstar)
   summeas.gstar$predict(newdata = datNetObs)
   h_gstar <- summeas.gstar$predictAeqa(obs.DatNet.sWsA = datNetObs)
-
-  print("h_gN: "); print(length(h_gN)); print(head(h_gN))
-  print("h_gstar: "); print(length(h_gstar)); print(head(h_gstar))
-  
 
   ###########################################
   # 3) Calculate final h_bar (h_tilde) as ratio of h_gstar / h_gN and bound it
@@ -526,7 +486,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
 
   dat_hest <- data.frame(cY.ID = .f.mkstrNet(datNetObs$dat.sWsA),
                         h_gstar = h_gstar,
-                        h_gN = h_gN,                   
+                        h_gN = h_gN,
                         h_gstar_gN = h_gstar_gN
                         )
 
@@ -537,23 +497,4 @@ fit.hbars <- function(datNetObs, est_params_list) {
 
   return(list(dat_hest = dat_hest, m.h.fit = m.h.fit, datNetObs = datNetObs, DatNet.gstar = DatNet.gstar))
 
-  ###########################################
-  # alternative to above using a function call instead
-  ###########################################
-  # fit.and.predict.h.new <- function(Kmax, sA_nms, sW_nms, hfitdat, newdata, obsdat.sA) { # NOT USED FOR NOW:
-  #   summeas.g <- SummariesModel$new(Kmax = Kmax, sA_nms = sA_nms, sW_nms = W_nms)
-  #   summeas.g$fit(data = hfitdat)
-  #   if (!missing(newdata)) { # don't need to predict again if only need predictions for fit data
-  #     summeas.g$predict(newdata = newdata)
-  #   }
-  #   h_vec.g <- summeas.g$predictAeqa(obsdat.sA = obsdat.sA)
-  #   return(list(h_vec.g = h_vec.g, summeas.g = summeas.g))
-  # }
-  # h_g0.new <- fit.and.predict.h.new(Kmax = Kmax, sA_nms = sA_nms, sW_nms = W_nms, hfitdat = fit.g0_dat, obsdat.sA = obsdat.sA)  # new method based on R6 classes:
-  # summeas.g0 <- h_g0.new$summeas.g
-  # h_gN <- h_g0.new$h_vec.g
-  # h_gstar.new <- fit.and.predict.h.new(Kmax = Kmax, sA_nms = sA_nms, sW_nms = W_nms, hfitdat = fit.gstar_dat, newdata = obsdat.sW.sA, obsdat.sA = obsdat.sA)  # new method based on R6 classes:
-  # summeas.gstar <- h_gstar.new$summeas.g
-  # h_gstar <- h_gstar.new$h_vec.g
-  #---------------------------------------------------------------------------------
 }

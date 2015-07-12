@@ -2,8 +2,7 @@ rm(list=ls())
 
 #------------------------------------
 # Packages / package functions used so far inside tmlenet.
-# If you are using just a few functions from another package,
-# my recommendation is to note the package name in the Imports: field of the DESCRIPTION
+# If you are using just a few functions from another package, my recommendation is to note the package name in the Imports: field of the DESCRIPTION
 # file and call the function(s) explicitly using ::, e.g., pkg::fun().
 
 # If you are using functions repeatedly, you can avoid :: by importing the function with @importFrom pgk fun. 
@@ -23,13 +22,7 @@ options(echo = TRUE)
 options(width = 160)
 
 library(devtools)
-# load all R files in /R and datasets in /data. Ignores NAMESPACE:
-load_all("../")
-# source("BinarySummary_class.R")
-# source("DatNet_class.R")
-# source("Summaries_class.R")
-# source("summarymeasures.R")
-# source("tmlenet.R")
+load_all("../") # load all R files in /R and datasets in /data. Ignores NAMESPACE:
 
 #--------------------------------------------------------
 # NOTE: arguments n_MCsims and n_samp_g0gstar specify the number of Monte-Carlo sims tmlenet needs to run
@@ -74,13 +67,27 @@ mean(df_K6$A) # [1] 0.198
 mean(df_K6$Y) # [1] 0.435
 mean(df_K6$nFriends) # [1] 3.307
 
+# # NEW INTERFACE FOR SPECIFYING hform, Qform, gform:
+# testform1 <- as.formula("sA + sA2 ~ sW1 + netW3_sum")
+# testform2 <- as.formula("netA ~ netW2 + netW3_sum")
+# testform <- testform1
+# testterms <- terms(testform)
+# # Getting predictor sW names:
+# (sW.names <- attributes(testterms)$term.labels)
+# sW.names.alt <- colnames(attributes(testterms)$factors)
+# assert_that(all(sW.names == sW.names.alt))
+# # Getting outcome sA names:
+# (out.var <- rownames(attributes(testterms)$factors)[1]) # character string
+# out.vars.form <- as.formula(". ~ " %+% out.var)
+# out.vars.terms <- terms(out.vars.form)
+# (sA.names <- attributes(out.vars.terms)$term.labels)
 
 # --------------------------------------------------
 # SUMMARY MEASURES
 # --------------------------------------------------
 # Defined with R expressions, s.a.,  W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax; sum(W2[[1:Kmax]]) is netW2_sum
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
-				def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+            def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
 # Examples of various summary measures:
 	# TO USE true g0 (including all vars g0 depends on):
 	# def_sW <- def.sW(netW1 = W1[[0:Kmax]], noname = TRUE) + 
@@ -103,9 +110,8 @@ def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
 # def_sW$sVar.noname
 
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceMisVal0 = TRUE) +
-			def.sA(netA = A[[0:Kmax]], noname = TRUE)
-			
-			
+            def.sA(netA = A[[0:Kmax]], noname = TRUE)
+
 # def_sA <- def.sA(netA = A[[0:Kmax]], noname = TRUE)
 # def_sA <- def.sA("A[[0:Kmax]]", sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))
 
@@ -129,61 +135,36 @@ def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), repla
 Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
 head(df_K6)
 
-# #todo 62 (tmlenet) +0: verify that old and new as. Vars are equivalent
+# #todo 67 (tmlenet) +0: add data checks: 1) test Anode is binary; 2) no missing data among A,W,Y
 system.time(
 tmlenet_K6out2 <- tmlenet(data = df_K6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
-						Kmax = kmax, IDnode = "IDs", NETIDnode = "Net_str",
-						f_gstar1 = f.A_0,
+                          Kmax = kmax, IDnode = "IDs", NETIDnode = "Net_str",
+                          f_gstar1 = f.A_0,
+                          sW = def_sW, sA = def_sA,
+                          Qform = Qform, hform = hform, #gform = gform,  # remove
+                          # new way to specify regressions:
+                          Qform.new = "Y ~ netW3_sum + sum_1mAW2_nets",
+                          hform.new = "netA ~ netW2 + netW3_sum + nFriends",
+                          hform.gstar.new = "netA ~ netW3_sum",
+                          gform.new = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
+                          opt.params = list(
+                            onlyTMLE_B = FALSE,  # remove
+                            # f_g0 = f.A, # tested, works
+                            n_MCsims = 10
+                          )
+                          ))
+                          # alternative way to pass summary measures:
+                          # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
+                          # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
+tmlenet_K6out2$EY_gstar1$estimates
+tmlenet_K6out2$EY_gstar1$vars
+tmlenet_K6out2$EY_gstar1$CIs
+tmlenet_K6out2$EY_gstar1$other.vars
 
-						# f_g0 = f.A,	# tested, works
-
-						sW = def_sW, sA = def_sA,
-						Qform = Qform, hform = hform, #gform = gform,  # remove
-						# new way to specify regressions:
-						Qform.new = "Y ~ netW3_sum + sum_1mAW2_nets",
-						hform.new = "netA ~ netW2 + netW3_sum + nFriends",
-						hform.gstar.new = "netA ~ netW3_sum",
-						gform.new = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
-						onlyTMLE_B = FALSE,  # remove
-						n_MCsims = 10
-						))
-						# nQ.MCsims = 10, ng.MCsims = 10, # removed
-						# alternative way to pass summary measures:
-						# sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
-						# sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
-
-# # NEW INTERFACE FOR SPECIFYING hform, Qform, gform:
-# testform1 <- as.formula("sA + sA2 ~ sW1 + netW3_sum")
-# testform2 <- as.formula("netA ~ netW2 + netW3_sum")
-# testform <- testform1
-# testterms <- terms(testform)
-# # Getting predictor sW names:
-# (sW.names <- attributes(testterms)$term.labels)
-# sW.names.alt <- colnames(attributes(testterms)$factors)
-# assert_that(all(sW.names == sW.names.alt))
-# # Getting outcome sA names:
-# (out.var <- rownames(attributes(testterms)$factors)[1]) # character string
-# out.vars.form <- as.formula(". ~ " %+% out.var)
-# out.vars.terms <- terms(out.vars.form)
-# (sA.names <- attributes(out.vars.terms)$term.labels)
-
+# ================================================================
+# COMPARING OLD vs NEW OUTPUT
 # N=1,000
-# new h method has no subsetting (include degenerate outcome sA):
-						   # old:     # new:
-# epsilon (covariate)      0.02549743 0.04468718
-# alpha (intercept)        0.05410938 0.09888994
-# iptw epsilon (covariate) 0.03556655 0.03556655
-
-			# old:		# new:
-# tmle_A     0.5053725 0.5116754
-# tmle_B     0.5051903 0.5119461
-# iid.tmle_B 0.4475714 0.4475714
-# tmle_iptw  0.5123310 0.5123310
-# iptw_h     0.5065960 0.5185523
-# iptw       0.4910014 0.4910014
-# iid.iptw   0.4429414 0.4429414
-# mle        0.4970377 0.4970377
-
+# ================================================================
 # with h method is subsetting (excluding degenerate outcome sA):
                              # old: 	# new:
 # epsilon (covariate)      0.02549743 0.02549743
@@ -199,7 +180,6 @@ tmlenet_K6out2 <- tmlenet(data = df_K6, Anode = "A", Wnodes = Wnodes, Ynode = "Y
 # iptw       0.4910014 0.4910014
 # iid.iptw   0.4429414 0.4429414
 # mle        0.4970377 0.4970377
-
 # ================================================================
 # NEW INTERFACE FINAL RESULTS WITH MC EVAL (FULL MATCH TO OLD)
 # gIPTW and TMLE_gIPTW AREN'T YET IMPLEMENTED
@@ -209,22 +189,68 @@ tmlenet_K6out2 <- tmlenet(data = df_K6, Anode = "A", Wnodes = Wnodes, Ynode = "Y
 # alpha (intercept)   0.05410938
 # [1] "time to run MCS: "
 #    user  system elapsed 
-#   0.099   0.014   0.112 
-# [1] "fWi_star_A and fWi_star_B"
-# fWi_star_A fWi_star_B 
-# -0.5053725 -0.5051903 
-# [1] "new MC.ests"
-#               estimates
-# psi_mle       0.4970377
-# psi_tmle_A    0.5053725
-# psi_tmle_B    0.5051903
-# psi_tmle_iptw 0.0000000
-# psi_iptw_h    0.5065960
-# psi_iptw      0.0000000
+#   0.099   0.010   0.109 
+#   fWi_init_A   fWi_init_B   fWi_star_A   fWi_star_B 
+# -0.008334713 -0.008152518 -0.505372462 -0.505190268 
+# [1] "new MC.ests vec: "
+#      tmle_A      tmle_B tmle_g_iptw      h_iptw      g_iptw         mle 
+#   0.5053725   0.5051903   0.0000000   0.5065960   0.0000000   0.4970377 
+# [1] "new MC.ests mat: "
+#              estimate
+# tmle_A      0.5053725
+# tmle_B      0.5051903
+# tmle_g_iptw 0.0000000
+# h_iptw      0.5065960
+# g_iptw      0.0000000
+# mle         0.4970377
 
+# ================================================================
+# COMPARING OLD vs NEW Vars & CIs:
+# ================================================================
 
-tmlenet_K6out2$estimates$EY_g1.star$tmle_B
-tmlenet_K6out2$estimates$EY_g1.star$CI_tmle_B_iidIC
+# OLD tmle results object:
+# > tmlenet_K6out2$EY_gstar1$vars
+#                      var
+# tmle_A      0.0009265246
+# tmle_B      0.0009268804
+# tmle_g_iptw 0.0005006418
+# h_iptw      0.0021023317
+# g_iptw      0.0060034386
+# mle         0.0000000000
+# > tmlenet_K6out2$EY_gstar1$CIs
+#             LBCI_0.025 UBCI_0.975
+# tmle_A       0.4457134  0.5650315
+# tmle_B       0.4455197  0.5648608
+# tmle_g_iptw  0.4698876  0.5575961
+# h_iptw       0.4167293  0.5964627
+# g_iptw       0.3669720  0.6706953
+# mle          0.4970377  0.4970377
+# > tmlenet_K6out2$EY_gstar1$other.vars
+# var_iid.tmle_B var_tmleiptw_2ndO     var_iptw_2ndO var_tmle_A_Q.init var_tmle_B_Q.init 
+#    0.0004350965      0.0003162110      0.0789868609      0.0008532711      0.0008535512 
+
+# NEW CIs:
+# gIPTW and TMLE_gIPTW AREN'T YET IMPLEMENTED
+# $EY_gstar1$vars
+#                      var
+# tmle_A      0.0009265246
+# tmle_B      0.0009268804
+# tmle_g_iptw 0.0069826701
+# h_iptw      0.0021023317
+# g_iptw      0.0000000000
+# mle         0.0000000000
+# $EY_gstar1$CIs
+#             LBCI_0.025 UBCI_0.975
+# tmle_A       0.4457134  0.5650315
+# tmle_B       0.4455197  0.5648608
+# tmle_g_iptw -0.1637792  0.1637792
+# h_iptw       0.4167293  0.5964627
+# g_iptw       0.0000000  0.0000000
+# mle          0.4970377  0.4970377
+# > tmlenet_K6out2$EY_gstar1$other.vars
+#    var_iid.tmle_B var_tmleiptw_2ndO     var_iptw_2ndO var_tmle_A_Q.init var_tmle_B_Q.init 
+#      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512 
+
 
 #----------------------------------------------------------------------------------
 # Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
@@ -323,6 +349,8 @@ tmlenet_out3$estimates$ATE$CI_iptw_iidIC_2ndO
 
 # MLE
 tmlenet_out3$estimates$ATE$mle
+
+
 
 
 

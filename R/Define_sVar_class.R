@@ -24,8 +24,11 @@ isValidAndUnreservedName <- function(string) {
   make.names(string) == string 	# make.names converts any string into a valid R object name
 }
 
-is.Define_sVar <- function(obj) "Define_sVar" %in% class(obj)
+# Wrappers for Define_sVar$new(...) constructor:
+def.sW <- function(...) Define_sVar$new(..., type = "sW", user.env = parent.frame())
+def.sA <- function(...) Define_sVar$new(..., type = "sA", user.env = parent.frame())
 
+is.Define_sVar <- function(obj) "Define_sVar" %in% class(obj)
 # #todo 42 ('+.Define_sVar') +0: Allow adding character vector summary measures for sVar2, s.a., def.sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
 # S3 method '+' for adding two Define_sVar objects
 # Summary measure lists in both get added as c(,) into the summary measures in sVar1 object
@@ -76,15 +79,6 @@ is.Define_sVar <- function(obj) "Define_sVar" %in% class(obj)
   return(sVar1)
 }
 
-
-# Wrappers for Define_sVar$new(...) constructor:
-# def.sQ <- function(...) Define_sVar$new(..., type = "sQ", user.env = parent.frame())
-# def.sW <- function(..., type.g0 = TRUE) if (type.g0) {def.sW.g0(...)} else {def.sW.gstar(...)}
-def.sW <- function(...) Define_sVar$new(..., type = "sW", user.env = parent.frame())
-def.sA <- function(...) Define_sVar$new(..., type = "sA", user.env = parent.frame())
-# def.sW.g0 <- function(...) Define_sVar$new(..., type = "sW.g0", user.env = parent.frame())
-# def.sW.gstar <- function(...) Define_sVar$new(..., type = "sW.gstar", user.env = parent.frame())
-
 # take sVar expression index and evaluate:
 parse.sVar.out <- function(sVar.idx, self) {
   sVar.expr <- self$sVar.exprs[[sVar.idx]]
@@ -126,6 +120,24 @@ parse.sVar.out <- function(sVar.idx, self) {
   return(evaled_expr)
 }
 
+## ---------------------------------------------------------------------
+#' @title Class for defining and evaluating user-specified summary measures (sVar.exprs)
+#' @docType class
+#' @format An R6 class object.
+#' @name mcEvalPsi
+#' @details Following fields are created during initialization
+#' \itemize{
+#' \item{nodes} ...
+#' \item{subset_regs} ...
+#' \item{sA_nms} ...
+#' \item{sW_nms} ...
+#' \item{Kmax} ...
+#' }
+#' Evaluates and and stores arbitrary summary measure expressions. 
+#' The expressions (sVar.exprs) are evaluated in the environment of the input data.frame.
+#' @importFrom R6 R6Class
+#' @importFrom assertthat assert_that
+##' @export
 Define_sVar <- R6Class("Define_sVar",
   class = TRUE,
   portable = TRUE,
