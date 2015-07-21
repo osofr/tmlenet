@@ -448,8 +448,6 @@ test.iid.tmlefit <- function() {
 }
 
 
-
-
 test.iid.bivNorm.tmlefit <- function() {
 
   rbivNorm <- function(n, whichbiv, norms, mu, var1 = 1, var2 = 1, rho = 0.7) {

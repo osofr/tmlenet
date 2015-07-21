@@ -5,9 +5,11 @@ gvars$misval <- NA_integer_ # the default missing value for observations
 # gvars$misval <- -.Machine$integer.max
 gvars$misXreplace <- 0L     # the default replacement value for misval that appear in the design matrix
 gvars$tolerr <- 10^-12      # tolerance error: assume for abs(a-b) < gvars$tolerr => a = b
-gvars$maxncats <- 5L        # max number of categories for sA[j]. If more, automatically considered continuous
+gvars$maxncats <- 5L        # max number of unique categories a categorical variable sA[j] can have. If sA[j] has more it is automatically considered continuous
 # gvars$maxncats <- 10L
-gvars$nbins <- 10L          # default n bins for continous var
+gvars$nbins <- 15L          # default n bins for continous var
+# gvars$nbins <- 50L        # default n bins for continous var
+gvars$max_nperbin <- 500L   # max number of observations per 1 bin (for data-adaptive bin defns) - CONSIDER REVERSING THIS BACK TO nbins alone
 gvars$sVartypes <- list(bin = "binary", cat = "categor", cont = "contin")
 
 # returns a function (alternatively a call) that tests for missing values in sA / sW
@@ -105,10 +107,12 @@ f.gen.probA.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
   probA <- .f_g_wrapper(k, df_AllW, fcn_name, f_args)
   return(probA)
 }
-
 f.gen.A.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
   n <- nrow(df_AllW)
   rbinom(n, 1, f.gen.probA.star(k, df_AllW, fcn_name, f_args))
+}
+f.gen.A.star.cont <- function(k, df_AllW, fcn_name, f_args = NULL) {
+  f.gen.probA.star(k, df_AllW, fcn_name, f_args)
 }
 
 # (DEPRECATED) NEEDS TO BE REPLACED WITH BinOutModel based prediction
@@ -127,7 +131,7 @@ f.gen.A.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
 }
 
 #------------------------------------------------------------------------------
-# NOT FINISHED
+# NOT FINISHED, CURRENTLY NOT WORKING
 # # todo 65 (iptw_est) +0: rework iptw_est functions for new package structure
 # IPTW ESTIMATOR (est Y_g_star based on weights g_star(A|W)/g_N(A|W) )
 #------------------------------------------------------------------------------
@@ -227,7 +231,7 @@ pred.hbars <- function(newdatnet = NULL, m.h.fit) {
 }
 
 
-#' @title Defining and fitting the clever covariate h under g_0 and g_star, i.e. models P(sA[j]|sW,\bar{sA}[j])
+#' @title Defining and fitting the clever covariate h under g_0 and g_star, i.e. models P(sA[j] | sW,sA[j])
 #' @docType function
 #' @name fit.hbars
 # @importFrom assertthat assert_that is.count
@@ -235,7 +239,7 @@ pred.hbars <- function(newdatnet = NULL, m.h.fit) {
 # fit models for m_gAi
 #---------------------------------------------------------------------------------
 fit.hbars <- function(datNetObs, est_params_list) {
-  message("... running fit.hbars() ...")  
+  message("... running fit.hbars() ...")
   .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" "))  # defining the vector of c^A's that needs evaluation under h(c)
   #---------------------------------------------------------------------------------
   # PARAMETERS FOR LOGISTIC ESTIMATION OF h
@@ -297,8 +301,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
   #---------------------------------------------------------------------------------
   # Summary measure names / expression
   sA_nms <- h.sVars$outvars
-
-
   assert_that(all(sA_nms == h.gstar.sVars$outvars))
   # *****
   # CHECK THAT THESE SUMMARY MEASURES EXIST IN O.datnetW$names.sVar
@@ -306,7 +308,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
   print("check.sA.exist"); print(check.sA.exist)
   assert_that(all(check.sA.exist))
   # *****
-
   # sA_nms <- O.datnetA$names.sVar
   # ***********
   # Detect intervals for continous covars in sVar
@@ -373,6 +374,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
                                           if(inherits(subset_expr, "try-error")) stop("can't parse the subset formula", call.=FALSE)
                                           eval(substitute(substitute(e, env = substitute_list), list(e = subset_expr)))
                                         })
+
   # print("subsets_expr: "); print(subsets_expr)
 
   ##########################################
@@ -393,9 +395,9 @@ fit.hbars <- function(datNetObs, est_params_list) {
   message("================================================================")
 
   p_h0 <- ifelse(is.null(f.g0), 1, ng.MCsims)
-  
+
 # ******************************************************************************************************************
-#                         **************** NOTE. VERY IMPORTANT ****************
+# **************** NOTE. VERY IMPORTANT ****************
 # Note the order in which SummariesModel$new & DatNet.g0$make.dat.sWsA are called is very important!!!!
 # If relyng on automatic interval detection for inside ContinSummaryModel$new (O.datnetA$set.sVar.intrvls & O.datnetA$detect...)
 # for cont sVar (that hasn't had its intervals defined yet), calling DatNet.g0$make.dat.sWsA BEFORE SummariesModel$new is bad!

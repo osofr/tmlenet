@@ -69,10 +69,10 @@ NetIndClass <- R6Class("NetIndClass",
     nobs = NA_integer_,        # n observations
     Kmax = NA_integer_,        # max number of friends
     IDnode = NULL,             # name of the column in Odata with unit ids
-    NETIDnode = character(),   # name of the column in Odata with a list of friend ids (as a string, with ids separated by sep)
+    NETIDnode = NULL,   	     # name of the column in Odata with a list of friend ids (as a string, with ids separated by sep)
     sep = ' ',                 # character separating two friend ids from column NETIDnode
 
-    initialize = function(Odata, Kmax, IDnode = NULL, NETIDnode, sep = ' ') {
+    initialize = function(Odata, Kmax = 1, IDnode = NULL, NETIDnode = NULL, sep = ' ') {
       assert_that(is.data.frame(Odata))
       nobs <<- nrow(Odata)
 
@@ -84,17 +84,21 @@ NetIndClass <- R6Class("NetIndClass",
         IDnode <<- IDnode
       }
 
-      assert_that(is.character(NETIDnode))
-      NETIDnode <<- NETIDnode
+      if (!is.null(NETIDnode)) {
+        assert_that(is.character(NETIDnode))
+        NETIDnode <<- NETIDnode
+        assert_that(is.string(sep))
+        sep <<- sep
+        # could pre-allocate NetInd_k mat: # NetInd_k <<- matrix(0L, nrow = nobs, ncol = Kmax)
+        resNets <- getNetInd(data = Odata, Kmax = Kmax, IDnode = IDnode, NETIDnode = NETIDnode, sep = sep)
+        nF <<- resNets$nF
+        NetInd_k <<- resNets$NetInd_k
+      } else {
+        message("no NETIDnode arg; assuming the input data obs are independent (no network structure, 0 friends)")
+        nF <<- rep.int(0L,nobs)
+        NetInd_k <<- matrix(NA_integer_, nrow = nobs, ncol = Kmax)
+      }
 
-      assert_that(is.string(sep))
-      sep <<- sep
-
-      # could pre-allocate NetInd_k mat: # NetInd_k <<- matrix(0L, nrow = nobs, ncol = Kmax)
-      resNets <- getNetInd(data = Odata, Kmax = Kmax, IDnode = IDnode, NETIDnode = NETIDnode, sep = sep)
-      
-      nF <<- resNets$nF
-      NetInd_k <<- resNets$NetInd_k
       invisible(self)
     },
 
@@ -120,28 +124,29 @@ NetIndClass <- R6Class("NetIndClass",
       makeKmaxIDvec <- function(NetIDVec) c(as.integer(NetIDVec), rep_len(NA_integer_, Kmax - length(NetIDVec)))
 
       Net_str <- as.character(data[,NETIDnode])
+      # #todo 72 (NetIndClass) +0: lapply step is too slow for large number of obs
       NetIDs_l <- lapply(Net_str, splitstr_tovec) # Get list of n NET ID (character) vectors from NETIDnode
       NetRows_l <- NetIDs_l
 
       # if !is.null(IDnode), get the network row #s from IDs:
       if (!is.null(IDnode)) {
         IDs <- as.vector(data[, IDnode])
+        # #todo 73 (NetIndClass) +0: this lapply step is too slow for large number of obs
         NetRows_l <- lapply(NetIDs_l, getRowsfromIDs)
       }
       # NetVec_l <<- NetRows_l (NOT USED)
+
       # Make an array (n x Kmax) of network rows (filling remainder of each row with NA's)
-      NetInd_k <- t(sapply(NetRows_l, makeKmaxIDvec))
-      # NetInd_k <<- t(sapply(NetRows_l, makeKmaxIDvec))
+      NetInd_k <- as.matrix(vapply(NetRows_l, makeKmaxIDvec, FUN.VALUE = rep.int(0L, Kmax), USE.NAMES = FALSE))
+      if (Kmax > 1L) NetInd_k <- t(NetInd_k) # for Kmax > 1 need to transpose since the output mat will have dims (Kmax x nrow(data))
       nF <- as.integer(.rowSums(! is.na(NetInd_k), m = nobs, n = Kmax))
-      # nF <<- as.integer(.rowSums(! is.na(NetInd_k), m = nobs, n = Kmax))
       return(list(nF = nF, NetInd_k = NetInd_k)) # invisible(self)
     },
 
     mat.nF = function(nFnode) {
       assert_that(is.string(nFnode))
       nF <- as.matrix(nF)
-      colnames(nF) <- nFnode
-      # colnames(nF) <- "nF"
+      colnames(nF) <- nFnode # colnames(nF) <- "nF"
       nF
     }
   ),
@@ -191,31 +196,38 @@ normalize_sVar <- function(sVar_vec) {
   }
   sVar_vec
 }
-normalize_matsVar <- function(sVar_mat) {
-  apply(sVar_mat, 2, normalize_sVar)
-}
+normalize_matsVar <- function(sVar_mat) apply(sVar_mat, 2, normalize_sVar)
+
 # Define bin cutt-offs for continuous x:
-define.intervals <- function(x, nbins = gvars$nbins, bin_bymass = TRUE) {
+define.intervals <- function(x, nbins = gvars$nbins, bin_bymass, max_nperbin) {
   x <- x[!gvars$misfun(x)]  # remove missing vals
   nvals <- length(unique(x))
-  if (nvals < nbins) nbins <- nvals # if nbins is too high, for ordinal, set nbins to n unique obs
+  if (nvals < nbins) { # if nbins is too high, for ordinal, set nbins to n unique obs and cancel quantile based interval defns
+    nbins <- nvals 
+    bin_bymass <- FALSE
+  }
 
   if (abs(max(x) - min(x)) > gvars$tolerr) {  # when x is not constant
-    intvec <- seq.int(from = min(x), to = max(x), length.out = (nbins + 1)) # interval type 1: bin x by equal length intervals of 0-1
+    if ((bin_bymass) & !is.null(max_nperbin)) {
+      if ((length(x) / max_nperbin) > nbins) nbins <- as.integer(length(x) / max_nperbin)
+    }
+    intvec <- seq.int(from = min(x), to = max(x) + 1, length.out = (nbins + 1)) # interval type 1: bin x by equal length intervals of 0-1
+
   } else {  # when x is constant, force the smallest possible interval to be at least [0,1]
     intvec <- seq.int(from = min(0L, min(x)), to = max(1L, max(x)), length.out = (nbins + 1))
   }
+
   if (bin_bymass) intvec <- quantile(x = x, probs = normalize(intvec)) # interval type 2: bin x by mass (quantiles of 0-1 intvec as probs)
+
   return(intvec) # return(list(intbylen = intvec, intbymass = intvecq))
 }
+
 # Turn any x into ordinal (1, 2, 3, ..., nbins) for a given interval cutoffs (length(intervals)=nbins+1)
 make.ordinal <- function(x, intervals) findInterval(x = x, vec = intervals, rightmost.closed = TRUE)
 
-# Remove the column naming for dummies_mat or keep for reference?
 # Make dummy indicators for continuous x (sA[j])
 make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
-# make.bins_mtx_1 = function(x.ordinal, nbins, bin.nms) { # Make dummy indicators for continuous x (sA[j])
-  # Approach 1: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
+  # Approach: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
   n <- length(x.ordinal)
   cats <- 1 : nbins
   dummies_mat <- matrix(1L, nrow = n, ncol = length(cats))
@@ -312,7 +324,7 @@ DatNet <- R6Class(classname = "DatNet",
     nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
 
 
-    # replace with new version (VarNodes are no longer needed)
+    # replace with new version (VarNodes are no longer needed):
     # initialize = function(netind_cl, nodes, addnFnode = FALSE, ...) {
     initialize = function(netind_cl, nodes, VarNodes, addnFnode = FALSE, ...) {
 
@@ -364,7 +376,7 @@ DatNet <- R6Class(classname = "DatNet",
     # **********************
     # Define summary measures sVar
     # **********************
-    # type.sVar acts as a flag: only detect types when !is.n, addnFnode = TRUEu
+    # type.sVar acts as a flag: only detect types when !is.n, addnFnode = TRUE
     make.sVar = function(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE) {
       assert_that(is.data.frame(Odata))
       self$nOdata <- nrow(Odata)
@@ -377,12 +389,10 @@ DatNet <- R6Class(classname = "DatNet",
 
       self$sVar.object <- sVar.object
       if (self$addnFnode) { nFnode <- self$nodes$nFnode } else { nFnode <- NULL }
-
       self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl, addnFnode = nFnode)
 
       # self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl,
       #                                           misXreplace = self$usemisval, addnFnode = nFnode)
-
       # below was replaced with new sVar names that aren't nec. part of netVar:
       # assert_that(all(names.sVar %in% self$names.netVar))
       # n.sVar <- length(names.sVar)
@@ -439,6 +449,7 @@ DatNet <- R6Class(classname = "DatNet",
       invisible(self)
     },
 
+    # 07/14/15: Currently, not called from anywhere. The only place where intervals are defined is inside ContinSummaryModel$new that calls DatBin.sW.sA$detect.sVar.intrvls(sVar)
     # *** TO DO ***: Make sure that a categorical var is only binned when ncats > nbins
     # *** TO DO ***: Make sure cat sVar doesn't get degenerate intervals (bins) (repeating same cut-offs)
     # Add arg (overwrite = FALSE)
@@ -446,39 +457,39 @@ DatNet <- R6Class(classname = "DatNet",
     # Define the bin cut-off intervals for continous sVars
     # cbin_intrvls arg acts as a flag: only detect intervals when the arg is missing
     # otherwise can pass list(sVar = NA, ...) or as a default vector: c(0, 0.1, ..., 1)
-    def_cbin_intrvls = function(cbin_intrvls, nbins = gvars$nbins, bin_bymass = TRUE) {
-      # 1) select cont. sVars, proceed if length(c.sVars) > 0
-      names.c.sVar <- self$names.c.sVar
-      if (length(names.c.sVar) == 0L) {
-        self$cbin_intrvls <- list()
-        return(invisible(self))
-      }
-      # 2) for each c.sVars define (nbins+1) bin cutoff points
-      # Unless its ordinal and ncats < nbins then define nbins = ncats
-      if (missing(cbin_intrvls)) {
-        cbin_intrvls <- vector(mode = "list", length = length(names.c.sVar))
-        names(cbin_intrvls) <- names.c.sVar
-        for (idx in seq_along(names.c.sVar)) {
-          cbin_intrvls[[idx]] <- self$detect.sVar.intrvls(name.sVar = names.c.sVar[idx], nbins = nbins, bin_bymass = bin_bymass)
-        }
-        self$cbin_intrvls <- cbin_intrvls
-      }
-      # **** THE ROBUSTNESS CHECKS ARE NOT FINISHED **** 
-      # 3) if !is.null(cbin_intrvls), check that cbin_intrvls is either a list of length(c.sVars) and that names match or 
-      # 4) that cbin_intrvls is a vector & is.numeric(cbin_intrvls) & 
-      # (max(cbin_intrvls) >= 1 && min(cbin_intrvls) <= 0)
-      # or: (max(cbin_intrvls) >= max(sVar) && min(cbin_intrvls) <= min(norm(sVar)))
-      if (!missing(cbin_intrvls)) {  # allows overriding of self$cbin_intrvls
-        # ... check that names match before overwriting
-        if (is.list(cbin_intrvls)) {
-          self$cbin_intrvls <- cbin_intrvls
-        } else if (is.numeric(cbin_intrvls)){
-          self$cbin_intrvls <- rep(list(cbin_intrvls), length(names.c.sVar))
-          names(self$cbin_intrvls) <- names.c.sVar
-        }
-      }
-      invisible(self)
-    },
+    # def_cbin_intrvls = function(cbin_intrvls, nbins = gvars$nbins, bin_bymass) {
+    #   # 1) select cont. sVars, proceed if length(c.sVars) > 0
+    #   names.c.sVar <- self$names.c.sVar
+    #   if (length(names.c.sVar) == 0L) {
+    #     self$cbin_intrvls <- list()
+    #     return(invisible(self))
+    #   }
+    #   # 2) for each c.sVars define (nbins+1) bin cutoff points
+    #   # Unless its ordinal and ncats < nbins then define nbins = ncats
+    #   if (missing(cbin_intrvls)) {
+    #     cbin_intrvls <- vector(mode = "list", length = length(names.c.sVar))
+    #     names(cbin_intrvls) <- names.c.sVar
+    #     for (idx in seq_along(names.c.sVar)) {
+    #       cbin_intrvls[[idx]] <- self$detect.sVar.intrvls(name.sVar = names.c.sVar[idx], nbins = nbins, bin_bymass = bin_bymass)
+    #     }
+    #     self$cbin_intrvls <- cbin_intrvls
+    #   }
+    #   # **** THE ROBUSTNESS CHECKS ARE NOT FINISHED **** 
+    #   # 3) if !is.null(cbin_intrvls), check that cbin_intrvls is either a list of length(c.sVars) and that names match or 
+    #   # 4) that cbin_intrvls is a vector & is.numeric(cbin_intrvls) & 
+    #   # (max(cbin_intrvls) >= 1 && min(cbin_intrvls) <= 0)
+    #   # or: (max(cbin_intrvls) >= max(sVar) && min(cbin_intrvls) <= min(norm(sVar)))
+    #   if (!missing(cbin_intrvls)) {  # allows overriding of self$cbin_intrvls
+    #     # ... check that names match before overwriting
+    #     if (is.list(cbin_intrvls)) {
+    #       self$cbin_intrvls <- cbin_intrvls
+    #     } else if (is.numeric(cbin_intrvls)){
+    #       self$cbin_intrvls <- rep(list(cbin_intrvls), length(names.c.sVar))
+    #       names(self$cbin_intrvls) <- names.c.sVar
+    #     }
+    #   }
+    #   invisible(self)
+    # },
 
     # #todo 18 (DatNet, DatNet.sWsA) +0: (OPTIONAL) ENABLE ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO DatNet
     # #todo 25 (DatNet, add_det) +0: Need to save det node flags as a separate mat, can't add them to sVar since all sVars will be automatically added to A ~ predictors
@@ -517,10 +528,9 @@ DatNet <- R6Class(classname = "DatNet",
     set.sVar.type = function(name.sVar, new.type) { self$type.sVar[[name.sVar]] <- new.type },
     get.sVar.type = function(name.sVar) { if (missing(name.sVar)) { self$type.sVar } else { self$type.sVar[[name.sVar]] } },
     
-    # *** NOTE *** When sVar is cat might be better to set bin_bymass = FALSE to avoid collapsing of categories for sVar
-    # detect.sVar.intrvls = function(name.sVar, nbins = gvars$nbins, bin_bymass = FALSE) {
-    detect.sVar.intrvls = function(name.sVar, nbins = gvars$nbins, bin_bymass = TRUE) {
-      int <- define.intervals(x = self$dat.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass)
+    # #todo 71 (DatNet.sWsA) +0: *** NOTE *** When sVar is cat might be better to set bin_bymass = FALSE to avoid collapsing of categories for sVar
+    detect.sVar.intrvls = function(name.sVar, nbins = gvars$nbins, bin_bymass, max_nperbin) {
+      int <- define.intervals(x = self$dat.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass, max_nperbin = max_nperbin)
       if (length(unique(int)) < length(int)) {
         message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+% (length(int)-1) %+% " to " %+% (length(unique(int))-1) %+% " due to too few obs.")
         print("old intervals: "); print(int)
@@ -543,9 +553,19 @@ DatNet <- R6Class(classname = "DatNet",
     },
     # return matrix of bin indicators for ordinal
     binirize.sVar = function(name.sVar, intervals = self$get.sVar.intrvls(name.sVar), nbins = self$nbins.sVar(name.sVar), bin.nms = self$bin.nms.sVar(name.sVar)) {
-      self$mat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
       self$active.bin.sVar <- name.sVar
+      if (!all(intervals %in% self$get.sVar.intrvls(name.sVar))) self$set.sVar.intrvls(name.sVar, intervals)
+      self$mat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
       invisible(self$mat.bin.sVar)
+    },
+    # return the bin widths vector for the discretized continuous (self$ord.sVar)
+    get.sVar.bw = function(name.sVar) {
+      if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")
+      if (is.null(self$ord.sVar)) stop("sVar hasn't been discretized yet")
+      intrvls.width <- diff(self$get.sVar.intrvls(name.sVar))
+      intrvls.width[intrvls.width <= gvars$tolerr] <- 1
+      ord.sVar_bw <- intrvls.width[self$ord.sVar]
+      invisible(ord.sVar_bw)
     }
   ),
 
@@ -565,9 +585,6 @@ DatNet <- R6Class(classname = "DatNet",
     emptydat.sVar = function() { self$mat.sVar <- NULL }       # wipe out mat.sVar
   ),
   private = list(
-    # mat.netVar = NULL,
-    # mat.sVar = NULL,
-    # mat.bin.sVar = NULL,
     placeholder = list()
   )
 )
@@ -614,7 +631,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     # **********
 
     initialize = function(datnetW, datnetA, YnodeVals, det.Y, ...) {
-      print("entered DatNet.sWsA constructor")
       assert_that("DatNet" %in% class(datnetW))
       assert_that("DatNet" %in% class(datnetA))
 
@@ -741,34 +757,27 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
 
         # Should we save new datnetA.gstar as self$datnetA (removing a pointer to O.datnetA)? Not for now.
         datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes, VarNodes = self$nodes$Anode)
-        # datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes, VarNodes = self$nodes$Anode, misValRepl = TRUE)
-
         df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
         colnames(df.sWsA) <- self$names.sWsA
 
-        # df.sWsA <- data.frame(df.sWsA) # NOT SURE WE STILL WANT TO CONVERT THIS TO df?
-
         for (i in seq_len(p)) {
-
           # *** f.g_name can only depend on covariates in datnetW$dat.sVar ***
-          A.gstar <- f.gen.A.star(self$Kmax, datnetW$dat.sVar, f.g_name, f.g_args)
-          # Avec.df <- data.frame(Anode = f.gen.A.star(self$Kmax, datnetW$dat.sVar, f.g_name, f.g_args), stringsAsFactors = FALSE)
-          # colnames(Avec.df)[1] <- self$nodes$Anode
+          # A.gstar <- f.gen.A.star(k = self$Kmax, df_AllW = datnetW$dat.sVar, fcn_name = f.g_name, f_args = f.g_args)
+          # if Anode is continuous, just call f.gen.probA.star:
+          A.gstar <- f.gen.A.star.cont(k = self$Kmax, df_AllW = datnetW$dat.sVar, fcn_name = f.g_name, f_args = f.g_args)
+
           Odata[, self$nodes$Anode] <- A.gstar # replace A under g0 in Odata with A^* under g.star:
           datnetA.gstar$make.sVar(Odata = Odata, sVar.object = sA.object) # create new summary measures sA (under g.star)
           # Assiging summary measures to one output data:
           df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetA.gstar$dat.sVar)[,]
         }
       }
-
       self$mat.sVar <- df.sWsA
-
       invisible(self)
     }
   ),
   active = list(
-    dat.sWsA = function() { self$mat.sVar }, # NO LONGER NEEDED, REMOVE
-    # df.sWsA = function() { self$mat.sVar }, # REMOVED / was used for compatibility with older functions
+    dat.sWsA = function() { self$mat.sVar }, # NO LONGER NEEDED, KEPT FOR COMPATIBILITY
     names.sWsA = function() { c(self$datnetW$names.sVar, self$datnetA$names.sVar) },
     nobs = function() { nrow(self$dat.sWsA) },
     noNA.Ynodevals = function(noNA.Yvals) {

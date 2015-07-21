@@ -25,15 +25,15 @@ logisfit.glmS3 <- function(datsum_obj) {
 	return(fit)
 }
 
-logisfit.speedglmS3 <- function(datsum_obj) { # S3 method for speedglm binomial family fit, takes BinDat data object 
-	message("calling speedglm.wfit...")
+logisfit.speedglmS3 <- function(datsum_obj) { # S3 method for speedglm binomial family fit, takes BinDat data object
+	# message("calling speedglm.wfit...")
 	Xmat <- datsum_obj$getXmat
 	Y_vals <- datsum_obj$getY
 
 	# print("dims of glm data:")
 	# print(dim(Xmat));
 	# print("head(Xmat)");; print(head(Xmat));
-	# print(length(Y_vals)); 
+	# print(length(Y_vals));
 	# print(head(Y_vals))
 
 	if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA's and avoid throwing exception
@@ -78,7 +78,7 @@ f_est <- function(d, form, family) {
 }
 
 ## ---------------------------------------------------------------------
-#' (NOT USED) Abstract summary measure class for P(sA[j]|sW,\bar{sA}[j]) 
+#' (NOT USED) Abstract summary measure class for P(sA[j]|sW,sA[j]) 
 #'
 #' @importFrom R6 R6Class
 #' @export
@@ -104,7 +104,7 @@ Abstract_BinDat <- R6Class(classname = "Abstract_BinDat",
 # }
 
 ## ---------------------------------------------------------------------
-#' Data storage class for one summary measure (sA[j]|sW,\bar{sA}[j]).
+#' Data storage class for one summary measure (sA[j] , sW,sA[j]).
 #' To be used for storing and passing the design mat + outcome(s) + whatever else is needed.
 #' Could include a reference to the full data.frame (as a field)
 #' Should be able to store/create data in various ways 
@@ -151,6 +151,7 @@ BinDat <- R6Class(classname = "BinDat",
 			self$setdata(data = newdata, getoutcome = getoutcome, ...)
 			invisible(self)
 		},
+
 		# TO DO: move to private method...
         # Sets X_mat, Yvals, evaluates subset and performs correct subseting of data
 		setdata = function(data, getoutcome, ...) {
@@ -163,6 +164,7 @@ BinDat <- R6Class(classname = "BinDat",
 				assert_that((length(self$subset_idx) == self$n) || (length(self$subset_idx) == 1L))
 				# e.g., subset <- TRUE means select all rows or subset <- "(nFriends==3)"
 			}
+
 			if (getoutcome) private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Always a vector
 
 			if (sum(self$subset_idx) == 0L) {  # When nrow(X_mat) == 0L avoids exception (when nrow == 0L => prob(A=a) = 1)
@@ -172,7 +174,7 @@ BinDat <- R6Class(classname = "BinDat",
 				private$X_mat <- as.matrix(cbind(Intercept = 1, data$get.dat.sWsA(self$subset_idx, self$predvars)))
 				# To find and replace misvals in X_mat:
 				if (self$reg$ReplMisVal0) {
-					private$X_mat[gvars$misfun(private$X_mat)] <- gvars$misXreplace	
+					private$X_mat[gvars$misfun(private$X_mat)] <- gvars$misXreplace
 				}
 			}
 		},
@@ -184,7 +186,11 @@ BinDat <- R6Class(classname = "BinDat",
 			assert_that(!is.null(private$X_mat)); assert_that(!is.null(self$subset_idx))
             # Set to default missing value for A[i] degenerate/degerministic/misval:
             # Alternative, set to default replacement val: pAout <- rep_len(gvars$misXreplace, newdatsum_obj$n)
+
 			pAout <- rep_len(gvars$misval, self$n)
+			# 07/14/15: Need probA1 even for degenerate bins to be able to normalize by bin-width correctly
+			# pAout <- rep_len(1L, self$n)
+
 			if (sum(self$subset_idx > 0)) {
 				eta <- private$X_mat[,!is.na(m.fit$coef), drop = FALSE] %*% m.fit$coef[!is.na(m.fit$coef)]
 				pAout[self$subset_idx] <- m.fit$linkfun(eta)
@@ -211,10 +217,10 @@ BinDat <- R6Class(classname = "BinDat",
 	)
 
 ## ---------------------------------------------------------------------
-#' Class for modeling one summary measure, P(sA[j]|sW,\bar{sA}[j])
+#' Class for fitting a logistic model with binary outcome, P(sA[j]|sW,sA[j])
 #'
 #' @importFrom R6 R6Class
-#' @importFrom assertthat assert_that
+#' @importFrom assertthat assert_that is.flag
 #' @export
 
 BinOutModel  <- R6Class(classname = "BinOutModel",
@@ -245,7 +251,6 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 			# ... additional checks & assertions... # ... add try() to below: # ... add checks for testing a successful fit
 			private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() # alternative 2 is to apply data_obj method / method that fits the model
 			self$is.fitted <- TRUE
-
 			private$probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
 			self$bindat$emptydata  # Xmat in bindat is no longer needed, only subset, outvar & probA1 (probOut1)
 			invisible(self)
@@ -256,6 +261,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 			assert_that(self$is.fitted) # vs. stopifnot(self$is.fitted)
             # ... Do nothing, predictions for fitted data are already saved
 			if (missing(newdata)) {
+				# stop("must provide newdata for BinOutModel$predict()")
 				return(invisible(self))
 			}
 			self$bindat$newdata(newdata = newdata, getoutcome = FALSE, ...) # re-populate bindat with new X_mat & Y_vals
@@ -286,8 +292,10 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 			probA1 <- private$probA1[self$getsubset];
 			assert_that(is.integerish(indA)) # check B: obsdat.sA is a row of integers
 			private$probAeqa[self$getsubset] <- probA1^(indA) * (1L - probA1)^(1L - indA)
+			# private$probAeqa[self$getsubset] <- probA1^(indA)
 			self$bindat$emptydata  # wipe out prediction data after getting the likelihood
 			invisible(private$probAeqa)
+
 		},
 		
 		show = function() {self$bindat$show()},

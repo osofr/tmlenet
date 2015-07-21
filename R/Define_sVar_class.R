@@ -17,7 +17,6 @@
   # Create an option $keep.sVar.nms; When TRUE do not change the output column names for sVar mat with ncol > 1. Create an option to overwrite sVar mat colname(s) with user-provided names
   # III) Other:
   # #todo 32 (sVar_evaluator, UI) +0: Need a diagnostic tool that will evaluate and return the result of the summary measures applied to user Odata data.frame...
-  # #todo 6 (sVar_evaluator, NetInd_k) +1: TEST NetInd_k, generating sA under g_star sampled data.df: nrow(NetInd_k) = n, while nrow(data.df) = n*p  => COULD BE A PROBLEM. NEED TO CHECK WORKS AS INTENDED.
 
 # Useful function for testing if a name is a valid R object name:
 isValidAndUnreservedName <- function(string) {
@@ -25,10 +24,32 @@ isValidAndUnreservedName <- function(string) {
 }
 
 # Wrappers for Define_sVar$new(...) constructor:
+#' Define Summary Measures sA and sW
+#'
+#' Define and store \code{tmlenet} function arguments \code{sW} and \code{sA},
+#' which are arbitrary summary measures based on treatmet \code{Anode} and baseline covariates in \code{Wnodes} constructed from the input \code{data}.
+#' Each summary measure \code{sVar} is specified as a named R expression or a named character argument. Separate calls to \code{def.sW/def.sA} functions
+#' can be aggregated into a single collection with '+' function, e.g., \code{def.sW(W1=W1)+def.sW(W2=W2)}.
+#' Additional named arguments that can be passed to \code{def.sW/def.sA} are:
+#' \itemize{
+#' \item \code{noname = TRUE} - Do not use the summary measure name provided by the user when assigning the names to the summary measure columns (variables); and
+#' \item \code{replaceMisVal0 = TRUE} - Automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
+#' } 
+#' @section Details: 
+#' (TO BE COMPLETED)
+#' The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} function, using the environment of the input data, enclosed by the user calling environment.
+#' @param ... Named R expressions or character strings that specify the formula for creating the summary measures.
+#' @return R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
+#' @seealso \code{\link{tmlenet}}
+#' @example tests/sWsAexamples.R
+#' @export
 def.sW <- function(...) Define_sVar$new(..., type = "sW", user.env = parent.frame())
+#' @rdname def.sW
+#' @export
 def.sA <- function(...) Define_sVar$new(..., type = "sA", user.env = parent.frame())
 
 is.Define_sVar <- function(obj) "Define_sVar" %in% class(obj)
+
 # #todo 42 ('+.Define_sVar') +0: Allow adding character vector summary measures for sVar2, s.a., def.sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
 # S3 method '+' for adding two Define_sVar objects
 # Summary measure lists in both get added as c(,) into the summary measures in sVar1 object
@@ -124,7 +145,7 @@ parse.sVar.out <- function(sVar.idx, self) {
 #' @title Class for defining and evaluating user-specified summary measures (sVar.exprs)
 #' @docType class
 #' @format An R6 class object.
-#' @name mcEvalPsi
+#' @name Define_sVar
 #' @details Following fields are created during initialization
 #' \itemize{
 #' \item{nodes} ...
@@ -218,11 +239,9 @@ Define_sVar <- R6Class("Define_sVar",
         message("Detected noname flag with value: " %+% self$sVar.noname);
       }
 
-
       self$ReplMisVal0 <- rep_len(self$ReplMisVal0, length(self$sVar.exprs))
       self$sVar.misXreplace <- ifelse(self$ReplMisVal0, gvars$misXreplace, gvars$misval)
       self$sVar.noname <- rep_len(self$sVar.noname, length(self$sVar.exprs))
-
 
       # for later S3 dispatch?
       if (!is.na(type)) class(self) <- c(class(self), type)
@@ -232,19 +251,12 @@ Define_sVar <- R6Class("Define_sVar",
     },
 
     get.mat.sVar = function(data.df, netind_cl, addnFnode = NULL) {
-    # get.mat.sVar = function(data.df, netind_cl, misXreplace, addnFnode = NULL) {
       assert_that(is.data.frame(data.df))
       self$data.df <- data.df
 
       if (missing(netind_cl) && is.null(self$netind_cl)) stop("must specify netind_cl arg at least once")
       if (!missing(netind_cl)) self$netind_cl <- netind_cl
       self$Kmax <- self$netind_cl$Kmax
-
-      # if (!missing(misXreplace)) {
-      #   self$misXreplace <- misXreplace
-      # } else {
-      #   self$misXreplace <- gvars$misXreplace
-      # }
 
       # call lapply on parse.sVar.out for each sVar in sVar.expr.names -> sVar.res_l
       sVar.res_l <- lapply(seq_along(self$sVar.exprs), parse.sVar.out, self = self)
