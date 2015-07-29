@@ -195,9 +195,8 @@ iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial"
 }
 
 #' @title Predict the h weights under g_0 and g_star using existing m.h.fit model fit
-#' @docType function
 #' @name pred.hbars
-##' @export
+# @export
 # fit models for m_gAi
 pred.hbars <- function(newdatnet = NULL, m.h.fit) {
     NetInd_k <- newdatnet$netind_cl$NetInd_k

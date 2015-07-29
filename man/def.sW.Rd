@@ -23,7 +23,7 @@ can be aggregated into a single collection with '+' function, e.g., \code{def.sW
 Additional named arguments that can be passed to \code{def.sW/def.sA} are:
 \itemize{
 \item \code{noname = TRUE} - Do not use the summary measure name provided by the user when assigning the names to the summary measure columns (variables); and
-\item \code{replaceMisVal0 = TRUE} - Automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
+\item \code{replaceNAw0 = TRUE} - Automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
 }
 }
 \section{Details}{

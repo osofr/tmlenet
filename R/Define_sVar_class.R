@@ -41,7 +41,7 @@ isValidAndUnreservedName <- function(string) {
 #' @param ... Named R expressions or character strings that specify the formula for creating the summary measures.
 #' @return R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
 #' @seealso \code{\link{tmlenet}}
-#' @example tests/sWsAexamples.R
+#' @example tests/defsWsA_examples.R
 #' @export
 def.sW <- function(...) Define_sVar$new(..., type = "sW", user.env = parent.frame())
 #' @rdname def.sW

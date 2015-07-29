@@ -4,7 +4,7 @@
 \name{BinOutModel}
 \alias{BinOutModel}
 \title{Class for fitting a logistic model with binary outcome, P(sA[j]|sW,sA[j])}
-\format{\preformatted{Class 'R6ClassGenerator' <environment: 0x7fd7f9f79f18> 
+\format{\preformatted{Class 'R6ClassGenerator' <environment: 0x7ff305e87268> 
  - attr(*, "name")= chr "BinOutModel_generator"
 }}
 \usage{
