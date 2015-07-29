@@ -106,9 +106,8 @@ get.MCS_ests <- function(datNetObs,  DatNet.gstar, MC_fit_params, m.h.fit) {
 #' \item{Kmax} ...
 #' }
 #' Class for evaluating and storing arbitrary summary measures sVar.
-#' @importFrom R6 R6Class
 #' @importFrom assertthat assert_that is.count is.flag
-##' @export
+# @export
 mcEvalPsi <- R6Class(classname = "mcEvalPsi",
   portable = TRUE,
   class = TRUE,

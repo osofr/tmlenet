@@ -33,7 +33,7 @@ isValidAndUnreservedName <- function(string) {
 #' Additional named arguments that can be passed to \code{def.sW/def.sA} are:
 #' \itemize{
 #' \item \code{noname = TRUE} - Do not use the summary measure name provided by the user when assigning the names to the summary measure columns (variables); and
-#' \item \code{replaceMisVal0 = TRUE} - Automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
+#' \item \code{replaceNAw0 = TRUE} - Automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
 #' } 
 #' @section Details: 
 #' (TO BE COMPLETED)
@@ -156,9 +156,8 @@ parse.sVar.out <- function(sVar.idx, self) {
 #' }
 #' Evaluates and and stores arbitrary summary measure expressions. 
 #' The expressions (sVar.exprs) are evaluated in the environment of the input data.frame.
-#' @importFrom R6 R6Class
 #' @importFrom assertthat assert_that
-##' @export
+# @export
 Define_sVar <- R6Class("Define_sVar",
   class = TRUE,
   portable = TRUE,
@@ -224,12 +223,12 @@ Define_sVar <- R6Class("Define_sVar",
         # message("Some summary measures were not named, automatic column name(s) will be generated during evaluation")
       }
 
-      if (any(self$sVar.expr.names %in% "replaceMisVal0")) {
-        ReplMisVal0.idx <- which(self$sVar.expr.names %in% "replaceMisVal0")
+      if (any(self$sVar.expr.names %in% "replaceNAw0")) {
+        ReplMisVal0.idx <- which(self$sVar.expr.names %in% "replaceNAw0")
         self$ReplMisVal0 <- as.logical(self$sVar.exprs[[ReplMisVal0.idx]])
         self$sVar.expr.names <- self$sVar.expr.names[-ReplMisVal0.idx]
         self$sVar.exprs <- self$sVar.exprs[-ReplMisVal0.idx]
-        message("Detected replaceMisVal0 flag with value: " %+% self$ReplMisVal0);
+        message("Detected replaceNAw0 flag with value: " %+% self$ReplMisVal0);
       }
       if (any(self$sVar.expr.names %in% "noname")) {
         noname.idx <- which(self$sVar.expr.names %in% "noname")

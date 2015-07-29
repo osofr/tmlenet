@@ -232,10 +232,9 @@ pred.hbars <- function(newdatnet = NULL, m.h.fit) {
 
 
 #' @title Defining and fitting the clever covariate h under g_0 and g_star, i.e. models P(sA[j] | sW,sA[j])
-#' @docType function
 #' @name fit.hbars
 # @importFrom assertthat assert_that is.count
-##' @export
+# @export
 # fit models for m_gAi
 #---------------------------------------------------------------------------------
 fit.hbars <- function(datNetObs, est_params_list) {

@@ -4,7 +4,7 @@ Version: 0.0.9
 Authors@R: c(
     person("Oleg", "Sofrygin", role=c("aut", "cre"), email="oleg.sofrygin@gmail.com"),
     person(c("Mark", "J."), "van der Laan", role="aut", email="laan@berkeley.edu"))
-Description: Targeted Maximum Likelihood Estimation (TMLE) of treatment/censoring specific mean outcome for point-treatment in network (dependent) data
+Description: Targeted Maximum Likelihood Estimation (TMLE) of treatment/censoring specific mean outcome for single point stochastic interventions in networks
 URL: https://github.com/osofr/tmlenet
 BugReports: https://github.com/osofr/tmlenet/issues
 Depends:

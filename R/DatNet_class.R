@@ -285,9 +285,8 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
 #' Contains methods for replacing missing values with default in gvars$misXreplace.
 #' Also contains method for detecting /setting sVar variable type (binary, categor, contin).
 #' For continous sVar this class provides methods for detecting / setting bin intervals, normalization, disretization and construction of bin indicators.
-#' @importFrom R6 R6Class
 #' @importFrom assertthat assert_that is.count is.flag
-##' @export
+# @export
 DatNet <- R6Class(classname = "DatNet",
   portable = TRUE,
   class = TRUE,
@@ -610,9 +609,8 @@ DatNet <- R6Class(classname = "DatNet",
 #' }
 #' Methods for combining, subsetting, discretizing & binirizing of summary measures in sW & sA. Inherits from DatNet class. 
 #' The combined dataset of all (sW, sA) summary measures returned by DatNet is stored as a matrix under self$mat.sVar
-#' @importFrom R6 R6Class
 #' @importFrom assertthat assert_that is.count is.flag
-##' @export
+# @export
 DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
   inherit = DatNet,
   portable = TRUE,

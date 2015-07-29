@@ -73,13 +73,13 @@ the first for the target parameter estimates under \code{f_gstar1} (EY_gstar1), 
 the third for the estimates of the additive treatment effect (EY_gstar1 - EY_gstar2) under intervention in \code{f_gstar1} vs. intervention in \code{f_gstar2}.
 
 Currently available estimators are:
-\describe{
-\item{\code{\link{tmle_A}}}{Covariate-based efficient TMLE using covariate h_gstar/h_gN.}
-\item{\code{\link{tmle_B}}}{Intercept-based efficient TMLE using weights h_gstar/h_gN.}
-\item{\code{\link{tmle_g_iptw}}}{Covariate-based more non-parametric TMLE using covariate gN/gstar.}
-\item{\code{\link{h_iptw}}}{Efficient IPTW based on weights h_gstar/h_gN.}
-\item{\code{\link{g_iptw}}}{More non-parametric IPTW based on weights gN/gstar.}
-\item{\code{\link{mle}}}{Parametric G-computation-based substitution estimator.}
+\itemize{
+\item \code{\link{tmle_A}} - Covariate-based efficient TMLE using covariate h_gstar/h_gN.
+\item \code{\link{tmle_B}} - Intercept-based efficient TMLE using weights h_gstar/h_gN.
+\item \code{\link{tmle_g_iptw}} - Covariate-based more non-parametric TMLE using covariate gN/gstar.
+\item \code{\link{h_iptw}} - Efficient IPTW based on weights h_gstar/h_gN.
+\item \code{\link{g_iptw}} - More non-parametric IPTW based on weights gN/gstar.
+\item \code{\link{mle}} - Parametric G-computation-based substitution estimator.
 }
 }
 \description{

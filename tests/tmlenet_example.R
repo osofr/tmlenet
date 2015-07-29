@@ -47,10 +47,16 @@ options(bigmemory.typecast.warning=FALSE)
 
 kmax <- 6	# Max # of friends (K)?
 # simulate a dataset first
-source("./datgen_nets/sim3_datgen_k6.R")
+source("../datgen_nets/sim3_datgen_k6.R")
 set.seed(543)
-# df_K6 <-gendata_pop(nC=1, n_arr=100, k_arr=kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL))
-df_K6 <- gendata_pop(nC=1, n_arr=1000, k_arr=kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL))
+n <- 1000
+# df_K6 <-gendata_pop(nC=1, n_arr=1000, k_arr=kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL))
+t <- system.time(df_K6 <- gendata_pop(nC=1, n_arr=n, k_arr=kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL)))
+t
+# for n=10K:
+#   user  system elapsed 
+# 33.117   0.976  33.898 
+
 head(df_K6)
   # IDs Y nFriends W1 W2 W3 netW1_sum netW2_sum netW3_sum A                  Net_str
 # 1  I1 1        1  3  0  1         2         1         0 1                     I537
@@ -62,6 +68,12 @@ head(df_K6)
 
 class(df_K6$A) # [1] "integer"
 class(df_K6$nFriends) # [1] "numeric"
+table(df_K6$W1)
+ #   0    1    2    3    4    5 
+ # 475 1772 2900 2615 1718  520 
+c(mean(df_K6$W1), mean(df_K6$W2), mean(df_K6$W3))
+# [1] 2.4889 0.5719 0.6031
+
 mean(df_K6$A) # [1] 0.198
 mean(df_K6$Y) # [1] 0.435
 mean(df_K6$nFriends) # [1] 3.307
@@ -99,9 +111,9 @@ head(df_K6)
 # #todo 67 (tmlenet) +0: add data checks: 1) test Anode is binary; 2) no missing data among A,W,Y
 
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
-            def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+            def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
             
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceMisVal0 = TRUE) +
+def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE) +
             def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
 (Qform.depr <- "Y ~ I(" %+% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") %+% ")" %+% "+"  %+% "netW3_sum")

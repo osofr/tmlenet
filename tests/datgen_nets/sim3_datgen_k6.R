@@ -65,6 +65,7 @@ netvar <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
     return(cstr(varnm, fidx))
   }
 }
+
 # netvar("W", (0:6))
 # get network A's & W's as a matrix
 .f.redefineCov <- function(k, Var, VarNm, Net_vect, misval = 0L) {
@@ -84,7 +85,7 @@ netvar <- function(varnm, fidx) { # OUTPUT format: Varnm_net.j
 	Var_names <- c(VarNm, netVar_names)	
 	d <- cbind(Var, netVar_full)
 	colnames(d) <- Var_names
-	return(d)   
+	return(d)
 }
 
 #----------------------------------------------------------------------------------
@@ -296,8 +297,8 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
   	prob_f <- plogis(-4.5 + 2.5*W1cat_arr) / sum(plogis(-4.5 + 2.5*W1cat_arr))
 
   	# Sample connectivity matrix (0,1), 
-  	# randomly selecting from the list of available individuals 
-  	# so that we never exceed |N_i| for each i 
+  	# randomly selecting from the list of available individuals
+  	# so that we never exceed |N_i| for each i
   	# may result in actual # of friends being < |N_i| for some
 	.f.genConnectMatx_asym_biased <- function(W1, Net_num) {
 	  	I <- big.matrix(n,n, type="short", init=0, shared=FALSE)
@@ -325,33 +326,33 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
   	#Update the # of friends for each individual (given sampled connnectivity matrix)
   	.f.Net_num_update <- function(ConnectMatx) return(colsum(ConnectMatx, c(1:n)) - 1)	
   	#Convert connectivity matx to a lists of vector of friend's ids
-  	.f.Net_vect <- function(ConnectMatx) {	  	
+  	.f.Net_vect <- function(ConnectMatx) {
 		f.netwklist_i <- function(index)  {
 				netwklist_i <- setdiff(which(ConnectMatx[, index]!=0), index)
 				netwklist_i	}
-		sapply(1:n, f.netwklist_i, simplify=F)	
+		sapply(1:n, f.netwklist_i, simplify=F)
 	}
 	#Same, but using mwhich() instead of which() (faster for n>30,000)	
   	.f.Net_vect_big <- function(ConnectMatx) {
 		f.netwklist_i <- function(index)  {
 				netwklist_i <- setdiff(mwhich(ConnectMatx, index, 0, 'neq'), index)
 				netwklist_i	}
-		sapply(1:n, f.netwklist_i, simplify=F)	
-	}		
+		sapply(1:n, f.netwklist_i, simplify=F)
+	}
   	.f.Net_vect_bigID <- function(ConnectMatx) {
 		f.netwklist_i <- function(index)  {
 				netwklist_i <- setdiff(mwhich(ConnectMatx, index, 0, 'neq'), index)
 				if (length(netwklist_i)>0) netwklist_i <- paste('I', netwklist_i,
 				 															sep="")
 				return(netwklist_i)}
-		sapply(1:n, f.netwklist_i, simplify=F)	
-	}		  	
+		sapply(1:n, f.netwklist_i, simplify=F)
+	}	
   	.f.mkstrNet <- function(Net) sapply(Net, function(Net_i) paste(Net_i, 
   																collapse=' '))
   	.f.mkstrNetWi <- function(Net,i) sapply(Net, function(Net_i) paste(Net_i[[i]], 
   																collapse=" "))
   	
-  	.f_g_wrapper <- function(k, W_netW, fcn_name, ...) {   #wrapper fcn for g(A|W)	
+  	.f_g_wrapper <- function(k, W_netW, fcn_name, ...) {   #wrapper fcn for g(A|W)
 	  	# assign(".f_gAW", get(fcn_name))
 	  	args0 <- list(k=k, data=W_netW)
 	  	args <- c(args0, ...)
@@ -410,7 +411,7 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
 
 		# No deterministic outcomes
 
-	 	return(Y) 
+	 	return(Y)
 	}
   #-----------------------------------------------
   #Generating covars
@@ -433,9 +434,9 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
   	# print(ConnectMatx[,])  #print the entire connectivity matrix
  	#--------------------------------------------------------- 	
  	#Update # of actual friends sampled, |N_i|
-  	nFriends <- .f.Net_num_update(ConnectMatx) 
-  	 #Get list of vectors of friend's ids for each i 
-  	Net_vect <- .f.Net_vect_big(ConnectMatx)   
+  	nFriends <- .f.Net_num_update(ConnectMatx)
+  	 #Get list of vectors of friend's ids for each i
+  	Net_vect <- .f.Net_vect_big(ConnectMatx)
   	Net_vectID <- .f.Net_vect_bigID(ConnectMatx)
 
   	W1_netW <- data.frame(.f.redefineCov(k, W1, "W1", Net_vect))

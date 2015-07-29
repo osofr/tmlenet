@@ -80,7 +80,6 @@ f_est <- function(d, form, family) {
 ## ---------------------------------------------------------------------
 #' (NOT USED) Abstract summary measure class for P(sA[j]|sW,sA[j]) 
 #'
-#' @importFrom R6 R6Class
 #' @export
 Abstract_BinDat <- R6Class(classname = "Abstract_BinDat",
 	portable = TRUE,
@@ -114,7 +113,6 @@ Abstract_BinDat <- R6Class(classname = "Abstract_BinDat",
 #' Consider making this just a closure (class = FALSE) for faster dispatch, in which case S3 dispatch on BinDat object will not be possible
 #' Add method to save design matrix when its created? Second time getXmat(), return previously created dmat?
 #'
-#' @importFrom R6 R6Class
 #' @importFrom assertthat assert_that is.count is.string is.flag
 #' @export
 
@@ -219,7 +217,6 @@ BinDat <- R6Class(classname = "BinDat",
 ## ---------------------------------------------------------------------
 #' Class for fitting a logistic model with binary outcome, P(sA[j]|sW,sA[j])
 #'
-#' @importFrom R6 R6Class
 #' @importFrom assertthat assert_that is.flag
 #' @export
 

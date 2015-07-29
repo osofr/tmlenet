@@ -126,9 +126,8 @@ NewSummaryModel.binary <- function(reg, ...) {
 #' \item{sW_nms} ...
 #' }
 #' More details about the class...
-##' @importFrom R6 R6Class
 #' @importFrom assertthat assert_that
-##' @export
+# @export
 SummariesModel <- R6Class(classname = "SummariesModel",
 	portable = TRUE,
 	class = TRUE,
