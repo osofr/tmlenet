@@ -1,30 +1,7 @@
-rm(list=ls())
-
-#------------------------------------
-# Packages / package functions used so far inside tmlenet.
-# If you are using just a few functions from another package, my recommendation is to note the package name in the Imports: field of the DESCRIPTION
-# file and call the function(s) explicitly using ::, e.g., pkg::fun().
-
-# If you are using functions repeatedly, you can avoid :: by importing the function with @importFrom pgk fun. 
-# This also has a small performance benefit, because :: adds approximately 5 µs to function evaluation time.
-
-# Alternatively, if you are repeatedly using many functions from another package, you can import all of them using @import package.
-# This is the least recommended solution because it makes your code harder to read (you can’t tell where a function is coming from), 
-# and if you @import many packages, it increases the chance of conflicting function names.
-
-#-----------------------------------
-# ADD tmlenet SOURCE CODE
-library(R6)
-library(assertthat)
-options(echo = TRUE)
-options(width = 160)
-
-library(devtools)
-load_all("../") # load all R files in /R and datasets in /data. Ignores NAMESPACE:
+# rm(list=ls())
 
 #--------------------------------------------------------
-# NOTE: arguments n_MCsims and n_samp_g0gstar specify the number of Monte-Carlo sims tmlenet needs to run
-# if things are taking too long try lower numbers (esspecially for n_MCsims)
+# NOTE: argument n_MCsims specifies the number of Monte-Carlo sims tmlenet needs to run. If running time is too slow try lower that number.
 #--------------------------------------------------------
 
 # Set x% of community to A=1 (returns probability P(A=1))
@@ -38,14 +15,14 @@ f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (SIMULATION 3)
 #***************************************************************************************
 # library(tmle)
-library(locfit)
-library(xtable)
+# library(locfit)
+# library(xtable)
 library(bigmemory)
 library(biganalytics)
 library(plyr)
-options(bigmemory.typecast.warning=FALSE)
+options(bigmemory.typecast.warning = FALSE)
 
-kmax <- 6	# Max # of friends (K)?
+kmax <- 6	# Max number of friends in the network?
 # simulate a dataset first
 source("../datgen_nets/sim3_datgen_k6.R")
 set.seed(543)
@@ -98,17 +75,17 @@ mean(df_K6$nFriends) # [1] 3.307
 # --------------------------------------------------
 # SUMMARY MEASURES
 # --------------------------------------------------
-# NOT WRITTEN YET. Will evaluate the summary measures applied to the (O)bserved data (data.frame):
+# NOT IMPLEMENTED YET. 
+# A helper function that can pre-evaluate the summary measures on (O)bserved data (data.frame)
+# This will help when examining the data and playing with various summary measures, prior to running the tmletnet() function
 # res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax, NETIDnode = "Net_str", IDnode = "IDs")
+# --------------------------------------------------
 
 #----------------------------------------------------------------------------------
 # Example 1. Mean population outcome under deterministic intervention A=0 with 6 friends
-# CAN RETIRE Qform, gform & hform -> fully replaced by summary measures
 #----------------------------------------------------------------------------------
 Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
 head(df_K6)
-
-# #todo 67 (tmlenet) +0: add data checks: 1) test Anode is binary; 2) no missing data among A,W,Y
 
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
             def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
@@ -245,13 +222,14 @@ tmlenet_K6out2$EY_gstar1$other.vars
 
 #----------------------------------------------------------------------------------
 # Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
+# OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-tmlenet_K6out2 <- tmlenet(data=df_K6, Anode="A", Wnodes=Wnodes, Ynode="Y", nFnode="nFriends",
-						Kmax=kmax, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, h_form=hform,
-						f.g1.star=f.A_1, f.g1_args=NULL, n_MCsims=10, n_samp_g0gstar=10)
+# tmlenet_K6out2 <- tmlenet(data=df_K6, Anode="A", Wnodes=Wnodes, Ynode="Y", nFnode="nFriends",
+# 						Kmax=kmax, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, h_form=hform,
+# 						f.g1.star=f.A_1, f.g1_args=NULL, n_MCsims=10, n_samp_g0gstar=10)
 
-tmlenet_K6out2$estimates$EY_g1.star$tmle_B
-tmlenet_K6out2$estimates$EY_g1.star$CI_tmle_B_iidIC
+# tmlenet_K6out2$estimates$EY_g1.star$tmle_B
+# tmlenet_K6out2$estimates$EY_g1.star$CI_tmle_B_iidIC
 
 
 #***************************************************************************************
@@ -272,76 +250,74 @@ gform <- "A ~  W1 + netW1_1 + netW1_2 + nFriends"
 
 #----------------------------------------------------------------------------------
 # Example 1. Mean population outcome under deterministic intervention A=0
+# OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-tmlenet_out1 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", nFnode="nFriends",
-						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, 
-						f.g1.star=f.A_0, f.g1_args=NULL)
+# tmlenet_out1 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", nFnode="nFriends",
+# 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, 
+# 						f.g1.star=f.A_0, f.g1_args=NULL)
 
-# TMLE estimate and iid IC-based 95% CI:
-tmlenet_out1$estimates$EY_g1.star$tmle_B
-tmlenet_out1$estimates$EY_g1.star$CI_tmle_B_iidIC
+# # TMLE estimate and iid IC-based 95% CI:
+# tmlenet_out1$estimates$EY_g1.star$tmle_B
+# tmlenet_out1$estimates$EY_g1.star$CI_tmle_B_iidIC
 
-# Efficient IPTW (h) and iid IC-based 95% CI:
-tmlenet_out1$estimates$EY_g1.star$iptw_h
-tmlenet_out1$estimates$EY_g1.star$CI_iptw_h_iidIC
+# # Efficient IPTW (h) and iid IC-based 95% CI:
+# tmlenet_out1$estimates$EY_g1.star$iptw_h
+# tmlenet_out1$estimates$EY_g1.star$CI_iptw_h_iidIC
 
-# Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-tmlenet_out1$estimates$EY_g1.star$iptw
-tmlenet_out1$estimates$EY_g1.star$CI_iptw_iidIC_1stO
-tmlenet_out1$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
+# # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
+# tmlenet_out1$estimates$EY_g1.star$iptw
+# tmlenet_out1$estimates$EY_g1.star$CI_iptw_iidIC_1stO
+# tmlenet_out1$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
 
-# MLE
-tmlenet_out1$estimates$EY_g1.star$mle
+# # MLE
+# tmlenet_out1$estimates$EY_g1.star$mle
 
 #----------------------------------------------------------------------------------
 # Example 2. Mean population outcome under stochastic intervention P(A=1)=0.2
+# OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", nFnode="nFriends",
-						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-						f.g1.star=f.A_x, f.g1_args=list(x=0.2),
-						n_MCsims=4000, n_samp_g0gstar=100)
+# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", nFnode="nFriends",
+# 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
+# 						f.g1.star=f.A_x, f.g1_args=list(x=0.2),
+# 						n_MCsims=4000, n_samp_g0gstar=100)
 
-# TMLE estimate and iid IC-based 95% CI:
-tmlenet_out2$estimates$EY_g1.star$tmle_B
-tmlenet_out2$estimates$EY_g1.star$CI_tmle_B_iidIC
+# # TMLE estimate and iid IC-based 95% CI:
+# tmlenet_out2$estimates$EY_g1.star$tmle_B
+# tmlenet_out2$estimates$EY_g1.star$CI_tmle_B_iidIC
 
-# Efficient IPTW (h) and iid IC-based 95% CI:
-tmlenet_out2$estimates$EY_g1.star$iptw_h
-tmlenet_out2$estimates$EY_g1.star$CI_iptw_h_iidIC
+# # Efficient IPTW (h) and iid IC-based 95% CI:
+# tmlenet_out2$estimates$EY_g1.star$iptw_h
+# tmlenet_out2$estimates$EY_g1.star$CI_iptw_h_iidIC
 
-# Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-tmlenet_out2$estimates$EY_g1.star$iptw
-tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_1stO
-tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
+# # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
+# tmlenet_out2$estimates$EY_g1.star$iptw
+# tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_1stO
+# tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
 
-# MLE
-tmlenet_out2$estimates$EY_g1.star$mle
+# # MLE
+# tmlenet_out2$estimates$EY_g1.star$mle
 
 #----------------------------------------------------------------------------------
 # Example 3. Average treatment effect (ATE) for two interventions, f.g1.star: A=1 vs f.g2.star: A=0
+# OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", nFnode="nFriends",
-						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-						f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
-						n_MCsims=4000, n_samp_g0gstar=100)
+# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", nFnode="nFriends",
+# 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
+# 						f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
+# 						n_MCsims=4000, n_samp_g0gstar=100)
 
-# TMLE estimate for ATE + 95% CI
-tmlenet_out3$estimates$ATE$tmle_B
-tmlenet_out3$estimates$ATE$CI_tmle_B_iidIC
+# # TMLE estimate for ATE + 95% CI
+# tmlenet_out3$estimates$ATE$tmle_B
+# tmlenet_out3$estimates$ATE$CI_tmle_B_iidIC
 
-# Efficient IPTW (h) and iid IC-based 95% CI:
-tmlenet_out3$estimates$ATE$iptw_h
-tmlenet_out3$estimates$ATE$CI_iptw_h_iidIC
+# # Efficient IPTW (h) and iid IC-based 95% CI:
+# tmlenet_out3$estimates$ATE$iptw_h
+# tmlenet_out3$estimates$ATE$CI_iptw_h_iidIC
 
-# Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-tmlenet_out3$estimates$ATE$iptw
-tmlenet_out3$estimates$ATE$CI_iptw_iidIC_1stO
-tmlenet_out3$estimates$ATE$CI_iptw_iidIC_2ndO
+# # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
+# tmlenet_out3$estimates$ATE$iptw
+# tmlenet_out3$estimates$ATE$CI_iptw_iidIC_1stO
+# tmlenet_out3$estimates$ATE$CI_iptw_iidIC_2ndO
 
-# MLE
-tmlenet_out3$estimates$ATE$mle
-
-
-
-
-
+# # MLE
+# tmlenet_out3$estimates$ATE$mle

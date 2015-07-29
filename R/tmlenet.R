@@ -474,6 +474,7 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
 #' @export
 
 # todo 79 (tmlenet, inputs) +0: add max_nperbin & nbins to a list of optional params in optPars, same for speed.glm, pooled, etc..
+#todo 80 (tmlenet, inputs) +0: add data checks: 1) test Anode is binary or contin; 2) no missing data among A,W,Y
 #---------------------------------------------------------------------------------
 tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET = NULL, nFnode = "nF", IDnode = NULL, NETIDs_str = NULL,
                     f_gstar1, f_gstar2 = NULL,
