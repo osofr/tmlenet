@@ -53,106 +53,81 @@
   # eval(substitute(node), nl, parent.frame()) -> replace parent.frame() with a reasonable calling envir
 ## ---------------------------------------------------------------------
 
-
 ## ---------------------------------------------------------------------
 # Class holds and creates NetInd_k, the matrix of network connection indices in Odata of dim = (nobs x Kmax)
 # Also calculates a vector nF - number of friends for each unit
 # When class = FALSE, a pointer "self" is still created, but parent.env(self) is the enclosing environment
 ## ---------------------------------------------------------------------
 NetIndClass <- R6Class("NetIndClass",
-  class = FALSE,
-  portable = FALSE,
+  class = TRUE,
+  portable = TRUE,
   public = list(
     NetInd_k = matrix(),       # matrix (n x Kmax) of network (friend) indices (rows) in observed data
-    # NetVec_l = list(),       # (NOT USED) list (n) of network (friend) indices (rows) in observed data
     nF = integer(),            # number of friends, integer vector of length n
     nobs = NA_integer_,        # n observations
     Kmax = NA_integer_,        # max number of friends
-    IDnode = NULL,             # name of the column in Odata with unit ids
-    NETIDnode = NULL,   	     # name of the column in Odata with a list of friend ids (as a string, with ids separated by sep)
-    sep = ' ',                 # character separating two friend ids from column NETIDnode
 
-    initialize = function(Odata, Kmax = 1, IDnode = NULL, NETIDnode = NULL, sep = ' ') {
-      assert_that(is.data.frame(Odata))
-      nobs <<- nrow(Odata)
-
-      assert_that(is.count(Kmax))
-      Kmax <<- Kmax
-
-      if (!is.null(IDnode)) {
-        assert_that(is.character(IDnode))
-        IDnode <<- IDnode
-      }
-
-      if (!is.null(NETIDnode)) {
-        assert_that(is.character(NETIDnode))
-        NETIDnode <<- NETIDnode
-        assert_that(is.string(sep))
-        sep <<- sep
-        # could pre-allocate NetInd_k mat: # NetInd_k <<- matrix(0L, nrow = nobs, ncol = Kmax)
-        resNets <- getNetInd(data = Odata, Kmax = Kmax, IDnode = IDnode, NETIDnode = NETIDnode, sep = sep)
-        nF <<- resNets$nF
-        NetInd_k <<- resNets$NetInd_k
-      } else {
-        message("no NETIDnode arg; assuming the input data obs are independent (no network structure, 0 friends)")
-        nF <<- rep.int(0L,nobs)
-        NetInd_k <<- matrix(NA_integer_, nrow = nobs, ncol = Kmax)
-      }
-
+    initialize = function(nobs, Kmax = 1) {
+      self$nobs <- nobs
+      assert_that(is.integerish(Kmax))
+      self$Kmax <- as.integer(Kmax)
+      self$nF <- rep.int(0L, nobs)
+      self$NetInd_k <- matrix(NA_integer_, nrow = nobs, ncol = Kmax)
       invisible(self)
     },
 
-    assignNetInd = function(NetInd_k) {
-      NetInd_k[,] <<- NetInd_k
+    #------------------------------------------------------------------------------
+    # Netwk matrix of columns of friends indices (NetInd_k) from ids strings for network
+    # Net_str - a string vector of friend IDs (rows in obs data)
+    # IDs_str - a string vector of observation IDs that identify observation row numbers from Net_str
+    # sep - character symbol separating two friend IDs in data[i, NETIDnode] for observation i
+    makeNetInd.fromIDs = function(Net_str, IDs_str = NULL, sep = ' ') {
+      # Turn string of IDs into a vector, trim extra spaces on both edges
+      splitstr_tovec <- function(Net_str_i) stringr::str_trim(unlist(strsplit(Net_str_i, sep, fixed = TRUE)), side = "both")
+      # Turn a vector of character IDs into integer row numbers
+      getRowsfromIDs <- function(NetIDvec, IDs_str) as.integer(sapply(NetIDvec, function(x) which(IDs_str %in% x)))
+      # Turn any vector of IDs into a vector of length Kmax, filling remainder with trailing NA's
+      makeKmaxIDvec <- function(NetIDVec) c(as.integer(NetIDVec), rep_len(NA_integer_, self$Kmax - length(NetIDVec)))
+      NetIDs_l <- lapply(Net_str, splitstr_tovec) # Get list of n NET ID (character) vectors from Net_str
+      NetRows_l <- NetIDs_l
+      # if IDnode was provided, get the network row #s from IDs:
+      if (!is.null(IDs_str)) NetRows_l <- lapply(NetIDs_l, getRowsfromIDs, IDs_str)
+      # Make an array (n x Kmax) of network rows (filling remainder of each row with NA's)
+      self$NetInd_k <- as.matrix(vapply(NetRows_l, makeKmaxIDvec, FUN.VALUE = rep.int(0L, self$Kmax), USE.NAMES = FALSE))
+      if (self$Kmax > 1L) self$NetInd_k <- t(self$NetInd_k) # for Kmax > 1 need to transpose since the output mat will have dims (Kmax x nrow(data))
+      self$make.nF()
+      invisible(list(nF = self$nF, NetInd_k = self$NetInd_k)) # invisible(self)
     },
 
-    #------------------------------------------------------------------------------
-    # Netwk ids strings to list of friend indices (NetVec) and matrix of columns of friend indices (NetInd_k)
-    #------------------------------------------------------------------------------
-    # data - input data.frame with a column for friend IDs
-    # Kmax - max number of friends
-    # IDnode - column name in data for subject IDs
-    # NETIDnode - name of the node in data that contains friend IDs as a character string
-    # sep - character symbol separating two friend IDs in data[i, NETIDnode] for observation i
-    getNetInd = function(data, Kmax, IDnode = NULL, NETIDnode, sep = ' ') {
-
-      # Turn string of IDs into a vector, trim extra spaces on both edges
-      splitstr_tovec <- function(Net_str_i) stringr::str_trim(unlist(strsplit(Net_str_i, sep, fixed=TRUE)), side = "both")
-      # Turn a vector of character IDs into integer row numbers
-      getRowsfromIDs <- function(NetIDvec) as.integer(sapply(NetIDvec, function(x) which(IDs %in% x)))
-      # Turn any vector of IDs into a vector of length Kmax, filling remainder with trailing NA's
-      makeKmaxIDvec <- function(NetIDVec) c(as.integer(NetIDVec), rep_len(NA_integer_, Kmax - length(NetIDVec)))
-
-      Net_str <- as.character(data[,NETIDnode])
-      # #todo 72 (NetIndClass) +0: lapply step is too slow for large number of obs
-      NetIDs_l <- lapply(Net_str, splitstr_tovec) # Get list of n NET ID (character) vectors from NETIDnode
-      NetRows_l <- NetIDs_l
-
-      # if !is.null(IDnode), get the network row #s from IDs:
-      if (!is.null(IDnode)) {
-        IDs <- as.vector(data[, IDnode])
-        # #todo 73 (NetIndClass) +0: this lapply step is too slow for large number of obs
-        NetRows_l <- lapply(NetIDs_l, getRowsfromIDs)
-      }
-      # NetVec_l <<- NetRows_l (NOT USED)
-
-      # Make an array (n x Kmax) of network rows (filling remainder of each row with NA's)
-      NetInd_k <- as.matrix(vapply(NetRows_l, makeKmaxIDvec, FUN.VALUE = rep.int(0L, Kmax), USE.NAMES = FALSE))
-      if (Kmax > 1L) NetInd_k <- t(NetInd_k) # for Kmax > 1 need to transpose since the output mat will have dims (Kmax x nrow(data))
-      nF <- as.integer(.rowSums(! is.na(NetInd_k), m = nobs, n = Kmax))
-      return(list(nF = nF, NetInd_k = NetInd_k)) # invisible(self)
+    make.nF = function(NetInd_k = self$NetInd_k, nobs = self$nobs, Kmax = self$Kmax) {
+      self$nF <- as.integer(.rowSums(! is.na(NetInd_k), m = nobs, n = Kmax))
+      invisible(self$nF)
     },
 
     mat.nF = function(nFnode) {
       assert_that(is.string(nFnode))
-      nF <- as.matrix(nF)
-      colnames(nF) <- nFnode # colnames(nF) <- "nF"
-      nF
+      self$nF <- as.matrix(self$nF)
+      colnames(self$nF) <- nFnode # colnames(nF) <- "nF"
+      invisible(self$nF)
     }
   ),
+
   active = list(
-    placeholder = function() {}
-    # getNetInd = function() NetInd_k
+    NetInd = function(NetInd_k) {
+      if (missing(NetInd_k)) {
+        self$NetInd_k
+      } else {
+        assert_that(is.matrix(NetInd_k))
+        assert_that(nrow(NetInd_k) == self$nobs)
+        assert_that(ncol(NetInd_k) == self$Kmax)
+        self$NetInd_k[, ] <- NetInd_k
+      }
+    },
+
+    wipeoutNetInd = function() {
+      self$NetInd_k[,] <- matrix(NA, nrow = self$nobs, ncol = self$Kmax)
+      invisible(self)
+    }
   )
 )
 

@@ -22,15 +22,16 @@ devtools::install_github('osofr/tmlenet', build_vignettes = FALSE)
 
 ### Documentation
 
-Once the package is installed, please see the `tmlenet` function help file for details and examples:
+Once the package is installed, please refer to the help file `?'tmlenet-package'` and `tmlenet` function documentation for details and examples:
 
 ```R
+?'tmlenet-package'
 ?tmlenet
 ```
 
 ### Details
 
-The input data are assumed to consist of unit-specific observations `(F,W,A,Y)`, where for each unit `i`: `F[i]` is a vector of the user-specified "__friends__" of unit `i` (also referred to as `i`'s __network__); `W[i]` are `i`'s baseline covariates; `A[i]` is `i`'s exposure (can be binary or continous); and `Y[i]` is `i`'s outcome.
+The input data are assumed to consist of unit-specific observations `(F,W,A,Y)`, where for each unit `i`: `F[i]` is a vector of the user-specified "__friends__" of unit `i` (also referred to as `i`'s __network__); `W[i]` are `i`'s baseline covariates; `A[i]` is `i`'s exposure (can be binary or continuous); and `Y[i]` is `i`'s outcome.
 
 Each exposure `A[i]` can depend on baseline `W[i]` and the baseline covariate values of `i`'s friends, namely, all `W[j]` such that `j` is in set `F[i]`. Additionally, the outcome `Y[i]` can depend on `(W[i],A[i])` as well as the covariate values and exposures of `i`'s friends, i.e., all `(W[j], A[j])` such that `j` is in set `F[i]`.
 

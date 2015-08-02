@@ -1,4 +1,4 @@
-# rm(list=ls())
+rm(list=ls())
 
 #--------------------------------------------------------
 # NOTE: argument n_MCsims specifies the number of Monte-Carlo sims tmlenet needs to run. If running time is too slow try lower that number.
@@ -12,7 +12,7 @@ f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
 f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 
 #***************************************************************************************
-# EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (SIMULATION 3)
+# EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (OLD SIMULATION 3)
 #***************************************************************************************
 # library(tmle)
 # library(locfit)
@@ -22,19 +22,19 @@ library(biganalytics)
 library(plyr)
 options(bigmemory.typecast.warning = FALSE)
 
-kmax <- 6	# Max number of friends in the network?
+Kmax <- 6	# Max number of friends in the network?
 # simulate a dataset first
-source("../datgen_nets/sim3_datgen_k6.R")
+source("./datgen_nets/sim3_datgen_k6.R")
 set.seed(543)
 n <- 1000
-# df_K6 <-gendata_pop(nC=1, n_arr=1000, k_arr=kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL))
-t <- system.time(df_K6 <- gendata_pop(nC=1, n_arr=n, k_arr=kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL)))
+# df_Kmax6 <-gendata_pop(nC=1, n_arr=1000, k_arr=Kmax, EC_arr=EC, f.g_list="f.A", f.g_args_list=list(NULL))
+t <- system.time(df_Kmax6 <- gendata_pop(nC = 1, n_arr = n, k_arr = Kmax, EC_arr = EC, f.g_list = "f.A", f.g_args_list = list(NULL)))
 t
 # for n=10K:
 #   user  system elapsed 
 # 33.117   0.976  33.898 
 
-head(df_K6)
+head(df_Kmax6)
   # IDs Y nFriends W1 W2 W3 netW1_sum netW2_sum netW3_sum A                  Net_str
 # 1  I1 1        1  3  0  1         2         1         0 1                     I537
 # 2  I2 1        5  3  1  0        16         4         3 0    I6 I58 I595 I641 I654
@@ -43,17 +43,17 @@ head(df_K6)
 # 5  I5 1        3  3  1  1        11         3         1 0           I358 I369 I762
 # 6  I6 1        2  2  0  1         6         2         0 1                I682 I917
 
-class(df_K6$A) # [1] "integer"
-class(df_K6$nFriends) # [1] "numeric"
-table(df_K6$W1)
+class(df_Kmax6$A) # [1] "integer"
+class(df_Kmax6$nFriends) # [1] "numeric"
+table(df_Kmax6$W1)
  #   0    1    2    3    4    5 
  # 475 1772 2900 2615 1718  520 
-c(mean(df_K6$W1), mean(df_K6$W2), mean(df_K6$W3))
+c(mean(df_Kmax6$W1), mean(df_Kmax6$W2), mean(df_Kmax6$W3))
 # [1] 2.4889 0.5719 0.6031
 
-mean(df_K6$A) # [1] 0.198
-mean(df_K6$Y) # [1] 0.435
-mean(df_K6$nFriends) # [1] 3.307
+mean(df_Kmax6$A) # [1] 0.198
+mean(df_Kmax6$Y) # [1] 0.435
+mean(df_Kmax6$nFriends) # [1] 3.307
 
 # --------------------------------------------------
 # # NEW INTERFACE FOR SPECIFYING hform, Qform, gform allows including the summary measure names
@@ -78,18 +78,18 @@ mean(df_K6$nFriends) # [1] 3.307
 # NOT IMPLEMENTED YET. 
 # A helper function that can pre-evaluate the summary measures on (O)bserved data (data.frame)
 # This will help when examining the data and playing with various summary measures, prior to running the tmletnet() function
-# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax, NETIDnode = "Net_str", IDnode = "IDs")
+# res <- eval.summaries(summaries = def_sA, Odata = df_Kmax6, Kmax = Kmax, NETIDnode = "Net_str", IDnode = "IDs")
 # --------------------------------------------------
 
 #----------------------------------------------------------------------------------
 # Example 1. Mean population outcome under deterministic intervention A=0 with 6 friends
 #----------------------------------------------------------------------------------
 Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
-head(df_K6)
+head(df_Kmax6)
 
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
+def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
             def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
-            
+
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE) +
             def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
@@ -98,36 +98,34 @@ def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), repla
 (hform.depr <- "sA ~ " %+% paste(netvar("W2", (1:6)), collapse = "+") %+% " + netW3_sum + nFriends")
 
 system.time(
-tmlenet_K6out2 <- tmlenet(data = df_K6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
-                          Kmax = kmax, 
-                          IDnode = "IDs", 
-                          NETIDnode = "Net_str",
-                          # NETIDnode = NULL,
-                          f_gstar1 = f.A_0,
+res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
+                  Kmax = Kmax,
+                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                  f_gstar1 = f.A_0,
 
-                          # OLD regs (TO BE REMOVED):
-                          Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
+                  # OLD regs specification (TO BE REMOVED):
+                  Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
 
-                          sW = def_sW, sA = def_sA,
-                          # new way to specify regressions:
-                          Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
-                          hform = "netA ~ netW2 + netW3_sum + nFriends",
-                          hform.gstar = "netA ~ netW3_sum",
-                          gform = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
-                          opt.params = list(
-                            onlyTMLE_B = FALSE,  # remove
-                            # f_g0 = f.A, # tested, works
-                            n_MCsims = 10
-                          )
-                          ))
-                          # alternative way to pass summary measures:
-                          # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
-                          # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
+                  # new way to specify regressions:
+                  sW = def_sW, sA = def_sA,
+                  Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
+                  hform = "netA ~ netW2 + netW3_sum + nFriends",
+                  hform.gstar = "netA ~ netW3_sum",
+                  gform = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
+                  optPars = list(
+                    onlyTMLE_B = FALSE,  # remove
+                    # f_g0 = f.A, # tested, works
+                    n_MCsims = 10)
+                  )
+)
+                # alternative ways to pass summary measures:
+                # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
+                # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
 
-tmlenet_K6out2$EY_gstar1$estimates
-tmlenet_K6out2$EY_gstar1$vars
-tmlenet_K6out2$EY_gstar1$CIs
-tmlenet_K6out2$EY_gstar1$other.vars
+res_K6$EY_gstar1$estimates
+res_K6$EY_gstar1$vars
+res_K6$EY_gstar1$CIs
+res_K6$EY_gstar1$other.vars
 
 # ================================================================
 # COMPARING OLD vs NEW OUTPUT
@@ -221,11 +219,54 @@ tmlenet_K6out2$EY_gstar1$other.vars
 
 
 #----------------------------------------------------------------------------------
+# Same as Example 1, but specifying the network with NETIDs_mat: a matrix of friend row numbers from the input data
+#----------------------------------------------------------------------------------
+Net_str <- df_Kmax6[, "Net_str"]
+IDs_str <- df_Kmax6[, "IDs"]
+net_ind_obj <- tmlenet::NetIndClass$new(nobs = nrow(df_Kmax6), Kmax = Kmax)
+net_ind_obj$makeNetInd.fromIDs(Net_str = Net_str, IDs_str = IDs_str, sep = ' ')
+NetInd_mat <- net_ind_obj$NetInd
+nF <- net_ind_obj$nF
+print(head(NetInd_mat))
+print(head(nF))
+print(all.equal(df_Kmax6[,"nFriends"], nF))
+
+system.time(
+res_K6net <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
+                    Kmax = Kmax,
+                    NETIDs_mat = NetInd_mat,
+                    f_gstar1 = f.A_0,
+                    # OLD regs (TO BE REMOVED):
+                    Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
+                    sW = def_sW, sA = def_sA,
+                    # new way to specify regressions:
+                    Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
+                    hform = "netA ~ netW2 + netW3_sum + nFriends",
+                    hform.gstar = "netA ~ netW3_sum",
+                    gform = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
+                    optPars = list(
+                      onlyTMLE_B = FALSE,  # remove
+                      # f_g0 = f.A, # tested, works
+                      n_MCsims = 10)
+                    )
+)
+                  # alternative way to pass summary measures:
+                  # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
+                  # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
+
+all.equal(res_K6net$EY_gstar1$estimates, res_K6$EY_gstar1$estimates)
+all.equal(res_K6net$EY_gstar1$vars, res_K6$EY_gstar1$vars)
+all.equal(res_K6net$EY_gstar1$CIs, res_K6$EY_gstar1$CIs)
+all.equal(res_K6net$EY_gstar1$other.vars, res_K6$EY_gstar1$other.vars)
+
+
+
+#----------------------------------------------------------------------------------
 # Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
 # OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-# tmlenet_K6out2 <- tmlenet(data=df_K6, Anode="A", Wnodes=Wnodes, Ynode="Y", nFnode="nFriends",
-# 						Kmax=kmax, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, h_form=hform,
+# tmlenet_K6out2 <- tmlenet(data=df_Kmax6, Anode="A", Wnodes=Wnodes, Ynode="Y", nFnode="nFriends",
+# 						Kmax=Kmax, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, h_form=hform,
 # 						f.g1.star=f.A_1, f.g1_args=NULL, n_MCsims=10, n_samp_g0gstar=10)
 
 # tmlenet_K6out2$estimates$EY_g1.star$tmle_B

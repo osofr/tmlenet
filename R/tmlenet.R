@@ -375,9 +375,9 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
 #' @param Ynode  Outcome variable name (column name in \code{data}), assumed normalized 0 to 1
 #' @param sW Summary measures constructed from variables in \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sW when it is left missing)
 #' @param sA Summary measures constructed from variables in \code{Anode} and \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sA when its missing)
-#' @param IDnode (Optional) Subject identifier variable in the input data, if not supplied the network string in NETIDs_str is assumed to be indexing the row numbers in the input \code{data}
-#' @param NETIDs_str (Optional) Column name in data consisting of strings that identify the unit's friends by their IDs or their row numbers (two friends are separated by space, e.g., "1 2"; unit with no friends should have an empty "" string). See Details.
-#' @param NETIDs_mat (Optional / NOT IMPLEMENTED) Matrix (\code{ncol=Kmax}, \code{nrow=nrow(data)}), where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row numbers in \code{data} if \code{IDnode=NULL}. See Details.
+#' @param IDnode (Optional) Subject identifier variable in the input data, if not supplied the network string in NETIDnode is assumed to be indexing the row numbers in the input \code{data}
+#' @param NETIDnode Network specification, a column name in data consisting of strings that identify the unit's friends by their IDs or their row numbers (two friends are separated by space, e.g., "1 2"; unit with no friends should have an empty "" string). See Details.
+#' @param NETIDs_mat Alternative method for specifying network, a matrix (\code{ncol=Kmax}, \code{nrow=nrow(data)}), where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row numbers in \code{data} if \code{IDnode=NULL}. See Details.
 #' @param f_gstar1 Function for specifying an intervention of interest that can be static, dynamic treatment regimen or stochastic intervention. See Details.
 #' @param f_gstar2 (Optional) Function for specifying another intervention of interest when estimating the treatment effects under two interventions
 #' @param AnodeDET (Optional) Column name for indicators of deterministic values of A, coded as (TRUE/FALSE) or (1/0), the observations with AnodeDET=TRUE/1 are assumed to have constant value for their Anode
@@ -417,8 +417,8 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
 #' This can be an undersirable behavior in some circumstances, in which case one can automatically replace all such \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling function \code{def.sW},
 #' i.e., \code{def.sW(W_netF1 = W[[1]], replaceMisVal0 = TRUE)}.
 #'
-#' When \code{NETIDs_str} or \code{NETIDs_mat} are left unspecified, the input data is assumed independent, with no network structure. All inference will be performed based on the iid efficient influence curve for the target parameter (EY_gstar1).
-#' Note that the ordering of the friends in \code{NETIDs_str} or \code{NETIDs_mat} is unimportant.
+#' When \code{NETIDnode} or \code{NETIDs_mat} are left unspecified, the input data is assumed independent, with no network structure. All inference will be performed based on the iid efficient influence curve for the target parameter (EY_gstar1).
+#' Note that the ordering of the friends in \code{NETIDnode} or \code{NETIDs_mat} is unimportant.
 #'
 #' The number of friends (\code{nFnode}) is calculate automatically. However, if the column \code{data[,nFnode]} already exists in the input data
 #' it will be compared to the automatically calculated values, with an error produced if the two variables do not exactly match.
@@ -444,16 +444,15 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
 #' @section Specifying the Network of Friends:
 #' 
 #' The network of friends (connections) for observations in the input \code{data} can be specified in two alternative ways, 
-#' using either \code{NETIDs_str} or \code{NETIDs_mat} input arguments.
+#' using either \code{NETIDnode} or \code{NETIDs_mat} input arguments.
 #' 
-#' \code{NETIDs_str} - The first (slower) method uses a vector of strings in \code{data[, NETIDs_str]}, where each string \code{i} must contain 
+#' \code{NETIDnode} - The first (slower) method uses a vector of strings in \code{data[, NETIDnode]}, where each string \code{i} must contain 
 #' the space separated IDs or row numbers of all units in \code{data} thought to be connected to observation i (friends of unit i);
 #' 
-#' \code{NETIDs_mat} - (NOT IMPLEMENTED) An alternative (faster) way is to pass a matrix with \code{Kmax} columns and nrow(data) rows, 
+#' \code{NETIDs_mat} - An alternative (and faster) method is to pass a matrix with \code{Kmax} columns and nrow(data) rows,
 #' where each row \code{NETIDs_mat[i,]} is a vector of observation \code{i}'s friends' IDs or \code{i}'s friends' row numbers in \code{data} if \code{IDnode=NULL}.
 #' If observation \code{i} has fewer than \code{Kmax} friends, the remainder of \code{NETIDs_mat[i,]} must be filled with \code{NA}s. 
 #' Note that the ordering of friend indices is irrelevant.
-# removed from NETIDs_mat: "a vector of \code{Kmax} column names from \code{data} or "
 #' 
 #' @return A named list of the target parameter estimates of the population mean under intervention \code{f_gstar1} (EY_gstar1), their asymptotic variance estimates and CI estimates at \code{alpha} level.
 #' If \code{f_gstar2} was also specified, the list will consists of the three sets of estimates,
@@ -476,7 +475,8 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
 # todo 79 (tmlenet, inputs) +0: add max_nperbin & nbins to a list of optional params in optPars, same for speed.glm, pooled, etc..
 #todo 80 (tmlenet, inputs) +0: add data checks: 1) test Anode is binary or contin; 2) no missing data among A,W,Y
 #---------------------------------------------------------------------------------
-tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET = NULL, nFnode = "nF", IDnode = NULL, NETIDs_str = NULL,
+tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET = NULL, nFnode = "nF", IDnode = NULL, 
+                    NETIDnode = NULL, sep = ' ', NETIDs_mat = NULL,
                     f_gstar1, f_gstar2 = NULL,
                     sW = NULL, sA = NULL,
                     Qform = NULL, hform = NULL, hform.gstar = NULL, gform = NULL,
@@ -500,6 +500,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   #----------------------------------------------------------------------------------
   # onlyTMLE_B <- TRUE # if TRUE, only evalute the intercept TMLE (TMLE_B)
   iidW_flag <- FALSE
+  iid_data_flag <- FALSE  # set to true if no network is provided (usual iid TMLE)
   Q.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction")
   g.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction")
   max_npwt <- 50
@@ -538,38 +539,63 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   # #todo 8 (tmlenet) +0: check all names exist in data (Anode, Wnodes, Ynode, etc...)
   # #todo 11 (tmlenet) +0: Wnodes & Anode are no longer needed if provided sW, sA, give a warning that Wnodes, Anodes will be ignored
   #----------------------------------------------------------------------------------
-  if (is.null(NETIDs_str)) {
-    message("No network (friends) specified by NETIDs_str or NETIDs_mat args, assuming the input data is i.i.d.")
+
+  if (is.null(NETIDnode) && is.null(NETIDs_mat)) {
+    message("No network (friends) specified by NETIDnode or NETIDs_mat args, assuming the input data is i.i.d.")
     nFnode <- NULL
+    iid_data_flag <- TRUE
     if (missing(Kmax)) Kmax <- 1 # need to allow Kmax = 0
   }
 
   assert_that(is.data.frame(data))
+  assert_that(is.integerish(Kmax))
   Kmax <- as.integer(Kmax)
-  assert_that(is.count(Kmax))
+  # assert_that(is.count(Kmax))
   assert_that(is.Define_sVar(sW))
   assert_that(is.Define_sVar(sA))
 
   nobs <- nrow(data)
-  node_l <- list(IDnode = IDnode, Anode = Anode, Wnodes = Wnodes, Ynode = Ynode, nFnode = nFnode, NETIDs_str = NETIDs_str)
+  node_l <- list(IDnode = IDnode, Anode = Anode, Wnodes = Wnodes, Ynode = Ynode, nFnode = nFnode, NETIDnode = NETIDnode)
 
   # Defining Deterministic Y and A node flags:
   if (is.null(AnodeDET)) {determ.g <- rep_len(FALSE, nobs)} else {determ.g <- (data[, AnodeDET] == 1)}
   if (is.null(YnodeDET)) {determ.Q <- rep_len(FALSE, nobs)} else {determ.Q <- (data[, YnodeDET] == 1)}
 
   # #todo 63 (tmlenet) +0: Replace all input data with this (to get rid of irrelevant columns in data)
-  # #todo 78 (tmlenet, inputs) +0: Test that when NETIDs_str = NULL, can specify Kmax = 0 or can be missing
-  d_sel <- data.frame(subset(data, select = unlist(node_l)), determ.g = determ.g, determ.Q = determ.Q)
+  # #todo 78 (tmlenet, inputs) +0: Test that when NETIDnode = NULL, can specify Kmax = 0 or can be missing
+  node_l_sel <- node_l
+  if (!(nFnode %in% names(data))) {
+    node_l_sel$nFnode <- NULL
+  }
+  d_sel <- data.frame(subset(data, select = unlist(node_l_sel)), determ.g = determ.g, determ.Q = determ.Q)
 
   #----------------------------------------------------------------------------------
   # Create an object with model estimates, data & network information that is passed on to estimation procedure
   #----------------------------------------------------------------------------------
-  netind_cl <- NetIndClass$new(Odata = data, Kmax = Kmax, IDnode = IDnode, NETIDs_str = NETIDs_str, sep = ' ')
-  NetInd_k  <- netind_cl$NetInd_k
-  print("NetInd_k"); print(head(NetInd_k))
-  print("netind_cl$nF"); print(head(netind_cl$nF))
+  netind_cl <- NetIndClass$new(nobs = nobs, Kmax = Kmax)
+  if (!is.null(NETIDnode)) {
 
-  if (nFnode %in% names(data) && (!is.null(NETIDs_str))) {
+    assert_that(is.character(NETIDnode))
+    Net_str <- as.character(data[, NETIDnode])
+    if (!is.null(IDnode)) {
+      assert_that(is.character(IDnode))
+      IDs_str <- as.character(data[, IDnode])
+    } else {
+      IDs_str <- NULL
+    }
+    netind_cl$makeNetInd.fromIDs(Net_str = Net_str, IDs_str = IDs_str, sep = sep)
+  } else if (!is.null(NETIDs_mat)) {
+    assert_that(is.matrix(NETIDs_mat))
+    netind_cl$NetInd <- NETIDs_mat
+    netind_cl$make.nF()
+
+  }
+
+  print("netind_cl: "); print(netind_cl)
+  print("head(netind_cl$NetInd): "); print(head(netind_cl$NetInd))
+  print("netind_cl$nF"); print(head(netind_cl$nF))    
+
+  if (nFnode %in% names(data) && (!iid_data_flag)) {
     message("performing nFnode consistency check: ")
     if (!all(as.integer(netind_cl$nF) == as.integer(data[,nFnode]))) {
       stop("column data[,nFnode] does not match automatically calculated values for nFnode.
@@ -581,7 +607,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   #----------------------------------------------------------------------------------
   # Parse and evaluate the summary measures (in class Define_sVar):
   # #todo 17 (tmletnet) +5: pre-evaluate summary measures on small batch of data to get dims of sA & sW and to check for errors
-    # Would need to sort out how to define NetInd_k for a subset of full data?
+    # Would need to sort out how to define netind_cl$NetInd for a subset of full data?
   # #todo 52 (tmlenet) +0: Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
     # When sW / sA are just lists of character vectors need to capture the calling env and call Define_sVar constructor:
       # user.env <- parent.frame()
@@ -595,12 +621,12 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
 
   # Testing the evaluation of summary measures:
   testm.sW <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = node_l$nFnode)
-  # print("testm.sW"); print(head(testm.sW))
-  # print("testm.sW map"); print(sW$sVar.names.map)
+  print("testm.sW"); print(head(testm.sW))
+  print("testm.sW map"); print(sW$sVar.names.map)
 
   testm.sA <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
-  # print("testm.sA"); print(head(testm.sA))
-  # print("testm.sA map"); print(sA$sVar.names.map)
+  print("testm.sA"); print(head(testm.sA))
+  print("testm.sA map"); print(sA$sVar.names.map)
 
   #---------------------------------------------------------------------------------
   # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
@@ -759,7 +785,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
                   max_npwt = max_npwt, # NOT IMPLEMENTED  # cap the prop weights scaled at max_npwt (for =50 -> translates to max 10% of total weight for n=500 and 5% for n=1000)
                   Kmax = Kmax, # REMOVE, already saved in DatNet
                   node_l = node_l, #REMOVE, already saved in DatNet
-                  NetInd_k = NetInd_k, #REMOVE, already saved in DatNet
+                  NetInd_k = netind_cl$NetInd, #REMOVE, already saved in DatNet
                   family = family, #REMOVE, already saved in DatNet regs
                   f.g0_args = f.g0_args, #REMOVE, no longer used
                   gform = gform.depr, #REMOVE, no longer used

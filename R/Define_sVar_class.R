@@ -259,6 +259,8 @@ Define_sVar <- R6Class("Define_sVar",
 
       # call lapply on parse.sVar.out for each sVar in sVar.expr.names -> sVar.res_l
       sVar.res_l <- lapply(seq_along(self$sVar.exprs), parse.sVar.out, self = self)
+      # print("sVar.res_l: "); print(sVar.res_l)
+      
       names(sVar.res_l) <- self$sVar.expr.names
       if (!is.null(addnFnode)) sVar.res_l <- c(sVar.res_l, list(nF = netind_cl$mat.nF(addnFnode)))
       # SAVE THE MAP BETWEEEN EXPRESSION NAMES AND CORRESPONDING COLUMN NAMES:
@@ -267,6 +269,7 @@ Define_sVar <- R6Class("Define_sVar",
       # print("sVar.res_l: "); print(sVar.res_l)
       # print("data.frame(sVar.res_l): "); print(data.frame(sVar.res_l))
       # print("dplyr::as_data_frame(sVar.res_l): "); print(dplyr::as_data_frame(sVar.res_l))
+      # print("sVar.res_l: "); print(sVar.res_l)
 
       #todo 28 (sVar_evaluator) +0: Consider returning sVar.res_l instead of mat.sVar, also see if there are faster alternatives to cbind (i.e., pre-allocating sVar.mat); perform benchmarks to see if there is any noticable benefit
       mat.sVar <- do.call("cbind", sVar.res_l)
