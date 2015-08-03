@@ -53,6 +53,8 @@
   # eval(substitute(node), nl, parent.frame()) -> replace parent.frame() with a reasonable calling envir
 ## ---------------------------------------------------------------------
 
+is.integerish <- function (x) is.integer(x) || (is.numeric(x) && all(x == as.integer(x)))
+
 ## ---------------------------------------------------------------------
 # Class holds and creates NetInd_k, the matrix of network connection indices in Odata of dim = (nobs x Kmax)
 # Also calculates a vector nF - number of friends for each unit
@@ -135,9 +137,6 @@ NetIndClass <- R6Class("NetIndClass",
 # DETECTING VECTOR TYPES
 ## ---------------------------------------------------------------------
 # sVartypes <- list(bin = "binary", cat = "categor", cont = "contin")
-is.integerish <- function (x) {
-  is.integer(x) || (is.numeric(x) && all(x == as.integer(x)))
-}
 detect.col.types <- function(sVar_mat){
   sVartypes <- gvars$sVartypes
   as.list(apply(sVar_mat, 2,
