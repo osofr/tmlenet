@@ -1,4 +1,4 @@
-# #todo 61 (MCeval) +0: Consider adding model update fits to mcEvalPsi, as separate methods or as part of each TMLE
+
 
 #---------------------------------------------------------------------------------
 # G-Comp & TMLEs: Use Monte-Carlo to estimate psi under stochastic g^* 

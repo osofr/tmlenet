@@ -3,23 +3,22 @@
 \docType{class}
 \name{SummariesModel}
 \alias{SummariesModel}
-\title{Class for defining, holding and fitting collections of summary measure models P(sA[j] | sW, sA[j])}
+\title{R6 class for fitting and predicting model P(sA|sW) under g.star or g.0}
 \format{An R6 class object.}
 \usage{
 SummariesModel
 }
 \description{
-Class for defining, holding and fitting collections of summary measure models P(sA[j] | sW, sA[j])
+R6 class for fitting and predicting model P(sA|sW) under g.star or g.0
 }
 \details{
-Following fields are created during initialization
+Class for defining, fitting and predicting the probability model P(sA = sa | sW = sw) under g_star or under g_0 for summary measures (sW,sA).
 \itemize{
 \item{n_regs} ...
-\item{nodes} ...
 \item{sA_nms} ...
 \item{sW_nms} ...
 }
-More details about the class...
+Additional details about implementation of the class...
 }
 \keyword{datasets}
 

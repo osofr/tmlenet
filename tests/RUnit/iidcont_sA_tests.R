@@ -50,7 +50,8 @@ def.nodeojb <- function(datO) {
   nodes <- list(Anode = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
   def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
   def_sA <- def.sA(sA = "sA")
-  netind_cl <- NetIndClass$new(Odata = datO)
+  # netind_cl <- NetIndClass$new(Odata = datO)
+  netind_cl <- NetIndClass$new(nobs = nrow(datO))
   # Define datNetObs:
   datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes, VarNodes = nodes$Wnodes, addnFnode = TRUE)$make.sVar(Odata = datO, sVar.object = def_sW)
   datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes, VarNodes = nodes$Anode)$make.sVar(Odata = datO, sVar.object = def_sA)
@@ -75,12 +76,8 @@ test.simple.fit.density.sA <- function() {
   subsets_expr <- lapply(subsets_chr, function(subset_chr) { try(parse(text=subset_chr)[[1]]) }) # parses chr into a call
   sA_class <- nodeobjs$datNetObs$datnetA$type.sVar[reg.sVars$outvars]
 
-  summeas.g0 <- SummariesModel$new(sA_class = sA_class, # (1) TO BE REPLACED WITH RegressionClass object that defines sA_class, sA_nms, sW_nms
-                                    sA_nms = reg.sVars$outvars,
-                                    sW_nms = reg.sVars$predvars,
-                                    subset = subsets_expr,
-                                    O.datnetA = nodeobjs$datNetObs$datnetA)
-
+  regclass <- RegressionClass$new(outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subsets_expr)
+  summeas.g0 <- SummariesModel$new(reg = regclass, O.datnetA = nodeobjs$datNetObs$datnetA)
   summeas.g0$fit(data = nodeobjs$datNetObs)
 
   contsumobj <- summeas.g0$getPsAsW.models()$`P(sA|sW).1`

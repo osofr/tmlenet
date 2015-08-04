@@ -13,10 +13,7 @@
   # II) sVar naming:
   # #todo 34 (sVar_evaluator, sVar.name) +0: Instead of throwing an error for un-named vector results (e.g., def.sW(A)), would be nice to extract the first is.name of the expression and use that as a name.
   # #todo 7 (sVar_evaluator, sVar.name) +0: Check that the resulting column names in sVar are all unique!
-  # #todo 3 (sVar_evaluator, sVar.name) +0: Allow overwriting names for some ncol(expr_res) > 1 in sVar.res_l. Allow using naturally assigned names for some ncol(expr_res) > 1 in sVar.res_l
   # Create an option $keep.sVar.nms; When TRUE do not change the output column names for sVar mat with ncol > 1. Create an option to overwrite sVar mat colname(s) with user-provided names
-  # III) Other:
-  # #todo 32 (sVar_evaluator, UI) +0: Need a diagnostic tool that will evaluate and return the result of the summary measures applied to user Odata data.frame...
 
 # Useful function for testing if a name is a valid R object name:
 isValidAndUnreservedName <- function(string) {

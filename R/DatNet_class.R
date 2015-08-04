@@ -246,7 +246,9 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
 #' @name DatNet
 #' @details Following fields are created during initialization
 #' \itemize{
+#' \item{Kmax} ...
 #' \item{nodes} ...
+#' \item{netind_cl} ...
 #' \item{subset_regs} ...
 #' \item{sA_nms} ...
 #' \item{sW_nms} ...
@@ -364,8 +366,7 @@ DatNet <- R6Class(classname = "DatNet",
       if (self$addnFnode) { nFnode <- self$nodes$nFnode } else { nFnode <- NULL }
       self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl, addnFnode = nFnode)
 
-      # self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl,
-      #                                           misXreplace = self$usemisval, addnFnode = nFnode)
+      # self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl, misXreplace = self$usemisval, addnFnode = nFnode)
       # below was replaced with new sVar names that aren't nec. part of netVar:
       # assert_that(all(names.sVar %in% self$names.netVar))
       # n.sVar <- length(names.sVar)
@@ -422,7 +423,7 @@ DatNet <- R6Class(classname = "DatNet",
       invisible(self)
     },
 
-    # 07/14/15: Currently, not called from anywhere. The only place where intervals are defined is inside ContinSummaryModel$new that calls DatBin.sW.sA$detect.sVar.intrvls(sVar)
+    # 07/14/15: Currently, not called from anywhere. The only place where intervals are defined is inside ContinOutModel$new that calls DatBin.sW.sA$detect.sVar.intrvls(sVar)
     # *** TO DO ***: Make sure that a categorical var is only binned when ncats > nbins
     # *** TO DO ***: Make sure cat sVar doesn't get degenerate intervals (bins) (repeating same cut-offs)
     # Add arg (overwrite = FALSE)

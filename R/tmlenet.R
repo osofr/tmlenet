@@ -21,12 +21,15 @@ NULL
 #------------------------------------
 # TO DO LIST:
 #------------------------------------
+  # *) Unify interface for sA/sW specification with simcausal
+    # - replaceNAw0
+    # - automatic names
+    # - summary functions (rowMeans() in tmlenet, but mean() in simcausal)
   # *) (11/05/14) Make as. var estimates to be at least \sum{(D^*^2)(O_i)}, i.e. lower bounded by as. var in iid case,
   #     ... since there is no reason to expect that more information will be available for dependent units than there is for indep. units
   # *) Implement data-adaptive weight truncation wrt minimization of MSE (taking max of 5% weight of total as truth)
   # *) Implement pooling when estimating P(sA[j]|sW) for continous sA[j]
   # *) Allow SL to fit Q_N, g_N and h (i.e P(A_j|A_{1},..,A_{j-1}, W_i\inF_j))
-
 
 #------------------------------------
 # REVISIONS (06/15/2013)
@@ -103,16 +106,54 @@ NULL
   # *) New intercept=based TMLE
   # *) Added separate regression specification for \bar{h} and \bar{h}^*
 
+#-----------------------------------------------------------------------------
+# Class Membership Tests
+#-----------------------------------------------------------------------------
+is.DatNet.sWsA <- function(DatNet.sWsA) "DatNet.sWsA"%in%class(DatNet.sWsA)
+is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
+
+#-----------------------------------------------------------------------------
+# ALL NETWORK VARIABLE NAMES MUST BE CONSTRUCTED BY CALLING THIS FUNCTION.
+# In the future might return the network variable (column vector) itself.
+# Helper function that for given variable name (varnm) and friend index (fidx) 
+# returns the characeter name of that network variable varnm[fidx], 
+# for fidx = 0 (var itself), ..., kmax. fidx can be a vector, in which case a 
+# character vector of network names is returned. If varnm is also a vector, a 
+# character vector for all possible combinations of (varnm x fidx) is returned.
+#-----------------------------------------------------------------------------
+# OUTPUT format: Varnm_net.j:
+netvar <- function(varnm, fidx) {
+  cstr <- function(varnm, fidx) {
+    slen <- length(fidx)
+    rstr <- vector(mode = "character", length = slen)
+    netidxstr <- ! (fidx %in% 0L)
+    rstr[netidxstr] <- stringr::str_c('_netF', fidx[netidxstr])  # vs. 1
+    # rstr[netidxstr] <- str_c('.net.', fidx[netidxstr])  # vs. 2
+    return(stringr::str_c(varnm, rstr))
+  }
+  if (length(varnm) > 1) {
+    return(unlist(lapply(varnm, cstr, fidx)))
+  } else {
+    return(cstr(varnm, fidx))
+  }
+}
+# Examples:
+# netvar("A", (0:5))
+# netvar("A", c(0:5, 0, 3))
+# netvar(c("A", "W"), c(0:5, 0, 3))
+# netvar(c("A", "W"), c(0:5, 0, 3))
+
+#-----------------------------------------------------------------------------
+# General utilities / Global Vars
+#-----------------------------------------------------------------------------
 `%+%` <- function(a, b) paste0(a, b)
 
-.onAttach <- function(...) {
-  packageStartupMessage("tmlenet")
-  packageStartupMessage("The tmlenet package is still in beta testing. Please do not distribute. Interpret results with caution.")
+# Bound g(A|W) probability within supplied bounds
+bound <- function(x, bounds){
+  x[x<min(bounds)] <- min(bounds)
+  x[x>max(bounds)] <- max(bounds)
+  return(x)
 }
-
-#-----------------------------------------------------------------------------
-# General utilities
-#-----------------------------------------------------------------------------
 
 #if warning is in ignoreWarningList, ignore it; otherwise post it as usual
 SuppressGivenWarnings <- function(expr, warningsToIgnore) {
@@ -167,8 +208,7 @@ RhsVars <- function(f) {
 }
 
 #---------------------------------------------------------------------------------
-# Estimate h_bar under g_0 and g* given observed data and vector of c^Y's
-# data is an DatNet.sWsA object
+# Estimate h_bar under g_0 and g* given observed data and vector of c^Y's data is an DatNet.sWsA object
 # #todo 22 (get_all_ests) +0: rename get_all_ests into fit.param.fluct
 # #todo 23 (get_all_ests) +0: move MC estimation (and h estimation?) outside get_all_ests
 #---------------------------------------------------------------------------------
@@ -480,8 +520,10 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
                     f_gstar1, f_gstar2 = NULL,
                     sW = NULL, sA = NULL,
                     Qform = NULL, hform = NULL, hform.gstar = NULL, gform = NULL,
+
                     # DEPRECATED:
                     Qform.depr = NULL, gform.depr = NULL, hform.depr = NULL,
+
                     verbose = FALSE, # NOT IMPLEMENTED YET
                     args_f_g1star = NULL, args_f_g2star = NULL, # CAN BE REMOVED OR PUT IN OPTIONAL PARAMS NO NEED TO PASS ARGs to f_gstar1 or f_gstar2
                     optPars = list(
@@ -564,7 +606,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   # #todo 63 (tmlenet) +0: Replace all input data with this (to get rid of irrelevant columns in data)
   # #todo 78 (tmlenet, inputs) +0: Test that when NETIDnode = NULL, can specify Kmax = 0 or can be missing
   node_l_sel <- node_l
-  if (!(nFnode %in% names(data))) {
+  if (!is.null(nFnode) && (!(nFnode %in% names(data)))) {
     node_l_sel$nFnode <- NULL
   }
   d_sel <- data.frame(subset(data, select = unlist(node_l_sel)), determ.g = determ.g, determ.Q = determ.Q)
@@ -584,6 +626,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
       IDs_str <- NULL
     }
     netind_cl$makeNetInd.fromIDs(Net_str = Net_str, IDs_str = IDs_str, sep = sep)
+
   } else if (!is.null(NETIDs_mat)) {
     assert_that(is.matrix(NETIDs_mat))
     netind_cl$NetInd <- NETIDs_mat
@@ -689,7 +732,6 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
                               predvars = Q.sVars$predvars,
                               subset = !determ.Q,
                               ReplMisVal0 = TRUE)
-
   m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = datNetObs)$predict()
 
   # datNetObs$YnodeVals       # visible Y's with NA for det.Y
@@ -722,7 +764,6 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
     m.g0N <- BinOutModel$new(glm = FALSE, reg = greg)$fit(data = datNetObs)
     print("coef(m.g0N): "); print(coef(m.g0N))
   }
-
 
   #----------------------------------------------------------------------------------
   # DEPRECATED... MOVED TO all regs being defined via sW, sA summary measures...

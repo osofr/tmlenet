@@ -92,6 +92,80 @@ sample_checks <- function() {   # doesn't run, this is just to show what test fu
      checkIdentical(-Inf, -Inf)
 }
 
+
+# Add a bug with automatic interval/bin detection on binary variable (all vals get placed in one bin)
+test.bin01bug <- function() {
+
+}
+
+
+get.testDat <- function(nsamp = 100000) {
+  `%+%` <- function(a, b) paste0(a, b)
+  library(simcausal)
+  D <- DAG.empty()
+  D <-
+  D + node("W1", distr = "rbern", prob = 0.5) +
+      node("W2", distr = "rbern", prob = 0.3) +
+      node("W3", distr = "rbern", prob = 0.3) +
+      node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
+      node("sA", distr = "rnorm", mean = sA.mu, sd = 1)
+  D <- set.DAG(D)
+  datO <- sim(D, n = nsamp, rndseed = 12345)
+}
+get.testDatNet <- function(datO) {
+  Kmax <- 1
+  # nodes <- list(Anode = "sA", Wnodes = c("W1", "W2", "W3"))
+  nodes <- list(Anode = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
+  def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
+  def_sA <- def.sA(sA = "sA")
+  netind_cl <- NetIndClass$new(nobs = nrow(datO))
+  # Define datNetObs:
+  datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes, VarNodes = nodes$Wnodes, addnFnode = TRUE)$make.sVar(Odata = datO, sVar.object = def_sW)
+  datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes, VarNodes = nodes$Anode)$make.sVar(Odata = datO, sVar.object = def_sA)
+  datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+  return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
+}
+test.RegressionClass <- function() {
+  # Tests for RegressionClass:
+  reg_test1 <- RegressionClass$new(outvar.class = c(gvars$sVartypes$bin, gvars$sVartypes$bin),
+                                  outvar = c("A1", "A2"),
+                                  predvars = c("W1", "W2"))
+  class(reg_test1)
+  reg_test1$subset
+  model1 <- SummariesModel$new(reg = reg_test1)
+  # [1] "Init BinOutModel:"
+  # [1] "P(A1|W1,W2)"
+  # [1] "Init BinOutModel:"
+  # [1] "P(A2|A1,W1,W2)"
+  class(model1$getPsAsW.models()$`P(sA|sW).1`$reg)
+  ls(model1$getPsAsW.models()$`P(sA|sW).1`$reg)
+
+  reg_test2 <- RegressionClass$new(outvar.class = c(gvars$sVartypes$bin, gvars$sVartypes$bin),
+                                  outvar = c("A1", "A2"),
+                                  predvars = c("W1", "W2"),
+                                  subset = list(quote(A1 == 0)))
+  class(reg_test2)
+  reg_test2$subset
+  model2 <- SummariesModel$new(reg = reg_test2)
+
+  reg_test3 <- RegressionClass$new(outvar.class = c(gvars$sVartypes$cont, gvars$sVartypes$cont),
+                                  outvar = c("sA"),
+                                  predvars = c("W1", "W2", "W3"),
+                                  subset = list(quote(sA==0)))
+  reg_test_new <- reg_test3$clone()
+  all.equal(reg_test3, reg_test_new)
+  class(reg_test3)
+  nsamp <- 10000
+  datO <- get.testDat(nsamp)
+  head(datO)
+  nodeobjs <- get.testDatNet(datO)
+  model3 <- SummariesModel$new(reg = reg_test3, O.datnetA = nodeobjs$datNetObs$datnetA)
+
+
+}
+
+
+
 # NOT IMPLEMENTED
 # Test with bivariate normal (as sA)
 test.iid.bivNorm.tmlefit <- function() {
@@ -189,7 +263,7 @@ nettest$getNetInd
 nettest$getNetInd <- NULL
 
 ## ---------------------------------------------------------------------
-# TESTING ContinSummaryModel class and NewSummaryModel.contin constructor
+# TESTING ContinOutModel class and NewSummaryModel.contin constructor
 ## ---------------------------------------------------------------------
 # TEST 1: Binary outvar (treated as continuous). Testing that results match with binary class prediction.
 # self <- list()
@@ -258,15 +332,7 @@ nettest$getNetInd <- NULL
 # logisfit.speedglmS3 = function(datsum_obj) { # S3 method for speedglm binomial family fit, takes DatBinarySummary data object 
 
 
-test.RegressionClass <- function() {
-# TEST RegressionClass:
-reg_test <- RegressionClass$new(outvar.class = gvars$sVartypes$bin, 
-                                  outvar = "A", 
-                                  predvars = c("W1", "W2"), 
-                                  subset = expression(A=0))
-  # class(reg_test)
-  reg_test$reg
-}
+
 
 
 test.continous.sA <- function() {

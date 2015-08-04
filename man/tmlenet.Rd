@@ -290,6 +290,7 @@ res_K6$EY_gstar1$other.vars
 # iptw       0.4910014 0.4910014
 # iid.iptw   0.4429414 0.4429414
 # mle        0.4970377 0.4970377
+
 # ================================================================
 # NEW INTERFACE FINAL RESULTS WITH MC EVAL (FULL MATCH TO OLD)
 # gIPTW and TMLE_gIPTW AREN'T YET IMPLEMENTED
@@ -360,7 +361,6 @@ res_K6$EY_gstar1$other.vars
 # > tmlenet_K6out2$EY_gstar1$other.vars
 #    var_iid.tmle_B var_tmleiptw_2ndO     var_iptw_2ndO var_tmle_A_Q.init var_tmle_B_Q.init 
 #      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512 
-
 
 #----------------------------------------------------------------------------------
 # Same as Example 1, but specifying the network with NETIDs_mat: a matrix of friend row numbers from the input data

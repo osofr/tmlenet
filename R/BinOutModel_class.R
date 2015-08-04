@@ -6,6 +6,7 @@
 
 logitlinkinv <- function (eta) .Call(stats:::"C_logit_linkinv", eta) # glm logitlink inverse fun
 logisfit <- function(datsum_obj) UseMethod("logisfit") # Generic for fitting the logistic model
+
 # S3 method for glm binomial family fit, takes BinDat data object:
 logisfit.glmS3 <- function(datsum_obj) {
 	message("calling glm.fit...")
@@ -26,7 +27,7 @@ logisfit.glmS3 <- function(datsum_obj) {
 }
 
 logisfit.speedglmS3 <- function(datsum_obj) { # S3 method for speedglm binomial family fit, takes BinDat data object
-	# message("calling speedglm.wfit...")
+	message("calling speedglm.wfit...")
 	Xmat <- datsum_obj$getXmat
 	Y_vals <- datsum_obj$getY
 
@@ -229,10 +230,10 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 		is.fitted = FALSE,
 		bindat = NULL, # object of class BinDat that is used in fitting / prediction, never saved (need to be initialized with $new())
 
-		# TO DO: Change to glm arg being inside reg (reg$glm):
-		initialize = function(glm = TRUE, reg, ...) {
-			assert_that(is.flag(glm)) # THIS MIGHT BE MOVED TO self$fit() FUNCTION
-			if (!glm) self$glmfitclass <- "speedglmS3"
+		initialize = function(reg, ...) {
+		# initialize = function(glm = TRUE, reg, ...) {
+			assert_that(is.flag(reg$useglm))
+			if (!reg$useglm) self$glmfitclass <- "speedglmS3"
 			self$reg <- reg
 			self$bindat <- BinDat$new(reg = reg, ...) # postponed adding data in BinDat until self$fit() is called
 			class(self$bindat) <- c(class(self$bindat), self$glmfitclass)

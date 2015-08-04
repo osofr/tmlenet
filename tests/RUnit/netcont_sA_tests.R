@@ -73,6 +73,24 @@ test.onesim.net.tmlefit <- function() {
     return(NetInd_out$NetInd_k)
   }
 
+  #------------------------------------------------------------------------------------------------------------
+  # The user-defined network sampler(s) from igraph (regular graph model)
+  # Generate regular random graphs with same degree for each node
+  # Kmax - degree of each node
+  generate.igraph.k.regular <- function(n, Kmax, ...) {
+    if (n < 20) Kmax <- 5
+    igraph.reg <- igraph::sample_k_regular(no.of.nodes = n, k = Kmax, directed = TRUE, multiple = FALSE)
+    # From igraph object to sparse adj. matrix:
+    sparse_AdjMat <- simcausal:::igraph_to_sparseAdjMat(igraph.reg)
+    # From igraph object to simcausal/tmlenet input (NetInd_k, nF, Kmax):
+    NetInd_out <- simcausal:::sparseAdjMat_to_NetInd(sparse_AdjMat)
+    print("old Kmax:" %+% Kmax)
+    print("new Kmax:" %+% NetInd_out$Kmax)
+    print("NetInd_k"); print(head(NetInd_out$NetInd_k))
+    if (Kmax < NetInd_out$Kmax) message("new network has larger Kmax value than requested, new Kmax = " %+% NetInd_out$Kmax)
+    return(NetInd_out$NetInd_k)
+  }
+  
   # graph <- igraph::sample_k_regular(no.of.nodes = 50, k = 10, directed = TRUE, multiple = FALSE)
   # par(mar=c(.1,.1,.1,.1))
   # igraph::plot.igraph(graph,
