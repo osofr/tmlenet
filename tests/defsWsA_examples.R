@@ -56,3 +56,4 @@ def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), repla
 # Example.  NOT WRITTEN YET. Will evaluate the summary measures applied to the (O)bserved data (data.frame):
 # res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax, NETIDnode = "Net_str", IDnode = "IDs")
 #----------------------------------------------------------------------------------
+

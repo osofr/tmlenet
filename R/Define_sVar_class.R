@@ -50,6 +50,8 @@ is.Define_sVar <- function(obj) "Define_sVar" %in% class(obj)
 # #todo 42 ('+.Define_sVar') +0: Allow adding character vector summary measures for sVar2, s.a., def.sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
 # S3 method '+' for adding two Define_sVar objects
 # Summary measure lists in both get added as c(,) into the summary measures in sVar1 object
+#' @rdname def.sW
+#' @export
 `+.Define_sVar` <- function(sVar1, sVar2) {
   assert_that(is.Define_sVar(sVar1))
   assert_that(is.Define_sVar(sVar2))
@@ -102,10 +104,8 @@ parse.sVar.out <- function(sVar.idx, self) {
   sVar.expr <- self$sVar.exprs[[sVar.idx]]
   sVar.name <- self$sVar.expr.names[sVar.idx]
   misXreplace <- self$sVar.misXreplace[sVar.idx]
-
   # ******
   eval.sVar.params <- c(self$df.names(self$data.df), list(misXreplace = misXreplace), list(netind_cl = self$netind_cl))
-  # eval.sVar.params <- c(self$df.names(self$data.df), list(misXreplace = self$misXreplace), list(netind_cl = self$netind_cl))
   data.env <- c(eval.sVar.params, self$node_fun, self$data.df)
   # ******
 
@@ -159,19 +159,18 @@ Define_sVar <- R6Class("Define_sVar",
   class = TRUE,
   portable = TRUE,
   public = list(
-    user.env = emptyenv(),        # user environment to be used as enclos arg to eval(sVar)
+    user.env = emptyenv(),        # User environment used as enclos arg to eval(sVar, enclos=)
     data.df = NULL,               # data.frame that is used for evaluation of sVar expressions (passed to get.mat.sVar)
-    ReplMisVal0 = FALSE,          # vector of indicators, for each TRUE sVar.expr[[idx]] will replace all NAs with gvars$misXreplace (0)
-    sVar.misXreplace = NULL,      # replacement values for missing sVar, vector of length(sVar.exprs)
-    # misXreplace = NULL,         # no longer used (= gvars$misXreplace default value for replacing NAs (0), unless ReplMisVal0 = FALSE)
-    sVar.noname = FALSE,          # vector, for each TRUE sVar.expr[[idx]] ignores user-supplied name and generates names automatically
+    ReplMisVal0 = FALSE,          # Replace missing network VarNode values (when nF[i] < Kmax) with gvars$misXreplace (0)?
+    sVar.misXreplace = NULL,      # Replacement values for missing sVar (length(sVar.exprs)), either gvars$misXreplace or gvars$misval
+    sVar.noname = FALSE,          # Vector, for each TRUE sVar.expr[[idx]] ignores user-supplied name and generates names automatically
     netind_cl = NULL,
     Kmax = NULL,
     type = NA,                    # sW or sA
     sVar.exprs = character(),     # deparsed sVar expressions (char vector)
     sVar.expr.names = character(),# user-provided name of each sVar.expr
     sVar.names.map = list(),
-    # mat.sVar = matrix(),        # no longer used
+    # mat.sVar = matrix(),        # no longer storing the sVar evaluation result
 
     node_fun = list(
       # Builds netVar matrix by using matrix env$NetIndobj$NetInd_k, cbind on result
@@ -198,7 +197,7 @@ Define_sVar <- R6Class("Define_sVar",
             # netVars_eval[is.na(netVars_eval[, neti]), neti] <- env$misXreplace
           }
         }
-        # need to do benchmarks later to compare to column based replace:
+        # Don't need to do this if env$misXreplace==gvars$misval (i.e., when want to leave NAs as is)
         netVars_eval[is.na(netVars_eval)] <- env$misXreplace
         return(netVars_eval)
       }
@@ -275,12 +274,9 @@ Define_sVar <- R6Class("Define_sVar",
       # invisible(self)
     },
 
-    df.names = function(data.df) { # list of variable names from data.df with special var name (ANCHOR_ALLVARNMS_VECTOR_0)
+    # List of variable names from data.df with special var name (ANCHOR_ALLVARNMS_VECTOR_0):
+    df.names = function(data.df) {
       return(list(ANCHOR_ALLVARNMS_VECTOR_0 = colnames(data.df)))
-      # allvarnms <- list(ANCHOR_ALLVARNMS_VECTOR_0 = vector())
-      # allvarnms[["ANCHOR_ALLVARNMS_VECTOR_0"]] <- append(allvarnms[["ANCHOR_ALLVARNMS_VECTOR_0"]], colnames(data.df))
-      # allvarnms[["ANCHOR_ALLVARNMS_VECTOR_0"]] <- unique(allvarnms[["ANCHOR_ALLVARNMS_VECTOR_0"]])
-      # return(allvarnms)
     }
   ),
 

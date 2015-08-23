@@ -109,6 +109,7 @@ NULL
 #-----------------------------------------------------------------------------
 # Class Membership Tests
 #-----------------------------------------------------------------------------
+
 is.DatNet.sWsA <- function(DatNet.sWsA) "DatNet.sWsA"%in%class(DatNet.sWsA)
 is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
 
@@ -121,6 +122,7 @@ is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
 # character vector of network names is returned. If varnm is also a vector, a 
 # character vector for all possible combinations of (varnm x fidx) is returned.
 #-----------------------------------------------------------------------------
+
 # OUTPUT format: Varnm_net.j:
 netvar <- function(varnm, fidx) {
   cstr <- function(varnm, fidx) {
@@ -146,6 +148,7 @@ netvar <- function(varnm, fidx) {
 #-----------------------------------------------------------------------------
 # General utilities / Global Vars
 #-----------------------------------------------------------------------------
+
 `%+%` <- function(a, b) paste0(a, b)
 
 # Bound g(A|W) probability within supplied bounds
@@ -212,6 +215,7 @@ RhsVars <- function(f) {
 # #todo 22 (get_all_ests) +0: rename get_all_ests into fit.param.fluct
 # #todo 23 (get_all_ests) +0: move MC estimation (and h estimation?) outside get_all_ests
 #---------------------------------------------------------------------------------
+
 get_all_ests <- function(datNetObs, est_params_list) {
   # datNetObs$det.Y             # TRUE/FALSE for deterministic Y's
   # datNetObs$noNA.Ynodevals    # actual observed Y's
@@ -350,7 +354,7 @@ get_all_ests <- function(datNetObs, est_params_list) {
         fWi_star_B = mean(fWi_mat[,"fWi_Qstar_B"] - ests["tmle_B"])
         ));
 
-  print("new MC.ests vec: "); print(ests)
+  # print("new MC.ests vec: "); print(ests)
   print("new MC.ests mat: "); print(ests_mat)
 
   return(list( ests_mat = ests_mat,
@@ -430,17 +434,17 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
 #' @param Qform.depr (DEPRECATED)
 #' @param hform.depr (DEPRECATED)
 #' @param gform.depr (DEPRECATED)
+#' @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
+#' @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
+#' @param verbose Set to \code{TRUE} to print all messages
+#' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as alpha, gbound, family, n_MCsims, onlyTMLE_B, f_g0. See Details.
 #((NOT IMPLEMENTED)) @param AnodeDETfun function that evaluates to TRUE for observations with deterministically assigned A (alternative to AnodeDET)
 #((NOT IMPLEMENTED)) @param  YnodeDETfun function that evaluates to TRUE for observations with deterministically assigned Y (alternative to YnodeDET)
 #((NOT IMPLEMENTED)) @param Q.SL.library SuperLearner libraries for outcome, Q (NOT IMPLEMENTED)
 #((NOT IMPLEMENTED)) @param g.SL.library SuperLearner libraries for treatment mechanism, g (NOT IMPLEMENTED)
-#' @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
-#' @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
 #((NOT IMPLEMENTED)) @param h_f.g0_args Additional arguments to be passed to f_g0
 #((NOT IMPLEMENTED)) @param h_user_fcn User supplied function to calculate the clever covariate, h
 #((NOT IMPLEMENTED)) @param h_logit_sep_k Flag for fitting a separate logistic regression for each strata of nFnode, used during estimation of the clever covariate, h
-#' @param verbose (NOT IMPLEMENTED) Flag for controlling printing of additional messages 
-#' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as alpha, gbound, family, n_MCsims, onlyTMLE_B, f_g0. See Details.
 #' 
 #' @section Details:
 #' 
@@ -523,8 +527,9 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
 
                     # DEPRECATED:
                     Qform.depr = NULL, gform.depr = NULL, hform.depr = NULL,
+                    
+                    verbose = getOption("tmlenet.verbose"),
 
-                    verbose = FALSE, # NOT IMPLEMENTED YET
                     args_f_g1star = NULL, args_f_g2star = NULL, # CAN BE REMOVED OR PUT IN OPTIONAL PARAMS NO NEED TO PASS ARGs to f_gstar1 or f_gstar2
                     optPars = list(
                       alpha = 0.05,
@@ -535,6 +540,8 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
                       f_g0 = NULL)
                     ) {
 
+  oldverboseopt <- getOption("tmlenet.verbose")
+  options(tmlenet.verbose = verbose)
   gvars$verbose <- verbose
 
   #----------------------------------------------------------------------------------
@@ -616,7 +623,6 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   #----------------------------------------------------------------------------------
   netind_cl <- NetIndClass$new(nobs = nobs, Kmax = Kmax)
   if (!is.null(NETIDnode)) {
-
     assert_that(is.character(NETIDnode))
     Net_str <- as.character(data[, NETIDnode])
     if (!is.null(IDnode)) {
@@ -634,17 +640,19 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
 
   }
 
-  print("netind_cl: "); print(netind_cl)
-  print("head(netind_cl$NetInd): "); print(head(netind_cl$NetInd))
-  print("netind_cl$nF"); print(head(netind_cl$nF))    
+  if (verbose) {
+    # print("netind_cl: "); print(netind_cl)
+    print("head(netind_cl$NetInd): "); print(head(netind_cl$NetInd))
+    print("netind_cl$nF"); print(head(netind_cl$nF))    
+  }
 
   if (nFnode %in% names(data) && (!iid_data_flag)) {
-    message("performing nFnode consistency check: ")
+    if (verbose) message("performing nFnode consistency check: ")
     if (!all(as.integer(netind_cl$nF) == as.integer(data[,nFnode]))) {
       stop("column data[,nFnode] does not match automatically calculated values for nFnode.
             Either remove this column from data or re-calculate it correctly.")
     }
-    message("...passed...")
+    if (verbose) message("...passed...")
   }
 
   #----------------------------------------------------------------------------------
@@ -664,12 +672,13 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
 
   # Testing the evaluation of summary measures:
   testm.sW <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = node_l$nFnode)
-  print("testm.sW"); print(head(testm.sW))
-  print("testm.sW map"); print(sW$sVar.names.map)
-
   testm.sA <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
-  print("testm.sA"); print(head(testm.sA))
-  print("testm.sA map"); print(sA$sVar.names.map)
+  if (verbose) {
+    print("testm.sW"); print(head(testm.sW))
+    print("testm.sW map"); print(sW$sVar.names.map)    
+    print("testm.sA"); print(head(testm.sA))
+    print("testm.sA map"); print(sA$sVar.names.map)
+  }
 
   #---------------------------------------------------------------------------------
   # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
@@ -683,8 +692,11 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   datnetA$make.sVar(Odata = data, sVar.object = sA)
   # print("head(obsdat.sA) as dat.sVar"); print(head(datnetA$dat.sVar))
   # print("head(obsdat.sA)after fixmiss_sVar: "); print(head(datnetA$dat.sVar))
+  
+  #---------------------------------------------------------------------------------
   # (OPTIONAL) ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO sA:
-  message("cancelled adding DET nodes to sVar since all sVar are automatically get added to A ~ predictors + DETnodes...")
+  # cancelled adding DET nodes to sVar since all sVar are automatically get added to A ~ predictors + DETnodes...
+  #---------------------------------------------------------------------------------
   # obsdat.sW <- O.datnetW$add_deterministic(Odata = data, userDETcol = "determ.g")$dat.sVar
   # print(head(obsdat.sW))
   obsYvals <- data[,node_l$Ynode]
@@ -704,24 +716,24 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   # Currently, if sW,sA doesn't exist it will not be included, without any warning/message.
   #----------------------------------------------------------------------------------
   Q.sVars <- process_regform(as.formula(Qform), sW.map = c(sW$sVar.names.map, sA$sVar.names.map), sA.map = node_l$Ynode)
-  print("Qform: " %+% Qform)
-  print("Q.sVars"); print(str(Q.sVars))
-
   h.sVars <- process_regform(as.formula(hform), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
-  print("hform: " %+% hform)
-  print("h.sVars"); print(str(h.sVars))
-
   if (!is.null(hform.gstar)) {
     h.gstar.sVars <- process_regform(as.formula(hform.gstar), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
   } else {
     h.gstar.sVars <- h.sVars
   }
-  print("hform.gstar: " %+% hform.gstar)
-  print("h.gstar.sVars"); print(str(h.gstar.sVars))
-
   g.sVars <- process_regform(as.formula(gform), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
-  print("gform: " %+% gform)
-  print("g.sVars: "); print(str(g.sVars))
+
+  if (verbose) {
+    print("Qform: " %+% Qform)
+    print("Q.sVars"); print(str(Q.sVars))
+    print("hform: " %+% hform)
+    print("h.sVars"); print(str(h.sVars))
+    print("hform.gstar: " %+% hform.gstar)
+    print("h.gstar.sVars"); print(str(h.gstar.sVars))
+    print("gform: " %+% gform)
+    print("g.sVars: "); print(str(g.sVars))
+  }
   #-----------------------------------------------------------
   # Defining and fitting regression for Y ~ sW + sA:
   #-----------------------------------------------------------
@@ -753,7 +765,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   # #todo 64 (tmlenet) +0: Fit the model for g_0(A,W) - move this to get_all_ests() to avoid confusion
 	#----------------------------------------------------------------------------------
   Anode.type <- datNetObs$get.sVar.type(node_l$Anode)
-  print("Anode.type: " %+% Anode.type)
+  if (verbose) print("Anode.type: " %+% Anode.type)
   if (!(Anode.type %in% gvars$sVartypes$bin)) {
     message("Anode is not binary, full g_iptw cannot be estimated")
     m.g0N <- NULL
@@ -762,7 +774,9 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
                                 predvars = g.sVars$predvars,
                                 subset = !determ.g)
     m.g0N <- BinOutModel$new(glm = FALSE, reg = greg)$fit(data = datNetObs)
-    print("coef(m.g0N): "); print(coef(m.g0N))
+    if (verbose) {
+      print("coef(m.g0N): "); print(coef(m.g0N))
+    }
   }
 
   #----------------------------------------------------------------------------------
@@ -773,23 +787,25 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
   if (!is.null(Qform.depr)) {
     net_d <- cbind(datNetObs$dat.sWsA, subset(data, select = node_l$Ynode))
     net_d[gvars$misfun(net_d)] <- gvars$misXreplace
-    print("head(net_d)"); print(head(net_d, 5))
     m.Q.init.depr <- f_est(net_d[!determ.Q,], Qform.depr, family = family)
     QY.init.depr <- data[, node_l$Ynode] # setting deterministic node values
     QY.init.depr[!determ.Q] <- predict(m.Q.init.depr, newdata = net_d[!determ.Q,], type = "response") # predict p(Y) for non determ nodes    
-    print("new coef(m.Q.init): "); print(coef(m.Q.init))
-    print("old coef(m.Q.init.depr): "); print(coef(m.Q.init.depr))
     if (is.null(gform.depr)) {
       gform.depr <- node_l$Anode %+% " ~ " %+% paste0(datNetObs$datnetW$names.sVar, collapse="+") # default to main terms in datNetObs$datnetW
     }
     m.g0N.depr <- f_est(net_d[!determ.g,], gform.depr, family = family) # Set A = 0 when determ.g == 1
-    print("coef(m.g0N.depr)"); print(coef(m.g0N.depr))
     d_sel <- cbind(d_sel, QY.init = QY.init.depr) # (DEPRECATED, TO BE REMOVED)
-    print("head(d_sel) old: "); print(head(d_sel))
-    message("Running tmlenet with... ");
-    message("Qform.depr: " %+% Qform.depr)
-    message("gform.depr: " %+% gform.depr)
-    message("hform.depr: " %+% hform.depr)
+    if (verbose) {
+      print("head(net_d)"); print(head(net_d, 5))      
+      print("new coef(m.Q.init): "); print(coef(m.Q.init))
+      print("old coef(m.Q.init.depr): "); print(coef(m.Q.init.depr))
+      print("coef(m.g0N.depr)"); print(coef(m.g0N.depr))
+      print("head(d_sel) old: "); print(head(d_sel))
+      message("Running tmlenet with... ");
+      message("Qform.depr: " %+% Qform.depr)
+      message("gform.depr: " %+% gform.depr)
+      message("hform.depr: " %+% hform.depr)
+    }    
   }
   # dfcheck <- data.frame(QY.init = QY.init, QY.init.depr = QY.init.depr, diff = QY.init - QY.init.depr)
   # head(dfcheck, 50)
@@ -899,5 +915,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
 	class(tmlenet.res) <- c(class(tmlenet.res), "tmlenet")
   # print("Estimates w/ MC eval:"); print(tmlenet.res$EY_gstar1$estimates)
 
+  options(tmlenet.verbose = oldverboseopt)
+  gvars$verbose <- oldverboseopt
 	return(tmlenet.res)
 }

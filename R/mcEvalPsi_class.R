@@ -1,5 +1,4 @@
 
-
 #---------------------------------------------------------------------------------
 # G-Comp & TMLEs: Use Monte-Carlo to estimate psi under stochastic g^* 
 #---------------------------------------------------------------------------------
@@ -38,12 +37,12 @@ get.MCS_ests <- function(datNetObs,  DatNet.gstar, MC_fit_params, m.h.fit) {
 
     # Put all estimators together and add names (defined in out_nms outside of this function):
     mean_psis_all <- c(tmle_A = mean(TMLE_A), tmle_B = mean(TMLE_B), tmle_g_iptw = mean(TMLE_gIPTW), mle = mean(GCOMP),
-                      fiWs_list$fiW_Qinit, 
-                      fiWs_list$fiW_QstarA, 
+                      fiWs_list$fiW_Qinit,
+                      fiWs_list$fiW_QstarA,
                       fiWs_list$fiW_QstarB)
 
     # Naming estimators (same names throughout the entire package):
-    names(mean_psis_all) <- c("tmle_A", "tmle_B", "tmle_g_iptw", "mle", 
+    names(mean_psis_all) <- c("tmle_A", "tmle_B", "tmle_g_iptw", "mle",
                             paste("fWi_init_", c(1:nOdata), sep = ""),
                             paste("fWi_star_A_", c(1:nOdata), sep = ""),
                             paste("fWi_star_B_", c(1:nOdata), sep = ""))

@@ -12,6 +12,7 @@ Depends:
 Imports:
     data.table,
     assertthat,
+    simcausal,
     R6
 Suggests:
     SuperLearner,

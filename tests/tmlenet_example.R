@@ -14,7 +14,7 @@ f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 #***************************************************************************************
 # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (OLD SIMULATION 3)
 #***************************************************************************************
-# library(tmle)
+library(tmlenet)
 # library(locfit)
 # library(xtable)
 library(bigmemory)
@@ -86,7 +86,7 @@ mean(df_Kmax6$nFriends) # [1] 3.307
 #----------------------------------------------------------------------------------
 Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
 head(df_Kmax6)
-
+# library(tmlenet)
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
             def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
 
@@ -102,10 +102,8 @@ res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nF
                   Kmax = Kmax,
                   IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                   f_gstar1 = f.A_0,
-
                   # OLD regs specification (TO BE REMOVED):
                   Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
-
                   # new way to specify regressions:
                   sW = def_sW, sA = def_sA,
                   Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
@@ -217,6 +215,10 @@ res_K6$EY_gstar1$other.vars
 # > tmlenet_K6out2$EY_gstar1$other.vars
 #    var_iid.tmle_B var_tmleiptw_2ndO     var_iptw_2ndO var_tmle_A_Q.init var_tmle_B_Q.init 
 #      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512 
+
+
+
+
 
 #----------------------------------------------------------------------------------
 # Same as Example 1, but specifying the network with NETIDs_mat: a matrix of friend row numbers from the input data

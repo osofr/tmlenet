@@ -112,6 +112,7 @@ get.testDat <- function(nsamp = 100000) {
   D <- set.DAG(D)
   datO <- sim(D, n = nsamp, rndseed = 12345)
 }
+
 get.testDatNet <- function(datO) {
   Kmax <- 1
   # nodes <- list(Anode = "sA", Wnodes = c("W1", "W2", "W3"))
@@ -125,6 +126,8 @@ get.testDatNet <- function(datO) {
   datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
   return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
 }
+
+
 test.RegressionClass <- function() {
   # Tests for RegressionClass:
   reg_test1 <- RegressionClass$new(outvar.class = c(gvars$sVartypes$bin, gvars$sVartypes$bin),
@@ -160,7 +163,72 @@ test.RegressionClass <- function() {
   head(datO)
   nodeobjs <- get.testDatNet(datO)
   model3 <- SummariesModel$new(reg = reg_test3, O.datnetA = nodeobjs$datNetObs$datnetA)
+}
 
+test.PoolContRegression <- function() {
+  library(data.table)
+
+  reg_test <- RegressionClass$new(outvar.class = c(gvars$sVartypes$cont, gvars$sVartypes$cont),
+                                  outvar = c("sA"),
+                                  predvars = c("W1", "W2", "W3"),
+                                  subset = list(quote(TRUE)))
+  # datO <- get.testDat(nsamp = 50000)
+  # datO <- get.testDat(nsamp = 100000)
+  datO <- get.testDat(nsamp = 10000)
+  nodeobjs <- get.testDatNet(datO)
+  datNetObs <- nodeobjs$datNetObs
+  class(datNetObs) # [1] "DatNet.sWsA" "DatNet"      "R6"
+
+  model3 <- SummariesModel$new(reg = reg_test, O.datnetA = nodeobjs$datNetObs$datnetA)
+  # Matrix of all summary measures: (sW,sA)
+  head(nodeobjs$datNetObs$mat.sVar); class(nodeobjs$datNetObs$mat.sVar)
+  binfit_time <- system.time(
+    model3$fit(data = nodeobjs$datNetObs)
+  )
+  binfit_time
+  # for 50K obs:
+  # user  system elapsed 
+  # 5.136   3.622   8.734 
+  # for 10K obs:
+  #  user  system elapsed 
+  # 0.199   0.049   0.243   
+
+  # [1] "fit (10K)"
+  # $coef
+  #  Intercept     bin_ID         W1         W2         W3 
+  # -2.7756215  0.1553186 -1.0014477 -0.5720651 -0.3339728 
+  # [1] "res_DT: "
+  #            ID ProbAeqa_long
+  #      1:     1    0.97396036
+  #      2:     1    0.96971742
+  #      3:     1    0.96480811
+  #      4:     1    0.95913645
+  #      5:     1    0.95259565
+  #     ---                    
+  # 104496:  9998    0.07668105
+  # 104497:  9999    0.93215687
+  # 104498:  9999    0.92165035
+  # 104499:  9999    0.09032560
+  # 104500: 10000    0.06784313
+  # [1] "res_DT_short: "
+  #           ID    cumprob
+  #     1:     1 0.06099655
+  #     2:     2 0.06145986
+  #     3:     3 0.03836225
+  #     4:     4 0.05821479
+  #     5:     5 0.07303417
+  #    ---                 
+  #  9996:  9996 0.05119563
+  #  9997:  9997 0.05896735
+  #  9998:  9998 0.06414013
+  #  9999:  9999 0.07760077
+  # 10000: 10000 0.06784313
+  # [1] "head(ProbAeqa, 50)"
+  #  [1] 0.060996548 0.061459862 0.038362248 0.058214786 0.073034166 0.064140127 0.060658764 0.050023002 0.026039639 0.075325033 0.029168620
+  # [12] 0.054538219 0.054031618 0.083549453 0.008653412 0.029594466 0.077600772 0.081220201 0.068319822 0.061459862 0.071357407 0.039453938
+  # [23] 0.075325033 0.039007914 0.057871503 0.077600772 0.057871503 0.058967354 0.064140127 0.043973691 0.046655735 0.079794387 0.074434114
+  # [34] 0.058967354 0.067843133 0.063492979 0.033237556 0.064138704 0.056974041 0.065426910 0.037236039 0.029168620 0.056974041 0.047226347
+  # [45] 0.043973691 0.084256432 0.060173071 0.073034166 0.029168620 0.060183301
 
 }
 
@@ -343,8 +411,9 @@ test.continous.sA <- function() {
     datnetW$def_cbin_intrvls()
     print("Detected intervals: "); print(datnetW$cbin_intrvls)
     print("Detected nbins: "); print(datnetW$nbins)
-    oldncats1 <- set.maxncats(5)
-    oldnbins1 <- set.nbins(10)
+
+    oldopts <- tmlenet.options(maxncats = 5, nbins = 10)
+
     print("No normalization. Binning by mass")
       obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms)$dat.sVar
       print("head(obsdat.sW)"); print(head(obsdat.sW))
@@ -353,7 +422,7 @@ test.continous.sA <- function() {
       defints1 <- datnetW$def_cbin_intrvls()$cbin_intrvls
       print("No normalization bin intervals by mass: "); print(defints1)
       print("nbins: "); print(datnetW$nbins); 
-      print("Testing ordinals with ncats < nbins get nbins = ncats:"); print(datnetW$nbins["nFriends"] < gvars$nbins)
+      print("Testing ordinals with ncats < nbins get nbins = ncats:"); print(datnetW$nbins["nFriends"] < tlmenet:::getopt("nbins"))
 
     print("No normalization. Binning by equal length")
       intlen_ints <- datnetW$def_cbin_intrvls(bin_bymass = FALSE)$cbin_intrvls
@@ -361,13 +430,12 @@ test.continous.sA <- function() {
       print("nbins: "); print(datnetW$nbins)
 
     print("Testing ordinals with ncats > nbins get collapsed into fewer cats:")
-    set.nbins(4)
+    tmlenet.options(nbins = 4)
       obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms)$dat.sVar
       defints2 <- datnetW$def_cbin_intrvls()$cbin_intrvls
       print("New bins with collapsed ordinals: "); print(defints2)
       print("nbins: "); print(datnetW$nbins)
-
-    set.nbins(10)
+    tmlenet.options(nbins = 10)
     print("Testing normalization:")
       obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms, norm.c.sVars = TRUE)$dat.sVar
       print("head(obsdat.sW)"); print(head(obsdat.sW))
@@ -379,15 +447,15 @@ test.continous.sA <- function() {
       print("nbins: "); print(datnetW$nbins)
 
     print("testing overwriting of bin intervals 1:")
-      newint <- seq(from = 0, to = 1, length.out = (gvars$nbins+1))
+      newint <- seq(from = 0, to = 1, length.out = (tlmenet:::getopt("nbins")+1))
       datnetW$def_cbin_intrvls(cbin_intrvls = newint)
       print("Assigned bin intervals 1: "); print(datnetW$cbin_intrvls)
       print("nbins: "); print(datnetW$nbins)
       print("Correctly assigned bin intervals 1: "); print(all.equal(as.vector(datnetW$cbin_intrvls[[1]]), as.vector(datnetW$cbin_intrvls[[2]])))
 
     print("testing overwriting of bin intervals 2:")
-      int1 <-  seq(from = 0, to = 0.5, length.out = (gvars$nbins+1))
-      int2 <-  seq(from = 0.5, to = 1, length.out = (gvars$nbins+1))
+      int1 <-  seq(from = 0, to = 0.5, length.out = (tlmenet:::getopt("nbins")+1))
+      int2 <-  seq(from = 0.5, to = 1, length.out = (tlmenet:::getopt("nbins")+1))
       newcbins <- list(nFriends = int1, netW3_sum = int2)
       datnetW$def_cbin_intrvls(cbin_intrvls = newcbins)
       print("Assigned bin intervals 2: "); print(datnetW$cbin_intrvls);
@@ -409,8 +477,8 @@ test.continous.sA <- function() {
       print("Redefined c bin intervals: "); print(newc.ints)
       print("nbins: "); print(datnetW$nbins)
       print("Redefined c bin ints match old ones: "); print(all.equal(savedc.ints, newc.ints))
-    set.maxncats(oldncats1)
-    set.nbins(oldnbins1)
+
+    do.call(tmlenet.options, oldopts)
 }
 
 

@@ -1,55 +1,6 @@
-
 #-----------------------------------------------------------------------------
-# Global State Vars
+# Fit and Predict the Efficient IPTW (clever covariate): P_g^*(sA | sW) / P_g0(sA | sW)
 #-----------------------------------------------------------------------------
-
-gvars <- new.env(parent = emptyenv())
-gvars$verbose <- FALSE      # verbose mode (print all messages)
-gvars$misval <- NA_integer_ # the default missing value for observations
-# gvars$misval <- 1L
-# gvars$misval <- -.Machine$integer.max
-gvars$misXreplace <- 0L     # the default replacement value for misval that appear in the design matrix
-gvars$tolerr <- 10^-12      # tolerance error: assume for abs(a-b) < gvars$tolerr => a = b
-gvars$maxncats <- 5L        # max number of unique categories a categorical variable sA[j] can have. If sA[j] has more it is automatically considered continuous
-# gvars$maxncats <- 10L
-gvars$nbins <- 15L          # default n bins for continous var
-# gvars$nbins <- 50L        # default n bins for continous var
-gvars$max_nperbin <- 500L   # max number of observations per 1 bin (for data-adaptive bin defns) - CONSIDER REVERSING THIS BACK TO nbins alone
-gvars$sVartypes <- list(bin = "binary", cat = "categor", cont = "contin")
-
-# returns a function (alternatively a call) that tests for missing values in sA / sW
-testmisfun <- function() {
-  if (is.na(gvars$misval)) {
-    return(is.na)
-  } else if (is.null(gvars$misval)){
-    return(is.null)
-  } else if (is.integer(gvars$misval)) {
-    return(function(x) {x==gvars$misval})
-  } else {
-    return(function(x) {x%in%gvars$misval})
-  }
-}
-get.misval <- function() {
-  gvars$misfun <- testmisfun()
-  gvars$misval
-}
-set.misval <- function(gvars, newmisval) {
-  oldmisval <- gvars$misval
-  gvars$misval <- newmisval
-  gvars$misfun <- testmisfun()    # EVERYTIME gvars$misval HAS CHANGED THIS NEEDS TO BE RESET/RERUN.
-  invisible(oldmisval)
-}
-set.nbins <- function(nbins) {
-  old.nbins <- gvars$nbins
-  gvars$nbins <- nbins
-  invisible(old.nbins)
-}
-set.maxncats <- function(maxncats) {
-  old.maxncats <- gvars$maxncats
-  gvars$maxncats <- maxncats
-  invisible(old.maxncats)
-}
-gvars$misfun <- testmisfun()
 
 #-----------------------------------------------------------------------------
 # NEW (06/01/15) Get the prob of A^* (known stoch. intervention) from supplied function, fcn_name
@@ -194,7 +145,7 @@ pred.hbars <- function(newdatnet = NULL, m.h.fit) {
 # fit models for m_gAi
 #---------------------------------------------------------------------------------
 fit.hbars <- function(datNetObs, est_params_list) {
-  message("... running fit.hbars() ...")
+  if (gvars$verbose) message("... running fit.hbars() ...")
   .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" "))  # defining the vector of c^A's that needs evaluation under h(c)
   #---------------------------------------------------------------------------------
   # PARAMETERS FOR LOGISTIC ESTIMATION OF h
@@ -237,12 +188,15 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # *****
   # CHECK THAT THESE SUMMARY MEASURES EXIST IN O.datnetW$names.sVar
   check.sW.g0.exist <- unlist(lapply(sW.g0_nms, function(sWname) sWname %in% O.datnetW$names.sVar))
-  print("check.sW.g0.exist"); print(check.sW.g0.exist)
   assert_that(all(check.sW.g0.exist))
 
   check.sW.gstar.exist <- unlist(lapply(sW.gstar_nms, function(sWname) sWname %in% O.datnetW$names.sVar))
-  print("check.sW.gstar.exist"); print(check.sW.gstar.exist)
   assert_that(all(check.sW.gstar.exist))
+
+  if (gvars$verbose) {
+    print("check.sW.g0.exist"); print(check.sW.g0.exist)
+    print("check.sW.gstar.exist"); print(check.sW.gstar.exist)
+  }
   # *****
 
     # print("type.sVar: "); str(O.datnetW$type.sVar)
@@ -262,7 +216,9 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # ***********
   # CHECK THAT THESE SUMMARY MEASURES EXIST IN O.datnetW$names.sVar
   check.sA.exist <- unlist(lapply(sA_nms, function(sWname) sWname %in% O.datnetA$names.sVar))
-  print("check.sA.exist"); print(check.sA.exist)
+  if (gvars$verbose) {
+    print("check.sA.exist"); print(check.sA.exist)
+  }
   assert_that(all(check.sA.exist))
   # ***********
   # sA_nms <- O.datnetA$names.sVar
@@ -276,9 +232,12 @@ fit.hbars <- function(datNetObs, est_params_list) {
   #-----------------------------------------------------------
   # Turn A into cont type and add some intervals to it
   #-----------------------------------------------------------
-  message("Testing manually to set A as cont:")
+  # message("Testing manually to set A as cont:")
   # O.datnetA$set.sVar.type(name.sVar = "A", new.type = "contin")
-  message("This is a bug, all A are assigned to the same bin when trying automatic $detect.sVar.intrvls:")
+
+  #-----------------------------------------------------------
+  # BELOW IS A BUG, all A are assigned to the same bin when trying automatic $detect.sVar.intrvls:
+  #-----------------------------------------------------------
   # intvrls <- O.datnetA$detect.sVar.intrvls("A")
   # O.datnetA$set.sVar.intrvls(name.sVar = "A", new.intrvls = intvrls)
   # print("defined intvrls for A: "); print(intvrls)
@@ -290,7 +249,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # print("Bins for A with manual 10 continuous intervals:")
   # print(table(O.datnetA$discretize.sVar("A")))
   # print(head(O.datnetA$binirize.sVar("A")))
-  print("Stats for sum_1mAW2_nets: ")
+  # print("Stats for sum_1mAW2_nets: ")
   # print(O.datnetA$get.sVar.type("sum_1mAW2_nets"))
   # print(O.datnetA$get.sVar.intrvls("sum_1mAW2_nets"))
   # print(O.datnetA$nbins.sVar("sum_1mAW2_nets"))
@@ -307,6 +266,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
 
   #-----------------------------------------------------------
   # DEFINING SUBSETING EXPRESSIONS (FOR DETERMINISTIC / DEGENERATE sA)
+  #-----------------------------------------------------------
   # (1 subset expr per regression P(sA[j]|sA[j-1:0], sW))
   # TO DO: Put this in a separate function (with var as arg + additional args)
   # Old examples of subsetting expressions:
@@ -342,8 +302,8 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # print("detected sA_class for O.datnetA$sVar: "); print(sA_class)
 
   message("================================================================")
-  message("fitting h_g0 with summary measures: ")
-  message("(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.g0_nms, collapse = ",") %+% ")")
+  message("fitting h_g0 with summary measures: ", "(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.g0_nms, collapse = ",") %+% ")")
+  # message("(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.g0_nms, collapse = ",") %+% ")")
   message("================================================================")
 
   p_h0 <- ifelse(is.null(f.g0), 1, ng.MCsims)
@@ -356,7 +316,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # Will result in DatNet.g0 copying & using old interval definitions from O.datnetA,
   # even though new interval defns will be later saved inside O.datnetA, DatNet.g0 will not see them.
   # When binirize on DatNet.g0 is called from summeas.g0$fit it will use whatever intervals were copied at time of $make.dat.sWsA
-  # This is due to: 
+  # This is due to:
   # (1) side-effects based programming (interval defn in SummariesModel$new is a side-effect)
   # (2) $binirize() being part of DatNet class and not DatNet.sWsA (and hence not seeing intervals in O.datnetA)
   # (3) Another related problem is that datNetObs$make.dat.sWsA is called in tmlenet(), where no intervals were defined
@@ -370,7 +330,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
 
   datNetObs$copy.cbin.intrvls()
   if (!is.null(f.g0)) {
-    message("generating DatNet.g0 under known g0")
+    if (gvars$verbose) message("generating DatNet.g0 under known g0")
     # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
     DatNet.g0 <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
     DatNet.g0$make.dat.sWsA(p = p_h0, f.g_name = f.g0, f.g_args = f.g0_args, sA.object = sA)
@@ -402,16 +362,19 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # *********
 
   message("================================================================")
-  message("fitting h_gstar for summary measures: ")
-  message("(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
+  message("fitting h_gstar for summary measures: ", "(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
+  # message("(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
   message("================================================================")
 
   # temp setting: ng.MCsims <- 10
   DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
   DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_name = f.gstar, f.g_args = f.g_args, sA.object = sA)
 
-  print("DatNet.gstar stored sWsA df: "); print(class(DatNet.gstar$dat.sWsA))
-  print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));
+  if (gvars$verbose) {
+    print("DatNet.gstar stored sWsA df: "); print(class(DatNet.gstar$dat.sWsA))
+    print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));    
+  }
+
   # print("all intervals (for O.datnetA & O.datnetW) in DatNet.gstar: "); print(DatNet.gstar$cbin_intrvls)
   # print("all var types (for O.datnetA & O.datnetW) in DatNet.gstar: "); str(DatNet.gstar$type.sVar)
   # DatNet.gstar$names.sVar
@@ -442,5 +405,4 @@ fit.hbars <- function(datNetObs, est_params_list) {
                 )
 
   return(list(dat_hest = dat_hest, m.h.fit = m.h.fit, datNetObs = datNetObs, DatNet.gstar = DatNet.gstar))
-
 }
