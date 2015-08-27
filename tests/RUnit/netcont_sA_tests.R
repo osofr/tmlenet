@@ -1,3 +1,5 @@
+
+`%+%` <- function(a, b) paste0(a, b)
 # ---------------------------------------------------------------------------------------------------------
 # Test network TMLE fit with continous sA 
 # TO DO: COVERAGE NEEDs TO BE EVALUTED COVERAGE CONDITIONAL ON 1 NETWORK!!!! (No network resampling for each simulation)
@@ -51,7 +53,7 @@ run.net.1sim.tmlenet <- function(datO, NetInd_mat, def_sW, def_sA, Kmax, Qform, 
 # Used for Verifying: 1) consistency, 2) double robustness, 3) correct as. coverage
 test.onesim.net.tmlefit <- function() {
   library(simcausal)
-  # library(tmlenet)
+  library(tmlenet)
   #------------------------------------------------------------------------------------------------------------
   # The user-defined network sampler(s) from igraph (regular graph model)
   # Generate regular random graphs with same degree for each node
@@ -130,12 +132,10 @@ test.onesim.net.tmlefit <- function() {
   f.gstar <- function(data, ...) {
     sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
     sA <- data[,"sA"]
-    
     # ratio of P_g^*(sA=sa|W)/P_g0(sA=sa|W) for observed sa=sA generated under g0:
     # r.obs.sA <- exp(shift * (sA - sA.mu - shift / 2))
     untrunc.sA.gstar <- sA + shift
     # untrunc.sA.gstar <- rnorm(n = nrow(data), mean = sA.mu + shift, sd = 1)
-    
     # ratio of P_g^*(sA=sa|W)/P_g0(sA=sa|W) for sa=sA generated under g^*:
     r.new.sA <- exp(shift * (untrunc.sA.gstar - sA.mu - shift / 2))
     trunc.sA.gstar <- ifelse(r.new.sA > trunc.c, sA, untrunc.sA.gstar)
@@ -156,14 +156,22 @@ test.onesim.net.tmlefit <- function() {
   # datO <- sim(Dset, n = 5000, rndseed = rndseed)
   # datO <- sim(Dset, n = 10000, rndseed = rndseed)
   datO <- sim(Dset, n = 10000)
+
+  system.time(
+    datO <- sim(Dset, n = 40000)
+  )
+ #   user  system elapsed
+ # 12.827   0.127  12.816
+
   netind_cl <- attributes(datO)$netind_cl
   NetInd_mat <- attributes(datO)$netind_cl$NetInd
   dim(NetInd_mat)
 
   getOption("tmlenet.verbose")
   options(tmlenet.verbose = TRUE)
-  print.tmlenet.opts()
-  tmlenet.options(poolContinVar = TRUE, useglm = FALSE)
+  print_tmlenet_opts()
+  # to pool by contin outcome:
+  # tmlenet_options(poolContinVar = TRUE, useglm = FALSE)
   system.time(
     simres <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
                                     def_sW = def_sW, def_sA = def_sA, Kmax = Kmax,

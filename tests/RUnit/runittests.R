@@ -412,7 +412,7 @@ test.continous.sA <- function() {
     print("Detected intervals: "); print(datnetW$cbin_intrvls)
     print("Detected nbins: "); print(datnetW$nbins)
 
-    oldopts <- tmlenet.options(maxncats = 5, nbins = 10)
+    oldopts <- tmlenet_options(maxncats = 5, nbins = 10)
 
     print("No normalization. Binning by mass")
       obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms)$dat.sVar
@@ -430,12 +430,12 @@ test.continous.sA <- function() {
       print("nbins: "); print(datnetW$nbins)
 
     print("Testing ordinals with ncats > nbins get collapsed into fewer cats:")
-    tmlenet.options(nbins = 4)
+    tmlenet_options(nbins = 4)
       obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms)$dat.sVar
       defints2 <- datnetW$def_cbin_intrvls()$cbin_intrvls
       print("New bins with collapsed ordinals: "); print(defints2)
       print("nbins: "); print(datnetW$nbins)
-    tmlenet.options(nbins = 10)
+    tmlenet_options(nbins = 10)
     print("Testing normalization:")
       obsdat.sW <- datnetW$make_sVar(names.sVar = sW_nms, norm.c.sVars = TRUE)$dat.sVar
       print("head(obsdat.sW)"); print(head(obsdat.sW))
@@ -478,7 +478,7 @@ test.continous.sA <- function() {
       print("nbins: "); print(datnetW$nbins)
       print("Redefined c bin ints match old ones: "); print(all.equal(savedc.ints, newc.ints))
 
-    do.call(tmlenet.options, oldopts)
+    do.call(tmlenet_options, oldopts)
 }
 
 

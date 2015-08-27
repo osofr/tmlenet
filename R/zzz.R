@@ -4,7 +4,7 @@
 #-----------------------------------------------------------------------------
 gvars <- new.env(parent = emptyenv())
 gvars$verbose <- FALSE      # verbose mode (print all messages)
-gvars$opts <- list()        # named list of package options that is controllable by the user (tmlenet.options())
+gvars$opts <- list()        # named list of package options that is controllable by the user (tmlenet_options())
 gvars$misval <- NA_integer_ # the default missing value for observations (# gvars$misval <- -.Machine$integer.max)
 gvars$misXreplace <- 0L     # the default replacement value for misval that appear in the design matrix
 gvars$tolerr <- 10^-12      # tolerance error: assume for abs(a-b) < gvars$tolerr => a = b
@@ -26,9 +26,9 @@ getopt <- function(optname) {
 
 #' Print Current Option Settings for \code{tmlenet}
 #' @return Invisibly returns a list of \code{tmlenet} options.
-#' @seealso \code{\link{tmlenet.options}}
+#' @seealso \code{\link{tmlenet_options}}
 #' @export
-print.tmlenet.opts <- function() {
+print_tmlenet_opts <- function() {
   print(gvars$opts)
   invisible(gvars$opts)
 }
@@ -48,7 +48,7 @@ print.tmlenet.opts <- function() {
 #' for pooling bin indicators across several bins into one outcome regression?
 #' @param maxNperBin Max number of observations per 1 bin for a continuous outcome (only applies when \code{binByMass=TRUE})
 #' @return Invisibly returns a list with old option settings.
-#' @seealso \code{\link{print.tmlenet.opts}}
+#' @seealso \code{\link{print_tmlenet_opts}}
 #' @export
 # alpha = 0.05,
 # gbound = 0.005, 
@@ -56,7 +56,7 @@ print.tmlenet.opts <- function() {
 # n_MCsims = ceiling(sqrt(nrow(data))),
 # onlyTMLE_B = TRUE,
 # f_g0 = NULL
-tmlenet.options <- function(useglm = FALSE, nbins = 15, maxncats = 5, binByMass = TRUE, poolContinVar = FALSE, maxNperBin = 1000) {
+tmlenet_options <- function(useglm = FALSE, nbins = 15, maxncats = 5, binByMass = TRUE, poolContinVar = FALSE, maxNperBin = 1000) {
   # nbins = 50L, # maxncats = 10L
   old.opts <- gvars$opts
   opts <- list(
@@ -104,7 +104,7 @@ gvars$misfun <- testmisfun()
     tmlenet.verbose = gvars$verbose
   )
 
-  tmlenet.options()
+  tmlenet_options()
 
   toset <- !(names(op.tmlenet) %in% names(op))
   if(any(toset)) options(op.tmlenet[toset])

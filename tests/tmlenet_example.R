@@ -14,7 +14,7 @@ f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 #***************************************************************************************
 # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (OLD SIMULATION 3)
 #***************************************************************************************
-library(tmlenet)
+# library(tmlenet)
 # library(locfit)
 # library(xtable)
 library(bigmemory)
@@ -97,7 +97,7 @@ def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), repla
 (gform.depr <- "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends")
 (hform.depr <- "sA ~ " %+% paste(netvar("W2", (1:6)), collapse = "+") %+% " + netW3_sum + nFriends")
 
-system.time(
+trun <- system.time(
 res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
                   Kmax = Kmax,
                   IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
@@ -116,6 +116,7 @@ res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nF
                     n_MCsims = 10)
                   )
 )
+print("run t: "); print(trun)
                 # alternative ways to pass summary measures:
                 # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
                 # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
