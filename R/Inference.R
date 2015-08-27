@@ -1,52 +1,52 @@
 get_sparse_Fiintersectmtx <- function() {
-      # ------------------------------------------------------------------------------
-      # Simulate some network data
-      # ------------------------------------------------------------------------------
-      # n <- 20000
-      # # n <- 10000
-      # # n <- 1000
-      # # fvec_i <- abs(rnorm(n))
-      # fvec_i <- rnorm(n)
-      # # fvec_i <- rep_len(1,n)
-      # # NetInd_k <- matrix(NA, nrow=n, ncol=3)
-      # # NetInd_k[1,] <- c(2,3,NA)
-      # # NetInd_k[4,] <- c(2,NA,NA)
-      # # nF <- rep.int(0,n)
-      # # nF[1] <- 2; nF[4] <- 1
-      # # Kmax <- 150
-      # Kmax <- 200
-      # # Kmax <- 15
-      # NetInd_k <- t(replicate(n, sample(1:n, Kmax, replace = FALSE)))
-      # nF <- rep.int(Kmax, n)
-      # ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
+  # Simulate some network data
+  # ------------------------------------------------------------------------------
+  # n <- 20000
+  # # n <- 10000
+  # # n <- 1000
+  # # fvec_i <- abs(rnorm(n))
+  # fvec_i <- rnorm(n)
+  # # fvec_i <- rep_len(1,n)
+  # # NetInd_k <- matrix(NA, nrow=n, ncol=3)
+  # # NetInd_k[1,] <- c(2,3,NA)
+  # # NetInd_k[4,] <- c(2,NA,NA)
+  # # nF <- rep.int(0,n)
+  # # nF[1] <- 2; nF[4] <- 1
+  # # Kmax <- 150
+  # Kmax <- 200
+  # # Kmax <- 15
+  # NetInd_k <- t(replicate(n, sample(1:n, Kmax, replace = FALSE)))
+  # nF <- rep.int(Kmax, n)
+  # ------------------------------------------------------------------------------
 
-      # ------------------------------------------------------------------------------
-      # Using sparse matrix implementation to get conn_ind_mtx_1st_indir
-      # ------------------------------------------------------------------------------
-      # estvartime <- system.time({
-        # NetInd as sparse adjacency matrix (new version returns pattern sparse mat nngCMatrix):
-        sparse_mat <- NetInd.to.sparseAdjMat(NetInd_k, nF = nF, add_diag = TRUE)
-        # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
-        sparse_mat_ind <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
-        # MOVED TO est.sigma_sparse():
-        Dstar_crossprod_new <- sum_crossprod_Fij(sparseAdjMat = sparse_mat_ind, fvec_i = fvec_i)
-        Dstar_new <- (1/n) * ((2*Dstar_crossprod_new) + sum(fvec_i^2))
-      # })
-      # print("estvartime"); print(estvartime)
+  # ------------------------------------------------------------------------------
+  # Using sparse matrix implementation to get conn_ind_mtx_1st_indir
+  # ------------------------------------------------------------------------------
+  # estvartime <- system.time({
+    # NetInd as sparse adjacency matrix (new version returns pattern sparse mat nngCMatrix):
+    sparse_mat <- NetInd.to.sparseAdjMat(NetInd_k, nF = nF, add_diag = TRUE)
+    # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
+    sparse_mat_ind <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
+    # MOVED TO est.sigma_sparse():
+    Dstar_crossprod_new <- sum_crossprod_Fij(sparseAdjMat = sparse_mat_ind, fvec_i = fvec_i)
+    Dstar_new <- (1/n) * ((2*Dstar_crossprod_new) + sum(fvec_i^2))
+  # })
+  # print("estvartime"); print(estvartime)
 
-      # print(object.size(NetInd_k), units="Mb")
-      # 3906.4 Kb # 0 Gb
-      # sparse_mat as dgCMatrix:
-      # print(object.size(sparse_mat), units="Mb")
-      # 12,032.1 Kb
-      # system.time({
-      #   conn_ind_mtx_1st_indir <- get.Fiintersectmtx(n = n)$conn_ind_mtx_1st
-      #   Dstar_old <- est.sigma_fsum(get.crossprodmtx(fvec_i), conn_ind_mtx_1st_indir)        
-      # })
-      # print(all.equal(Dstar_new, Dstar_old))
-      # # print(all.equal(Dstar, Dstar_old)); print(Dstar);
-      # print(Dstar_new); print(Dstar_old)
-      return(list(conn_ind_mtx_1st = sparse_mat_ind))
+  # print(object.size(NetInd_k), units="Mb")
+  # 3906.4 Kb # 0 Gb
+  # sparse_mat as dgCMatrix:
+  # print(object.size(sparse_mat), units="Mb")
+  # 12,032.1 Kb
+  # system.time({
+  #   conn_ind_mtx_1st_indir <- get.Fiintersectmtx(n = n)$conn_ind_mtx_1st
+  #   Dstar_old <- est.sigma_fsum(get.crossprodmtx(fvec_i), conn_ind_mtx_1st_indir)        
+  # })
+  # print(all.equal(Dstar_new, Dstar_old))
+  # # print(all.equal(Dstar, Dstar_old)); print(Dstar);
+  # print(Dstar_new); print(Dstar_old)
+  return(list(conn_ind_mtx_1st = sparse_mat_ind))
 }
 
 # sparse matrix class from Matrix package:
@@ -65,38 +65,6 @@ get_sparse_Fiintersectmtx <- function() {
 # lsCMatrix
 # The second letter in the name of these non-virtual classes indicates general, symmetric, or triangular.
 # The lsparseMatrix class is a virtual class of sparse matrices with TRUE/FALSE or NA entries. Only the positions of the elements that are TRUE are stored.
-
-# copied from simcausal, then modified to work as sparse pattern matrix:
-sparseAdjMat.to.NetInd <- function(sparseAdjMat) {
-  assertthat::assert_that(is(sparseAdjMat, "sparseMatrix"))
-  # sparseAdjMat:
-    # i: These are the 0-based row numbers for each non-zero element in the matrix.
-    # Object of class "integer" of length nnzero (number of non-zero elements). These are the 0-
-    # based row numbers for each non-zero element in the matrix, i.e., i must be in 0:(nrow(.)-1).
-    # p: integer vector for providing pointers, one for each column, to the initial (zero-based) index of elements in the column.
-    # .@p is of length ncol(.) + 1, with p[1] == 0 and
-    # p[length(p)] == nnzero, such that in fact, diff(.@p) are the number of non-zero elements for each column.
-  # 1) The number of friends for each observation:
-  nF <- as.integer(diff(sparseAdjMat@p))
-  # 2) Column based cummulative number of non-zero entries (cummulative nF)
-  cumFindx <- sparseAdjMat@p
-  # 3) All non-zero elements as a vector of 0-based row numbers:
-  base0_IDrownums <- sparseAdjMat@i
-  # 4) Figure out the dim of the result mat NetInd_k and initiate:
-  Kmax <- max(nF)
-  NetInd_k <- matrix(NA_integer_, nrow = length(nF), ncol = Kmax)
-  # 5) For each non-zero element in nF, populate NetInd_k with friend IDs:
-  non0nF.idx <- which(nF > 0L)
-  for (idx in non0nF.idx) {
-    Fidx_base0 <- cumFindx[idx] : (cumFindx[idx + 1] - 1)
-    FriendIDs <- base0_IDrownums[Fidx_base0 + 1] + 1
-    NetInd_k[idx, seq_len(nF[idx])] <- FriendIDs
-  }
-  # Check the total n of non-zero elements is the same as in original sparseAdjMat:
-  nnonzero <- sum(!is.na(NetInd_k))
-  stopifnot(nnonzero==sparseAdjMat@p[ncol(sparseAdjMat)+1])
-  return(list(NetInd_k = NetInd_k, nF = nF, Kmax = Kmax))
-}
 
 # copied from simcausal, then modified to work as sparse pattern matrix:
 # return pattern sparse matrix, no @x is recorded (ngMatrix):
@@ -143,24 +111,6 @@ sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
   return(Dstar_crossprod)
 }
 
-# Sum the cross prod vector over connectivity mtx (prod will only appear if (i,j) entry is 1):
-est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
-  n <- length(fvec_i)
-  # sum of fvec_i[i]*fvec[j] for correlated cross-product terms (i,j) s.t. i<j
-  Dstar_crossprod <- sum_crossprod_Fij(sparseAdjMat = sparse_connectmtx, fvec_i = fvec_i)
-  # double cross prod sum + sum of squares over i=1,...,n
-  Dstar <- (1/n) * ((2*Dstar_crossprod) + sum(fvec_i^2))
-  return(Dstar)
-
-  # old direct version:
-  # NetInd_k_ind <- sparseAdjMat.to.NetInd(sparse_connectmtx)$NetInd_k
-  # Dstar_cum <- 0
-  # for (j in 1:ncol(NetInd_k_ind)) {
-  #   Dstar_cum <- Dstar_cum + sum(fvec_i * fvec_i[NetInd_k_ind[, j]], na.rm = TRUE)
-  # }
-  # Dstar <- (1/n) * Dstar_cum      
-  # return((1/n) * Dstar_cum)
-}
 
 #----------------------------------------------------------------------------------
 # Estimate IC-based Variance (as. Var) and CIs (based on f_W and fY)
@@ -172,170 +122,115 @@ est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
 # Helper function to calculate cross product sum of correlated f_Wi (see p.33 of vdL)
 # New fast method for as var calculation (matrix vs)
 
-# ******************************************************
-# NEED TO ADD nF vector to pass as an additional arg
-# ******************************************************
-  est_sigmas <- function(n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat, onlyTMLE_B) {
-# ******************************************************
-  # est_sigmas <- function(n, NetInd_k, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat, onlyTMLE_B) {
-    fWi <- fWi_mat[, "fWi_Qinit"]
-    QY.init <- QY_mat[, "QY.init"] # QY.star <- QY_mat[, "QY.star_A"]
-    h_wts <- wts_mat[,"h_wts"]
-    g_wts <- wts_mat[,"g_wts"]
+# Sum the cross prod vector over connectivity mtx (prod will only appear if (i,j) entry is 1):
+est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
+  n <- length(fvec_i)
+  # sum of fvec_i[i]*fvec[j] for correlated cross-product terms (i,j) s.t. i<j
+  Dstar_crossprod <- sum_crossprod_Fij(sparseAdjMat = sparse_connectmtx, fvec_i = fvec_i)
+  # double cross prod sum + sum of squares over i=1,...,n
+  Dstar <- (1/n) * ((2*Dstar_crossprod) + sum(fvec_i^2))
+  return(Dstar)
+}
 
-    var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
-    var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
+est_sigmas <- function(n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat, onlyTMLE_B) {
+  fWi <- fWi_mat[, "fWi_Qinit"]
+  QY.init <- QY_mat[, "QY.init"] # QY.star <- QY_mat[, "QY.star_A"]
+  h_wts <- wts_mat[,"h_wts"]
+  g_wts <- wts_mat[,"g_wts"]
 
-   #  # get the connectivity n_by_n mtx (1 indicates intersection of friendship sets)
-   #  # returns 1) 1st order and 2) (DISABLED) 1st and 2nd order connections
-   #  get.Fiintersectmtx <- function(n) {
-   #    # turn NetInd_k into an n_by_n mtx of indicators (friends=1 vs not friends=0)
-   #    # this is not symmetric, friends are rows, connections (friends set) are cols
-   #    # obs i is always in i's friend set Fi
-   #    # expand the friend network by including friends of friends
-   #    # to get the second-order connections (intersections of friends of friends)
-   #    NetInd_k_2ndO <- NetInd_k
-   #    # for (j in (1:ncol(NetInd_k))) {
-   #    #   NetInd_k_2ndO <- cbind(NetInd_k_2ndO, NetInd_k[NetInd_k[,j],])
-   #    # }
-   #    conn_ind_mtx_1st <- diag(x=1,n,n)
-   #    # conn_ind_mtx_2ndO <- diag(x=1,n,n)
-   #    conn_ind_mtx_2ndO <- NULL
+  var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
+  var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
 
-   #    for (i in (1:n)) { # CAN REPLACE WITH A LOOP OVER COLUMNS of NetInd_k INSTEAD!!!!!!!!
-   #        conn_ind_mtx_1st[i, NetInd_k[i,]] <- 1 # non-symmetric connectivity mtx
-   #        # conn_ind_mtx_2ndO[i, NetInd_k_2ndO[i,]] <- 1 # capture second order connections as well (for g_i and g_j that are dependent)
-   #    }
-   #    # second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
-   #    conn_ind_mtx_1st_indir <- conn_ind_mtx_1st
-   #    conn_ind_mtx_2ndO_indir <- conn_ind_mtx_2ndO
-   #    for (j in (1:n)) {
-   #      conn_ind_mtx_1st_indir[which(conn_ind_mtx_1st[, j]==1), which(conn_ind_mtx_1st[, j]==1)] <- 1
-   #      # conn_ind_mtx_2ndO_indir[which(conn_ind_mtx_2ndO[, j]==1), which(conn_ind_mtx_2ndO[, j]==1)] <- 1
-   #    }
-   #    return(list(conn_ind_mtx_1st = conn_ind_mtx_1st_indir, conn_ind_mtx_2ndO = conn_ind_mtx_2ndO_indir))
-   #  }
-   # # Cross prod mtx (n_by_n) for any vector of size n:
-   #  get.crossprodmtx <- function(fvec_i) {
-   #    return(tcrossprod(fvec_i, fvec_i))
-   #  }
-   #  # Sum the cross prod vector over connectivity mtx (prod will only appear if (i,j) entry is 1):
-   #  est.sigma_fsum <- function(fcrossprod, connectmtx)  {
-   #    return((1/n) * sum(fcrossprod * connectmtx))
-   #  }
- 
-    # Connect_Mat_time <- system.time(
-    #   # connectmtx_obj <- get.Fiintersectmtx(n = n)
-    #   connectmtx_obj <- get_sparse_Fiintersectmtx()
-    #   )
-    # connectmtx_1stO <- connectmtx_obj$conn_ind_mtx_1st
-    # connectmtx_2ndO <- connectmtx_obj$conn_ind_mtx_2ndO
+  # NetInd as sparse adjacency matrix (new version returns pattern sparse mat ngCMatrix):
+  sparse_mat <- NetInd.to.sparseAdjMat(NetInd_k, nF = nF, add_diag = TRUE)
+  # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
+  connectmtx_1stO <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
 
-    # Connect_Mat_time <- system.time({
-      # NetInd as sparse adjacency matrix (new version returns pattern sparse mat ngCMatrix):
-      sparse_mat <- NetInd.to.sparseAdjMat(NetInd_k, nF = nF, add_diag = TRUE)
-      # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
-      connectmtx_1stO <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
-    # })
-    # print("Connect_Mat_time: "); print(Connect_Mat_time)
+  # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
+  if (!onlyTMLE_B) {
+    # iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + fWi_A
+    iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
+    var_tmle_A <- est.sigma_sparse(iidIC_tmle_A, connectmtx_1stO)
+  }
 
+  # TMLE B (weighted model update): Inference based on the iid IC:
+  # iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + fWi_B
+  iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
+  var_tmle_B <- est.sigma_sparse(iidIC_tmle_B, connectmtx_1stO)
 
-    # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
-    if (!onlyTMLE_B) {
-      # iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + fWi_A
-      iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
-      # var_tmle_A <- est.sigma_fsum(get.crossprodmtx(iidIC_tmle_A), connectmtx_1stO)
-      var_tmle_A <- est.sigma_sparse(iidIC_tmle_A, connectmtx_1stO)
-    }
+  # simple iid estimator of the asymptotic variance (no adjustment made when two observations i!=j are dependent):
+  var_iid.tmle_B <- mean((iidIC_tmle_B)^2)
 
-    # TMLE B (weighted model update): Inference based on the iid IC
-    # iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + fWi_B
-    iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
-    # sigma_fsum_time <- system.time(
-      # var_tmle_B <- est.sigma_fsum(get.crossprodmtx(iidIC_tmle_B), connectmtx_1stO)
-      var_tmle_B <- est.sigma_sparse(iidIC_tmle_B, connectmtx_1stO)
-    # )
-    # print("sigma_fsum_time: "); print(sigma_fsum_time)
+  # TMLE based on iptw clever covariate (more non-parametric):
+  if (!onlyTMLE_B) {
+    iidIC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
+    var_tmleiptw_1stO <- est.sigma_sparse(iidIC_tmleiptw, connectmtx_1stO)
+  }
 
-    # simple iid estimator of the asymptotic variance (no adjustment made when two observations i!=j are dependent):
-    var_iid.tmle_B <- mean((iidIC_tmle_B)^2)
+  # IPTW h (based on the mixture density clever covariate (h)):
+  iidIC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_iptw",])
+  var_iptw_h <- est.sigma_sparse(iidIC_iptw_h, connectmtx_1stO)
 
-    # TMLE based on iptw clever covariate (more non-parametric)
-    if (!onlyTMLE_B) {
-      iidIC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
-      # var_tmleiptw_1stO <- est.sigma_fsum(get.crossprodmtx(iidIC_tmleiptw), connectmtx_1stO)
-      var_tmleiptw_1stO <- est.sigma_sparse(iidIC_tmleiptw, connectmtx_1stO)
-      # var_tmleiptw_2ndO <- est.sigma_fsum(get.crossprodmtx(iidIC_tmleiptw), connectmtx_2ndO)
+  # IPTW g:
+  if (!onlyTMLE_B) {
+    iidIC_iptw_g <- g_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"g_iptw",])
+    var_iptw_1stO <- est.sigma_sparse(iidIC_iptw_g, connectmtx_1stO)
+  }
 
-    }
+  # Inference based on the EIC, with factorization into orthogonal components sigma2_DY and sigma2_W_N
+  # sigma2_DY_i are independent (since they are conditioned on W,A)
+  # sigma2_W_N_i are dependent => need to take double sum of their crossprod among dependent units
+  if (!onlyTMLE_B) {
+    D_star_Yi.Qinit <- h_wts * (obsYvals - QY.init) # h*(Y-Q_bar_N):
+    sigma2_DY <- (1/n) * sum(D_star_Yi.Qinit^2)  # Sum_{i} (D_star_Yi)^2
 
-    # IPTW h (based on the mixture density clever covariate (h)):
-    iidIC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_iptw",])
-    # var_iptw_h <- est.sigma_fsum(get.crossprodmtx(iidIC_iptw_h), connectmtx_1stO)
-    var_iptw_h <- est.sigma_sparse(iidIC_iptw_h, connectmtx_1stO)
+    # fW_A_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]))
+    # sigma2_W_N_A <- est.sigma_fsum(fW_A_crossprod, connectmtx_1stO)
+    fW_A_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]
+    sigma2_W_N_A <- est.sigma_sparse(fW_A_i, connectmtx_1stO)
+    var_tmle_A_Q.init <- sigma2_W_N_A + sigma2_DY
 
-    # IPTW g:
-    if (!onlyTMLE_B) {
-      iidIC_iptw_g <- g_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"g_iptw",])
-      # var_iptw_1stO <- est.sigma_fsum(get.crossprodmtx(iidIC_iptw_g), connectmtx_1stO)
-      var_iptw_1stO <- est.sigma_sparse(iidIC_iptw_g, connectmtx_1stO)
-      # var_iptw_2ndO <- est.sigma_fsum(get.crossprodmtx(iidIC_iptw_g), connectmtx_2ndO)
-    }
+    # **NEW** TMLE B (weights model update)
+    # fW_B_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]))
+    # sigma2_W_N_B <- est.sigma_fsum(fW_B_crossprod, connectmtx_1stO)
+    fW_B_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]
+    sigma2_W_N_B <- est.sigma_sparse(fW_B_i, connectmtx_1stO)
+    var_tmle_B_Q.init <- sigma2_W_N_B + sigma2_DY
 
-    # Inference based on the EIC, with factorization into orthogonal components sigma2_DY and sigma2_W_N
-    # sigma2_DY_i are independent (since they are conditioned on W,A)
-    # sigma2_W_N_i are dependent => need to take double sum of their crossprod among dependent units
-    if (!onlyTMLE_B) {
-      D_star_Yi.Qinit <- h_wts * (obsYvals - QY.init) # h*(Y-Q_bar_N):
-      sigma2_DY <- (1/n) * sum(D_star_Yi.Qinit^2)  # Sum_{i} (D_star_Yi)^2
+    # D_star_Yi.Qstar <- h_wts * (obsYvals - QY.star)
+    # D_star_Yi.Qstar[determ.Q] <- 0
+    # fDY_crossprod <- get.crossprodmtx(D_star_Yi.Qstar)
+    # double sum over dependent subjects, Sum_{i,j} R_W(i,j)*D_star_Yi*D_star_Yj
+    # sigma2_Y_N <- est.sigma_fsum(fDY_crossprod, connectmtx_1stO)
+    # sigma2_Y_N <- est.sigma_sparse(D_star_Yi.Qstar, connectmtx_1stO)
+    # var_tmle_Q.init_c <- sigma2_W_N_A + sigma2_Y_N
 
-      # fW_A_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]))
-      # sigma2_W_N_A <- est.sigma_fsum(fW_A_crossprod, connectmtx_1stO)
-      fW_A_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]
-      sigma2_W_N_A <- est.sigma_sparse(fW_A_i, connectmtx_1stO)
-      var_tmle_A_Q.init <- sigma2_W_N_A + sigma2_DY
+    # #--------
+    # # conservative estimate of the as. variance from EIC for TMLE A:
+    # # abs terms double sum over dependent subjects, Sum_{i,j} R_W(i,j)*|D_star_Yi|*|D_star_Yj|:
+    # fabsDY_crossprod <- get.crossprodmtx(abs(D_star_Yi.Qstar))
+    # abs_sigma2_Y_N <- est.sigma_fsum(fabsDY_crossprod, connectmtx_1stO)
+    # abs_sigma2_Y_N <- est.sigma_sparse(abs(D_star_Yi.Qstar), connectmtx_1stO)
+    # var_tmle_A_Q.star_cons <- sigma2_W_N_A + abs_sigma2_Y_N
+    # # --------
+  }
 
-      # **NEW** TMLE B (weights model update)
-      # fW_B_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]))
-      # sigma2_W_N_B <- est.sigma_fsum(fW_B_crossprod, connectmtx_1stO)
-      fW_B_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]
-      sigma2_W_N_B <- est.sigma_sparse(fW_B_i, connectmtx_1stO)
-      var_tmle_B_Q.init <- sigma2_W_N_B + sigma2_DY
+  var.ests <- c(abs(var_tmle_A), abs(var_tmle_B), abs(var_tmleiptw_1stO), abs(var_iptw_h), abs(var_iptw_1stO), 0)
+  estnames <- c(      "tmle_A",     "tmle_B",       "tmle_g_iptw",        "h_iptw",         "g_iptw", "mle")
+  as.var_mat <- matrix(0, nrow = length(var.ests), ncol = 1)
+  as.var_mat[,1] <- var.ests
+  rownames(as.var_mat) <- estnames
+  colnames(as.var_mat) <- "var"
 
-      # D_star_Yi.Qstar <- h_wts * (obsYvals - QY.star)
-      # D_star_Yi.Qstar[determ.Q] <- 0
-      # fDY_crossprod <- get.crossprodmtx(D_star_Yi.Qstar)
-      # double sum over dependent subjects, Sum_{i,j} R_W(i,j)*D_star_Yi*D_star_Yj
-      # sigma2_Y_N <- est.sigma_fsum(fDY_crossprod, connectmtx_1stO)
-      # sigma2_Y_N <- est.sigma_sparse(D_star_Yi.Qstar, connectmtx_1stO)
-      # var_tmle_Q.init_c <- sigma2_W_N_A + sigma2_Y_N
+  other.vars = c(
+                var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
+                var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
+                var_iptw_2ndO = abs(var_iptw_2ndO), # adjusting for 2nd order dependence of i,j
+                var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
+                var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
+                )
 
-      # #--------
-      # # conservative estimate of the as. variance from EIC for TMLE A:
-      # # abs terms double sum over dependent subjects, Sum_{i,j} R_W(i,j)*|D_star_Yi|*|D_star_Yj|:
-      # fabsDY_crossprod <- get.crossprodmtx(abs(D_star_Yi.Qstar))
-      # abs_sigma2_Y_N <- est.sigma_fsum(fabsDY_crossprod, connectmtx_1stO)
-      # abs_sigma2_Y_N <- est.sigma_sparse(abs(D_star_Yi.Qstar), connectmtx_1stO)
-      # var_tmle_A_Q.star_cons <- sigma2_W_N_A + abs_sigma2_Y_N
-      # # --------
-    }
-
-    var.ests <- c(abs(var_tmle_A), abs(var_tmle_B), abs(var_tmleiptw_1stO), abs(var_iptw_h), abs(var_iptw_1stO), 0)
-    estnames <- c(      "tmle_A",     "tmle_B",       "tmle_g_iptw",        "h_iptw",         "g_iptw", "mle")
-    as.var_mat <- matrix(0, nrow = length(var.ests), ncol = 1)
-    as.var_mat[,1] <- var.ests
-    rownames(as.var_mat) <- estnames
-    colnames(as.var_mat) <- "var"
-
-    other.vars = c(
-                  var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
-                  var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
-                  var_iptw_2ndO = abs(var_iptw_2ndO), # adjusting for 2nd order dependence of i,j
-                  var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
-                  var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
-                  )
-
-    return(list(as.var_mat = as.var_mat, other.vars = other.vars))
+  return(list(as.var_mat = as.var_mat, other.vars = other.vars))
                 # other.vars = list(
                 #   var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
                 #   var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
@@ -343,8 +238,7 @@ est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
                 #   var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
                 #   var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
                 # )
-        # ))
-  }
+}
 
 # create output object with param ests of EY_gstar, vars and CIs for given gstar (or ATE if two tmle obj are passed)
 make_EYg_obj <- function(alpha, onlyTMLE_B, datNetObs, tmle_g_out, tmle_g2_out=NULL) {
