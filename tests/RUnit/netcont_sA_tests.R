@@ -172,7 +172,8 @@ test.onesim.net.tmlefit <- function() {
   print_tmlenet_opts()
   # to pool by contin outcome:
   # tmlenet_options(poolContinVar = TRUE, useglm = FALSE)
-  # tmlenet_options(poolContinVar = FALSE, maxNperBin=10000)  
+  tmlenet_options(maxNperBin=5000)
+  # tmlenet_options(binByMass = FALSE, useglm = TRUE)
   system.time(
     simres <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
                                     def_sW = def_sW, def_sA = def_sA, Kmax = Kmax,
