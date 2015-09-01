@@ -365,7 +365,6 @@ res_K6$EY_gstar1$other.vars
 
 
 
-
 #----------------------------------------------------------------------------------
 # Same as Example 1, but specifying the network with NETIDs_mat: a matrix of friend row numbers from the input data
 #----------------------------------------------------------------------------------

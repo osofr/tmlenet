@@ -1,6 +1,7 @@
 #-----------------------------------------------------------------------------
 # TO DO: 
-# - #todo 81 (DatBin, BitOutModel) +0: Create a new class DatBinLong that inherits from DatBin with methods for setdata, predict overridden with pooled fit based versions
+# - #todo 81 (DatBin, BitOutModel) +0: Create a new class DatBinLong that inherits from DatBin
+ # with methods for setdata, predict overridden with pooled fit based versions
 # - (Low priority) Consider merging these two classes into one (BinDat & BinOutModel)
 #-----------------------------------------------------------------------------
 
@@ -379,7 +380,8 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       self$bindat$newdata(newdata = data, ...) # populate bindat with X_mat & Y_vals
       # self$bindat$newdata(newdata = data, getoutcome = TRUE, ...) # populate bindat with X_mat & Y_vals
       # ... additional checks & assertions... # ... add try() to below: # ... add checks for testing a successful fit
-      private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() # alternative 2 is to apply data_obj method / method that fits the model
+      private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() 
+      # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
       if (self$reg$pool_cont && length(self$reg$outvars_to_pool) > 1) {
         private$probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit)
@@ -390,7 +392,8 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       invisible(self)
     },
 
-    # #todo 13 (BinOutModel, predict, predictAeqa) +0: Need to be linked together, since can create a discrepancy for missing(newdata) but !missing(obs.DatNet.sWsA)
+    # #todo 13 (BinOutModel, predict, predictAeqa) +0: Need to be linked together, 
+    # since can create a discrepancy for missing(newdata) but !missing(obs.DatNet.sWsA)
     predict = function(newdata, ...) { # P(A^s[i]=1|W^s=w^s): uses private$m.fit to generate predictions for newdata
       assert_that(self$is.fitted) # vs. stopifnot(self$is.fitted)
       if (missing(newdata)) {

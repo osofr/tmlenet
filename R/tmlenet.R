@@ -1,12 +1,12 @@
-#' @title tmlenet-package
-#' @docType package
+# @title tmlenet-package
+# @docType package
 #' @import R6
-
+# NULL
 # data.table
-#' @author Oleg Sofrygin, Mark J. van der Laan
-#' @description ...TO BE COMPLETED...
-#' @name tmlenet-package
-NULL
+# @author Oleg Sofrygin, Mark J. van der Laan
+# @description ...TO BE COMPLETED...
+# @name tmlenet-package
+
 
 #######################################################################
 ######### BETA VERSION - NOT FOR DISTRIBUTION #########################
@@ -30,81 +30,6 @@ NULL
   # *) Implement data-adaptive weight truncation wrt minimization of MSE (taking max of 5% weight of total as truth)
   # *) Implement pooling when estimating P(sA[j]|sW) for continous sA[j]
   # *) Allow SL to fit Q_N, g_N and h (i.e P(A_j|A_{1},..,A_{j-1}, W_i\inF_j))
-
-#------------------------------------
-# REVISIONS (06/15/2013)
-#------------------------------------
-  # 1) Changed code to accept any number of W's 
-  # 2) Defined deterministic nodes for A and for Q
-  # 3) Passing g*() (stochastic intervention) as an argument
-#------------------------------------
-# REVISIONS (08/05/2013)
-#------------------------------------
-  # 1) Logit h_bar calculation is now based on SAMPLED A from g* or g_N
-  # 2) Logit h_bar W's are based on empirical (as observed, no sampling)
-  # 3) Added new variable for # of times to sample from g* and g_N (h.iter.logis)
-  # 4) Default h.iter.logis set to 100
-  # 5) IC-BASED variance for tmle is calculated
-  # 6) Logit h_bar is now based on (c) only, doesn't depend on g_N, 
-      # the model is saved for the MC evalution part (much faster run time)
-#------------------------------------
-# REVISIONS (11/18/2013)
-#------------------------------------
-  # *) Fixed error with IPTW
-  # *) Much faster asymptotic variance calculation
-  # *) Calculate ATE and IC.VAR for ATE if passed g.2.star function in addition to g.1.star
-  # *) Conservative estimate of the Var_tmle (_c) that doesn't depend on correct specification of Q.0
-  # *) Ad-hoc conservative estimate of the Var_tmle (_cabs) that doesn't depend on the assumption of 
-        # positive correlation between friends' outcomes
-  # *) Can directly pass the function for g_0 (generates A's under g_0 if g_0 known)
-  # *) Can directly pass the function for h/h* given c
-#------------------------------------
-# REVISIONS (11/24/2013)
-#------------------------------------
-  # *) Added matrix-based computation of logistic reg for h (much faster)
-  # *) Added calculation of f_Wi based on QY.star (in addition to f_Wi based on QY.init)
-  # *) Fixed error when fitting h with several covariates (W1, W2)
-  # *) Fixed issues with dimensionality when predicting h, with X_mat only 1 observation
-  # *) Removed calculation of D*_Wi since we don't use it for as.var anymore
-#------------------------------------
-# REVISIONS (01/02/2014)
-#------------------------------------
-  # *) Changed the fit formulas for h_bar to be the same as the formulas for g_N, i.e. E[A|W] is fit to the same
-  #     regression formula for IPTW, TMLE_IPTW and TMLE_EFF.
-  #     Before h was calculated with A regressing on ALL network baseline covariates
-#------------------------------------
-# REVISIONS (02/11/2014)
-#------------------------------------
-  # *) Fixed possible bug:
-  #     When fitting h_0 the model was using ALL observataions to fit E[netA_1|A,W1,netW]
-  #     This was leading to TMLE bias for some simulations when Q misspecified
-  #     e.g., observations with k=0 have all netA_i=0 for all i; k=1 have netA_i=0 for i>1 and so on...
-  #     those observations where still being used when fitting the model for netA_1|A,W, netA_2|netA_1,A,W and so on...
-  #     This could lead to scewed weights, fixed to fit only on non-determ A's
-  # *) Fixed a bug in TMLE-efficient which resulted from previous revision (01/02/2014)
-  #     f.gstar() was no longer passed all of baseline covariates when estimating h
-  #     As a result the sampled A under g.star were incorrect, leading to incorrect estimates of weights h
-#------------------------------------
-# REVISIONS (21/03/2014)
-#------------------------------------
-  # *) New argument iidW_flag, when set to FALSE no resampling of W in MC evaluation (estimates psi that is conditional on W)
-  # *) Passing object of parameters to MC sim function
-  # *) Added inference based on iid ICs for multiple point treatments
-  #     ***IPTW and TMLE-IPTW have more terms in the cross-prod***
-  #     ***MLE inference based on IC for TMLE-efficient***
-  #     ***Made sure fWi component is estimated based on m.Q.star (as it includes psi_i compenent over i)
-  # *) Simulations: saving CI width in addition to coverage 
-  #     To be able to compare different ests of as var (for TMLE-eff)
-  
-  # *) Changed weight truncation to be set to max 5% of the total weights - STILL WORKING IT OUT
-  # *) Simulations: run iid simulation with multiple point treatments
-  #     To show this TMLE works on iid data and gives correct coverage (no cross products for var ests)
-#------------------------------------
-# REVISIONS (11/05/2014)
-#------------------------------------
-  # *) New iptw estimator that is based on h.star/h_0 alone
-  # *) New intercept=based TMLE
-  # *) Added separate regression specification for \bar{h} and \bar{h}^*
 
 #-----------------------------------------------------------------------------
 # Class Membership Tests
@@ -243,12 +168,9 @@ get_all_ests <- function(datNetObs, est_params_list) {
   # h^*/h_N clever covariate:
   #************************************************
   fit.hbars_t <- system.time(fit.hbars.res <- fit.hbars(datNetObs = datNetObs, est_params_list = est_params_list)) # fit the clever covariat
-
   datNetObs <- fit.hbars.res$datNetObs
   DatNet.gstar <- fit.hbars.res$DatNet.gstar
-
   m.h.fit <- fit.hbars.res$m.h.fit
-
   dat_hest <- fit.hbars.res$dat_hest
   # h_gstar <- fit.hbars.res$dat_hest$h_gstar; h_gN <- fit.hbars.res$dat_hest$h_gN
   h_wts <- fit.hbars.res$dat_hest$h_gstar_gN

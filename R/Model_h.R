@@ -101,8 +101,8 @@ iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial"
 	return(ipweights)
 }
 
-#' @title Predict the h weights under g_0 and g_star using existing m.h.fit model fit
-#' @name pred.hbars
+# @title Predict h weights under g_0 and g_star using existing m.h.fit model fit
+# @name pred.hbars
 # @export
 # fit models for m_gAi
 pred.hbars <- function(newdatnet = NULL, m.h.fit) {
@@ -115,9 +115,9 @@ pred.hbars <- function(newdatnet = NULL, m.h.fit) {
     #   determ_cols_user <- .f.allCovars(k, NetInd_k, determ.g_user, "determ.g_true")
     #   determ_cols <- (determ_cols_user | determ_cols_Friend)
     # }
-    if (is.null(newdatnet)) {    # use original fitted data for prediction
-      # ... NOT IMPLEMENTED ...
-      stop()
+    # use original fitted data for prediction
+    if (is.null(newdatnet)) {
+      stop("newdatnet argument must be not null; this feature is not implemented")
       # newdatnet <- m.h.fit$cY_mtx_fitted
       # determ_cols <- m.h.fit$determ_cols_fitted
     }
@@ -138,8 +138,8 @@ pred.hbars <- function(newdatnet = NULL, m.h.fit) {
 }
 
 
-#' @title Defining and fitting the clever covariate h under g_0 and g_star, i.e. models P(sA[j] | sW,sA[j])
-#' @name fit.hbars
+# @title Defining and fitting the clever covariate h under g_0 and g_star, i.e. models P(sA[j] | sW,sA[j])
+# @name fit.hbars
 # @importFrom assertthat assert_that is.count
 # @export
 # fit models for m_gAi
@@ -183,8 +183,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # Summary measure names. Will be made specific to g.star or g0.
   sW.g0_nms <- h.sVars$predvars
   sW.gstar_nms <- h.gstar.sVars$predvars
-  # sW_nms <- O.datnetW$names.sVar
-
   # *****
   # CHECK THAT THESE SUMMARY MEASURES EXIST IN O.datnetW$names.sVar
   check.sW.g0.exist <- unlist(lapply(sW.g0_nms, function(sWname) sWname %in% O.datnetW$names.sVar))
@@ -197,17 +195,9 @@ fit.hbars <- function(datNetObs, est_params_list) {
     print("check.sW.g0.exist"); print(check.sW.g0.exist)
     print("check.sW.gstar.exist"); print(check.sW.gstar.exist)
   }
-  # *****
-
-    # print("type.sVar: "); str(O.datnetW$type.sVar)
-    # print("names.c.sVar: "); print(O.datnetW$names.c.sVar)
-  # Detect intervals for continous covars (Don't really need to do that for netW)
-    # O.datnetW$def_cbin_intrvls()
-    # print("Detected intervals: "); print(O.datnetW$cbin_intrvls)
-    # print("Detected nbins: "); print(O.datnetW$all.nbins)
 
   #---------------------------------------------------------------------------------
-  # Getting OBSERVED sA (both, h.sVars or h.gstar.sVars, have to have the same sAs!)
+  # Getting OBSERVED sA
   #---------------------------------------------------------------------------------
   # Summary measure names / expression
   sA_nms <- h.sVars$outvars
@@ -220,20 +210,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
     print("check.sA.exist"); print(check.sA.exist)
   }
   assert_that(all(check.sA.exist))
-  # ***********
-  # sA_nms <- O.datnetA$names.sVar
-  # ***********
-  # Detect intervals for continous covars in sVar
-    # O.datnetA$def_cbin_intrvls()
-    # print("Detected types: "); str(O.datnetA$type.sVar)
-    # print("Detected intervals: "); print(O.datnetA$cbin_intrvls)
-    # print("Detected nbins: "); print(O.datnetA$all.nbins)
-
-  #-----------------------------------------------------------
-  # Turn A into cont type and add some intervals to it
-  #-----------------------------------------------------------
-  # message("Testing manually to set A as cont:")
-  # O.datnetA$set.sVar.type(name.sVar = "A", new.type = "contin")
 
   #-----------------------------------------------------------
   # BELOW IS A BUG, all A are assigned to the same bin when trying automatic $detect.sVar.intrvls:
@@ -250,20 +226,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # print(table(O.datnetA$discretize.sVar("A")))
   # print(head(O.datnetA$binirize.sVar("A")))
   # print("Stats for sum_1mAW2_nets: ")
-  # print(O.datnetA$get.sVar.type("sum_1mAW2_nets"))
-  # print(O.datnetA$get.sVar.intrvls("sum_1mAW2_nets"))
-  # print(O.datnetA$nbins.sVar("sum_1mAW2_nets"))
-  # print(O.datnetA$bin.nms.sVar("sum_1mAW2_nets"))
-  # print(table(O.datnetA$discretize.sVar("sum_1mAW2_nets")))
-  # print(head(O.datnetA$binirize.sVar("sum_1mAW2_nets")))
-  # print("detect sVar-specific intervals: sum_1mAW2_nets"); O.datnetA$detect.sVar.intrvls("sum_1mAW2_nets")
-  # TO SET sVar intervals for specific sVar name:
-  # O.datnetA$set.sVar.intrvls("sum_1mAW2_nets", O.datnetA$detect.sVar.intrvls("sum_1mAW2_nets"))
-  # print("currently defined intervals: "); print(O.datnetA$cbin_intrvls)
-  # print("detect and set ALL intervals: "); O.datnetA$def_cbin_intrvls()
-  # print("intervals after automatic detection: "); print(O.datnetA$cbin_intrvls)
-  # browser()
-
   #-----------------------------------------------------------
   # DEFINING SUBSETING EXPRESSIONS (FOR DETERMINISTIC / DEGENERATE sA)
   #-----------------------------------------------------------
@@ -303,48 +265,21 @@ fit.hbars <- function(datNetObs, est_params_list) {
 
   message("================================================================")
   message("fitting h_g0 with summary measures: ", "(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.g0_nms, collapse = ",") %+% ")")
-  # message("(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.g0_nms, collapse = ",") %+% ")")
   message("================================================================")
 
   p_h0 <- ifelse(is.null(f.g0), 1, ng.MCsims)
 
-  # ******************************************************************************************************************
-  # **************** NOTE. VERY IMPORTANT ****************
-  # Note the order in which SummariesModel$new & DatNet.g0$make.dat.sWsA are called is very important!!!!
-  # If relyng on automatic interval detection for inside ContinOutModel$new (O.datnetA$set.sVar.intrvls & O.datnetA$detect...)
-  # for cont sVar (that hasn't had its intervals defined yet), calling DatNet.g0$make.dat.sWsA BEFORE SummariesModel$new is bad!
-  # Will result in DatNet.g0 copying & using old interval definitions from O.datnetA,
-  # even though new interval defns will be later saved inside O.datnetA, DatNet.g0 will not see them.
-  # When binirize on DatNet.g0 is called from summeas.g0$fit it will use whatever intervals were copied at time of $make.dat.sWsA
-  # This is due to:
-  # (1) side-effects based programming (interval defn in SummariesModel$new is a side-effect)
-  # (2) $binirize() being part of DatNet class and not DatNet.sWsA (and hence not seeing intervals in O.datnetA)
-  # (3) Another related problem is that datNetObs$make.dat.sWsA is called in tmlenet(), where no intervals were defined
-    # as a result DatNet.g0 below has NO INTERVALS SAVED => Now forcing $copy.cbin.intrvls() on it which fixes the issue.
-  # TO FIX THIS:
-  # 1) Call data$copy.cbin.intrvls() from ContinOutModel$fit => MIGHT BE THE EASIEST FIX (THIS IS WHAT IS CURRENTLY DONE)
-  # 2) Move $binirize functions to DatNet.sWsA and make binirize always first check and copy interval defns from O.datnetA
-  # 3) Define ALL intervals AT THE SAME TIME as creating O.datnetA$new (possibly redefining when creating datnetA under known g0).
-      # Might not fully fix the issue, since DatNet.sWsA is created inside both, tmlenet and fit.h functions
-  # ******************************************************************************************************************
-
-  datNetObs$copy.cbin.intrvls()
   if (!is.null(f.g0)) {
     if (gvars$verbose) message("generating DatNet.g0 under known g0")
-    # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
     DatNet.g0 <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
     DatNet.g0$make.dat.sWsA(p = p_h0, f.g_name = f.g0, f.g_args = f.g0_args, sA.object = sA)
   } else {
     DatNet.g0 <- datNetObs
   }
 
-  # #todo 40 (SummariesModel$new) +0: PASS datNetObs to constructor INSTEAD OF O.datnetA?
   regclass.g0 <- RegressionClass$new(outvar.class = sA_class, outvar = sA_nms, predvars = sW.g0_nms, subset = subsets_expr)
-  summeas.g0 <- SummariesModel$new( reg = regclass.g0, O.datnetA = O.datnetA)
 
-  # print("all intervals DatNet.g0$datnetA: "); print(DatNet.g0$datnetA$cbin_intrvls)
-  # print("all intervals (for O.datnetA & O.datnetW) in DatNet.g0: "); print(DatNet.g0$cbin_intrvls)
-  # browser()
+  summeas.g0 <- SummariesModel$new(reg = regclass.g0, O.datnetA = DatNet.g0)
   summeas.g0$fit(data = DatNet.g0)
 
   # *********
@@ -356,42 +291,124 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # Going with OPTION 1 for now:
 
   # Already generated datNetObs in tmlenet:
-  summeas.g0$predict(newdata = datNetObs) # DOESN'T HAVE TO BE CALLED if (is.null(f.g0)), since PREDICATIONS ARE ALREADY SAVED for obsdat.sW.sA:
-  # *********
-  h_gN <- summeas.g0$predictAeqa(obs.DatNet.sWsA = datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
+  summeas.g0$predict(newdata = datNetObs) # DOESN'T HAVE TO BE CALLED if (is.null(f.g0)), since PREDICATIONS ARE ALREADY SAVED for obsdat.sW.sA
+  h_gN <- summeas.g0$predictAeqa(obs.DatNet.sWsA = datNetObs)
   # *********
 
   message("================================================================")
   message("fitting h_gstar for summary measures: ", "(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
-  # message("(" %+% paste(sA_nms, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
   message("================================================================")
-
-  # temp setting: ng.MCsims <- 10
   DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
   DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_name = f.gstar, f.g_args = f.g_args, sA.object = sA)
 
   if (gvars$verbose) {
     print("DatNet.gstar stored sWsA df: "); print(class(DatNet.gstar$dat.sWsA))
-    print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));    
+    print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));
   }
 
-  # print("all intervals (for O.datnetA & O.datnetW) in DatNet.gstar: "); print(DatNet.gstar$cbin_intrvls)
-  # print("all var types (for O.datnetA & O.datnetW) in DatNet.gstar: "); str(DatNet.gstar$type.sVar)
-  # DatNet.gstar$names.sVar
-  # head(DatNet.gstar$dat.sVar)
-  regclass.gstar <- RegressionClass$new(outvar.class = sA_class, outvar = sA_nms, predvars = sW.gstar_nms, subset = subsets_expr)
-  summeas.gstar <- SummariesModel$new(reg = regclass.gstar, O.datnetA = O.datnetA)
 
+  # browser()
+  # # intervals defined for summary measure sA under g0
+  # summeas.g0$getPsAsW.models()[['P(sA|sW).1']]$intrvls
+  # # regression class for summary measure sA under g0
+  # summeas.g0$getPsAsW.models()[['P(sA|sW).1']]$reg
+  # summeas.g0$getPsAsW.models()[['P(sA|sW).1']]$reg$nbins
+  # # intervals defined for summary measure net.mean.sA under g0
+  # summeas.g0$getPsAsW.models()[['P(sA|sW).2']]$intrvls
+  # nbins_gstar <- length(gstar.intrv) - 1
+  # bin.nms.sVar_gstar <- DatNet.gstar$bin.nms.sVar("sA", nbins_gstar)
+  # print("active bin sVar before calling binirize.sVar: " %+% DatNet.gstar$active.bin.sVar)
+  # DatNet.gstar$binirize.sVar(name.sVar = "sA", intervals = gstar.intrv, nbins = nbins_gstar, bin.nms = bin.nms.sVar_gstar)
+  # print("active bin sVar after calling binirize.sVar: " %+% DatNet.gstar$active.bin.sVar)
+  # print(head(DatNet.gstar$dat.sVar, 5))
+  # print(head(cbind(DatNet.gstar$ord.sVar, DatNet.gstar$dat.bin.sVar), 5))
+  # print("freq count for transformed ord.sVar: "); print(table(DatNet.gstar$ord.sVar))
+
+
+  regclass.gstar <- RegressionClass$new(outvar.class = sA_class,
+                                        outvar = sA_nms,
+                                        predvars = sW.gstar_nms,
+                                        subset = subsets_expr
+                                        # max_nperbin = as.integer(getopt("maxNperBin"))
+                                        # max_nperbin = 2000L
+                                        # max_nperbin = as.integer(getopt("maxNperBin")*ng.MCsims)
+                                        )
+  # Define Intervals Under g_star to Be The Same as under g0:
+  summeas.gstar <- SummariesModel$new(reg = regclass.gstar, O.datnetA = DatNet.g0)
+  # Define Intervals Under g_star Based on Summary Measures Generated under g_star:
+  # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, O.datnetA = DatNet.gstar)
+  # Define Intervals Under g_star Based on Union of Summary Measures under g_star and g0:
+  # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, O.datnetA = DatNet.g0, datnet.gstar = DatNet.gstar)
   summeas.gstar$fit(data = DatNet.gstar)
+
   summeas.gstar$predict(newdata = datNetObs)
   h_gstar <- summeas.gstar$predictAeqa(obs.DatNet.sWsA = datNetObs)
+
+  # # new_h_gstar <- h_gstar
+  # # newint_pred <- as.vector(new_h_gstar)
+  # # old_h_gstar <- h_gstar
+  # # oldint_pred <- as.vector(old_h_gstar)
+  
+  # # print(head(datNetObs$dat.sWsA))
+  # dat_pred <- cbind(datNetObs$dat.sWsA[,c("sA")], oldint_pred=oldint_pred, newint_pred=newint_pred, diff=newint_pred-oldint_pred)
+  # # head(dat_pred, 1000)
+  # # dat_pred[42,]
+  # # dat_pred[11172,]
+  # (g0_intrvls <- summeas.g0$getPsAsW.models()[['P(sA|sW).1']]$intrvls)
+  # (gstar_intrvls <- summeas.gstar$getPsAsW.models()[['P(sA|sW).1']]$intrvls)
+  # # (combine_int <- sort(union(g0_intrvls, gstar_intrvls)))
+
+  # 1/diff(g0_intrvls)
+  # 1/diff(gstar_intrvls)
+  # # datNetObs$mat.bin.sVar[11172,]
+  # # datNetObs$ord.sVar[11172]
+  # # h_gN[11172]
+  # # # obs.DatNet.sWsA$get.sVar.bw(name.sVar = self$outvar, intervals = self$intrvls)
+  # # print(mean(h_gstar_gN))
+  # # which(is.nan(h_gstar_gN))
+  # # which(h_gstar_gN > 10000)
+  # # dat_pred[which(abs(new_wts-old_wts) > 0.4)[17],]
+  # # new_wts[which(abs(new_wts-old_wts) > 0.4)[17]]
+  # # old_wts[which(abs(new_wts-old_wts) > 0.4)[17]]
+  # # h_gstar[which(abs(new_wts-old_wts) > 0.4)[17]]
+  # # new_h_gstar[which(abs(new_wts-old_wts) > 0.4)[17]]
+  # # old_h_gstar[which(abs(new_wts-old_wts) > 0.4)[17]]
+  # # h_gN[which(abs(new_wts-old_wts) > 0.4)[17]]
+  # # mean(new_h_gstar)
+  # # mean(old_h_gstar)
+
+  # mean(oldint_pred[selidx]/h_gN[selidx])
+  # mean(newint_pred[selidx]/h_gN[selidx])
+
+  # selidx <- datNetObs$dat.sWsA[,"W1"]==1 & datNetObs$dat.sWsA[,"W2"]==1 &  datNetObs$dat.sWsA[,"W3"]==1
+  # sum(selidx)
+  # length(bigdiffidx)
+  # dat_pred[bigdiffidx & selidx,][1:20,]
+
+  # mean(datNetObs$dat.sWsA[selidx,c("sA")])
+  # plot(density(DatNet.gstar$dat.sWsA[selidx,c("sA")]), col="red")
+  # lines(density(datNetObs$dat.sWsA[selidx,c("sA")]))
+
 
   ###########################################
   # 3) Calculate final h_bar (h_tilde) as ratio of h_gstar / h_gN and bound it
   ##########################################
   h_gstar_gN <- h_gstar / h_gN
   h_gstar_gN[is.nan(h_gstar_gN)] <- 0     # 0/0 detection
-  h_gstar_gN <- bound(h_gstar_gN, c(0,1/lbound))
+  h_gstar_gN <- bound(h_gstar_gN, c(0, 1/lbound))
+
+
+  # # new_wts <- h_gstar_gN
+  # # mean(new_wts)
+  # old_wts <- h_gstar_gN
+  # mean(old_wts)
+  # mean(old_wts); mean(new_wts)
+  # bigdiffidx <- abs(new_wts-old_wts) > 0.4
+  # table(names(which(bigdiffidx)))
+  # # clearly most of disagreement is occuring at the rightmost interval end:
+  # # 100%  50%  85%  90%  95%
+  # #  996   62   55  190  439
+
 
   dat_hest <- data.frame(cY.ID = .f.mkstrNet(datNetObs$dat.sWsA),
                         h_gstar = h_gstar,

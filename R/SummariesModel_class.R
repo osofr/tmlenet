@@ -13,11 +13,13 @@
 
 # Generic S3 constructor for the summary model classes:
 NewSummaryModel <- function(reg, O.datnetA, ...) { UseMethod("NewSummaryModel") }
+
 # Summary model constructor for binary outcome sA[j]:
 NewSummaryModel.binary <- function(reg, ...) {
   if (gvars$verbose) print("BinOutModel constructor called...")
   BinOutModel$new(reg = reg, ...)
 }
+
 # Summary model constructor for continuous outcome sA[j]:
 NewSummaryModel.contin <- function(reg, O.datnetA, ...) { 
   if (gvars$verbose) print("ContinOutModel constructor called...")
@@ -33,7 +35,7 @@ RegressionClass <- R6Class("RegressionClass",
     predvars = character(),        # either a pool of all predictors (sW) or regression-specific predictor names
     subset = NULL,                 # subset expression (later evaluated to logical vector in the envir of the data)
     ReplMisVal0 = TRUE,            # if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0)
-    nbins = NULL,                  # actual nbins used, for cont. outvar, copied by ContinOutModel$new from O.datnetA$nbins.sVar(reg$outvar)
+    nbins = NULL,                  # actual nbins used, for cont. outvar, defined in ContinOutModel$new()
     bin_nms = NULL,                # column names for bin indicators
     useglm = logical(),            # TRUE to fit reg with glm.fit(), FALSE to fit with speedglm.wfit
     bin_bymass = logical(),        # for cont outvar, create bin cutoffs based on equal mass distribution?
@@ -154,6 +156,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		n_regs = integer(),     # total no. of reg. models (logistic regressions)
     initialize = function(reg, ...) {
 			self$n_regs <- length(reg$outvar) # Number of sep. logistic regressions to run
+
       if (gvars$verbose) {
         print("#----------------------------------------------------------------------------------");
         print("New SummariesModel object:");
@@ -162,6 +165,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         print("sW_nms (reg$predvars): " %+% paste(reg$predvars, collapse = ", "))
         print("#----------------------------------------------------------------------------------");        
       }
+
       # factorize by dimensionality of the outcome variable (sA_nms):
 			for (k_i in 1:self$n_regs) {
         reg_i <- reg$clone()
@@ -179,8 +183,9 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		getcumprodAeqa = function() { private$cumprodAeqa },  # get joint prob as a vector of the cumulative prod over j for P(sA[j]=a[j]|sW)
 
     fit = function(data) {
-		  for (k_i in seq_along(private$PsAsW.models)) { # loop over all regressions in PsAsW.models
-		    private$PsAsW.models[[k_i]]$fit(data = data) # below is replaced with this
+      # loop over all regressions in PsAsW.models:
+		  for (k_i in seq_along(private$PsAsW.models)) {
+		    private$PsAsW.models[[k_i]]$fit(data = data)
 		  }
 		  invisible(self)
 		},
@@ -189,7 +194,8 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		  if (missing(newdata)) { # ... Do nothing. Predictions for fit data are already saved ...
 		    return(invisible(self))
 		  }
-		  for (k_i in seq_along(private$PsAsW.models)) { # loop over all regressions in PsAsW.models
+      # loop over all regressions in PsAsW.models:
+		  for (k_i in seq_along(private$PsAsW.models)) { 
 		    private$PsAsW.models[[k_i]]$predict(newdata = newdata)
 		  }
 		  invisible(self)
@@ -242,29 +248,38 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
     bin_weights = NULL,
 
     # Define settings for fitting contin sA and then call $new for super class (SummariesModel)
-    initialize = function(reg, O.datnetA, ...) {
+    initialize = function(reg, O.datnetA, datnet.gstar, ...) {
       # Define the number of bins (no. of regs to run), new outvar var names, predvars remain unchanged:
       self$O.datnetA <- O.datnetA
       self$reg <- reg
       self$outvar <- reg$outvar
-      self$reg$nbins <- O.datnetA$nbins.sVar(reg$outvar)
 
-      if (self$reg$nbins < 2) {
-        # stop("bin intervals were not defined for continuous sA: " %+% reg$outvar)
-        if (gvars$verbose)  message("defining bin intervals that were not defined for continuous sA: " %+% reg$outvar)
-        self$intrvls <- O.datnetA$detect.sVar.intrvls(reg$outvar, 
-                                                      bin_bymass = self$reg$bin_bymass, 
-                                                      max_nperbin = self$reg$max_nperbin)
+      # self$reg$nbins <- O.datnetA$nbins.sVar(reg$outvar)
+      # if (self$reg$nbins < 2) {
+      # if (gvars$verbose)  message("defining bin intervals that were not defined for continuous sA: " %+% reg$outvar)
+      # message("defining bin intervals that were not defined for continuous sA: " %+% reg$outvar)
 
-        self$intrvls.width <- diff(self$intrvls)
-        if (gvars$verbose)  {
-          print("defined bin intervals:"); print(self$intrvls)  
-        }
-        O.datnetA$set.sVar.intrvls(reg$outvar, self$intrvls)
-        self$reg$nbins <- O.datnetA$nbins.sVar(reg$outvar)
+      self$intrvls <- O.datnetA$detect.sVar.intrvls(reg$outvar,
+                                                    bin_bymass = self$reg$bin_bymass,
+                                                    max_nperbin = self$reg$max_nperbin)
+
+      if (!missing(datnet.gstar)) {
+        message("Found datnet.gstar! sVar intervals under gstar will be based on a union of intervals under g0 and gstar")
+        gstar.intrvls <- datnet.gstar$detect.sVar.intrvls(reg$outvar,
+                                                    bin_bymass = self$reg$bin_bymass,
+                                                    max_nperbin = self$reg$max_nperbin)
+        self$intrvls <- unique(sort(union(self$intrvls, gstar.intrvls)))
       }
 
-      self$reg$bin_nms <- O.datnetA$bin.nms.sVar(reg$outvar) # new.sA_nms <- O.datnetA$bin.nms.sVar(reg$outvar)
+      self$intrvls.width <- diff(self$intrvls)
+
+      if (gvars$verbose)  {
+        print("defined bin intervals:"); print(self$intrvls)
+      }
+
+      self$reg$nbins <- length(self$intrvls) - 1
+
+      self$reg$bin_nms <- O.datnetA$bin.nms.sVar(reg$outvar, self$reg$nbins)
       new.sAclass <- as.list(rep_len(gvars$sVartypes$bin, self$reg$nbins))
       names(new.sAclass) <- self$reg$bin_nms
 
@@ -278,7 +293,6 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
       bin_regs <- self$reg$clone()
       # #todo 27 (ContinOutModel) +0: Put subset eval in a separate function (with var as arg + additional args)
       if (!self$reg$pool_cont) {
-
         add.oldsubset <- TRUE
         new.subsets_chr <- lapply(self$reg$bin_nms,
                                   function(var) {
@@ -298,12 +312,9 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
                                                       outvar = self$reg$bin_nms, 
                                                       predvars = self$reg$predvars, 
                                                       subset = new.subsets))
-
       } else {
-
         bin_regs$outvar.class <- gvars$sVartypes$bin
         bin_regs$outvar <- self$outvar
-        # bin_regs$outvar <- O.datnetA$pooled.bin.nm.sVar(self$reg$outvar)
         bin_regs$outvars_to_pool <- self$reg$bin_nms
 
         if (gvars$verbose)  {
@@ -321,23 +332,17 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
     # Gets passed redefined subsets that exclude degenerate Bins (prev subset is defined for names in sA - names have changed though)
     fit = function(data) {
       if (gvars$verbose) message("fit in continuous summary... for: " %+% self$outvar)
+
       # input data is of class DatNet.sWsA
       # data$datnetW$dat.sVar -> interface to get sW (currently matrix)
       # data$datnetA$dat.sVar -> interface to get sA (currently matrix)
       # data$dat.sVar -> returns a combined mat of sWsA (no subsetting, no covar sel)
       # data$get.dat.sWsA(rowsubset, covars) -> returns a processed mat of sWsA
 
-      # NOTE, THIS LINE IS VERY IMPORTANT      
-      # IF bins were defined inside ContinOutModel$new(), they will be saved in O.datnetA and DatNet.sWsA will not see them # unless the intervals are copied from O.datnetA 
-      data$copy.cbin.intrvls() 
+      if (gvars$verbose) print("current active bin sVar: " %+% data$active.bin.sVar)
 
-      if (gvars$verbose) {
-        print("intervals after data$copy.cbin.intrvls() in ContinOutModel$fit: "); print(data$get.sVar.intrvls(self$outvar))
-        print("current active bin sVar: " %+% data$active.bin.sVar)
-      }
-
-      # *** THIS DOES NOT NEED TO BE HERE. COULD BE CALLED FROM INSDIE DatBin INSTEAD ***
-      data$binirize.sVar(self$outvar) # Binirizes & saves binned matrix inside DatNet.sWsA
+      # Binirizes & saves binned matrix inside DatNet.sWsA
+      data$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
 
       if (gvars$verbose) {
         print("active bin sVar after calling binirize.sVar: " %+% data$active.bin.sVar)
@@ -347,48 +352,51 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
       }
 
       super$fit(data) # call the parent class fit method
-
       if (gvars$verbose) message("fit for " %+% self$outvar %+% " var succeeded...")
 
       invisible(self)
     },
 
-    predict = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
+    # todo: implement call to self$predictAeqa when response=TRUE, so that predictAeqa doesn't have to be called separately?
+    predict = function(newdata, response = FALSE) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
       if (missing(newdata)) { # ... Do nothing. Predictions for fit data are already saved ...
         return(invisible(self))
       }
-      if (gvars$verbose) print("predict in continuous summary...")
 
-      newdata$copy.cbin.intrvls() #07/18/15 added copy of interval definitions:
+      if (gvars$verbose) message("predict in continuous summary...")
+
       # mat_bin doesn't need to be saved (even though its invisibly returned)
       # mat_bin is automatically saved in datnet.sW.sA - a potentially dangerous side-effect!!!
-      mat_bin <- newdata$binirize.sVar(self$outvar)
+      mat_bin <- newdata$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
 
       if (gvars$verbose) {
         print("mat_bin"); print(head(mat_bin))
       }
 
       super$predict(newdata)
-      invisible(self)
+      invisible(self)      
     },
 
     # WARNING: This method cannot be chained together with other methods (s.a, class$predictAeqa()$fun())
     # Convert contin. sA vector into matrix of binary cols, then call parent class method: super$predictAeqa()
     # Invisibly return cumm. prob P(sA=sa|sW=sw)
     predictAeqa = function(obs.DatNet.sWsA) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
-      if (gvars$verbose) print("predictAeqa in continuous summary...")
-      obs.DatNet.sWsA$copy.cbin.intrvls() # added 07/18/15:
+      if (gvars$verbose) message("predictAeqa in continuous summary...")
 
       assert_that(is.DatNet.sWsA(obs.DatNet.sWsA))
       assert_that(is.vector(obs.DatNet.sWsA$get.outvar(var = self$outvar)))
 
-      obs.DatNet.sWsA$binirize.sVar(self$outvar)
-      # mat_bin <- obs.DatNet.sWsA$binirize.sVar(self$outvar)
-      bws <- obs.DatNet.sWsA$get.sVar.bw(self$outvar)
+      # print("current active bin sVar: " %+% obs.DatNet.sWsA$active.bin.sVar)
+      # bintime <- system.time(
+        mat_bin <- obs.DatNet.sWsA$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
+        # )
+      # print("bintime: "); print(bintime)
+
+      bws <- obs.DatNet.sWsA$get.sVar.bw(name.sVar = self$outvar, intervals = self$intrvls)
       self$bin_weights <- (1 / bws) # weight based on 1 / (sVar bin widths)
+
       cumprodAeqa <- super$predictAeqa(obs.DatNet.sWsA = obs.DatNet.sWsA) * self$bin_weights
       invisible(cumprodAeqa)
-      # invisible(super$predictAeqa(self$binirize(obsdat.sA)))  # one line alternative to the above?
     }
   ),
   active = list(

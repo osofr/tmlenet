@@ -262,6 +262,7 @@ make_EYg_obj <- function(alpha, onlyTMLE_B, datNetObs, tmle_g_out, tmle_g2_out=N
                             ests_mat = ests_mat, QY_mat = QY_mat, wts_mat = wts_mat, fWi_mat = fWi_mat,
                             onlyTMLE_B = onlyTMLE_B)
   )
+
   print("time to estimate Vars: "); print(getVar_time)
 
  get_CI <- function(xrow, n) {
