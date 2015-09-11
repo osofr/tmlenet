@@ -282,7 +282,9 @@ get_all_ests <- function(datNetObs, est_params_list) {
   return(list( ests_mat = ests_mat,
                wts_mat = wts_mat,
                fWi_mat = fWi_mat,
-               QY_mat = QY_mat
+               QY_mat = QY_mat,
+               h_g0_SummariesModel = m.h.fit$summeas.g0,
+               h_gstar_SummariesModel = m.h.fit$summeas.gstar
               ))
 }
 
@@ -359,7 +361,7 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
 #' @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
 #' @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
 #' @param verbose Set to \code{TRUE} to print all messages
-#' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as alpha, gbound, family, n_MCsims, onlyTMLE_B, f_g0. See Details.
+#' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as \code{alpha}, \code{gbound}, \code{family}, \code{n_MCsims}, \code{onlyTMLE_B}, \code{f_g0}, \code{h_g0_SummariesModel} and \code{h_gstar_SummariesModel}. See Details.
 #((NOT IMPLEMENTED)) @param AnodeDETfun function that evaluates to TRUE for observations with deterministically assigned A (alternative to AnodeDET)
 #((NOT IMPLEMENTED)) @param  YnodeDETfun function that evaluates to TRUE for observations with deterministically assigned Y (alternative to YnodeDET)
 #((NOT IMPLEMENTED)) @param Q.SL.library SuperLearner libraries for outcome, Q (NOT IMPLEMENTED)
@@ -459,7 +461,9 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
                       family = "binomial", # NOT IMPLEMENTED YET
                       n_MCsims = ceiling(sqrt(nrow(data))),
                       onlyTMLE_B = TRUE,
-                      f_g0 = NULL)
+                      f_g0 = NULL, 
+                      h_g0_SummariesModel = NULL,
+                      h_gstar_SummariesModel = NULL)
                     ) {
 
   oldverboseopt <- getOption("tmlenet.verbose")
@@ -666,6 +670,7 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
                               predvars = Q.sVars$predvars,
                               subset = !determ.Q,
                               ReplMisVal0 = TRUE)
+
   m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = datNetObs)$predict()
 
   # datNetObs$YnodeVals       # visible Y's with NA for det.Y
@@ -756,6 +761,9 @@ tmlenet <- function(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET 
 
                   nQ.MCsims = nQ.MCsims, 
                   ng.MCsims = ng.MCsims,
+
+                  h_g0_SummariesModel = optPars$h_g0_SummariesModel,
+                  h_gstar_SummariesModel = optPars$h_gstar_SummariesModel,
 
                   h_logit_sep_k = h_logit_sep_k, # NOT IMPLEMENTED
                   h_user = h_user, # NOT IMPLEMENTED

@@ -174,6 +174,12 @@ fit.hbars <- function(datNetObs, est_params_list) {
 
   f.g_args <- est_params_list$f.g_args # TO BE REmoVED
   f.g0_args <- est_params_list$f.g0_args # TO BE REmoVED
+
+  h_g0_SummariesModel <- est_params_list$h_g0_SummariesModel
+  if (!is.null(h_g0_SummariesModel)) message("h_g0 will not be fit, predicting h_g0 based on the existing fit supplied in h_g0_SummariesModel object")
+  h_gstar_SummariesModel <- est_params_list$h_gstar_SummariesModel
+  if (!is.null(h_gstar_SummariesModel)) message("h_gstar will not be fit, predicting h_gstar based on the existing fit supplied in h_gstar_SummariesModel object")
+
   h_logit_sep_k <- est_params_list$h_logit_sep_k # NOT IMPLEMENTED
   # h_user=est_params_list$h_user; h_user_fcn=est_params_list$h_user_fcn; NOT IMPLEMENTED
 
@@ -280,7 +286,15 @@ fit.hbars <- function(datNetObs, est_params_list) {
   regclass.g0 <- RegressionClass$new(outvar.class = sA_class, outvar = sA_nms, predvars = sW.g0_nms, subset = subsets_expr)
 
   summeas.g0 <- SummariesModel$new(reg = regclass.g0, O.datnetA = DatNet.g0)
-  summeas.g0$fit(data = DatNet.g0)
+  if (!is.null(h_g0_SummariesModel)) {
+    message("user supplied model fit for h_g0 is not implemented yet")
+    # ...
+    # 1) verify h_g0_SummariesModel is consistent with summeas.g0
+    # 2) copy model fits in h_g0_SummariesModel to summeas.g0
+    # ...
+  } else {
+    summeas.g0$fit(data = DatNet.g0)
+  }
 
   # *********
   # NEED TO PASS obsdat.sW.sA (observed data sWsA) to predict() funs.
@@ -305,7 +319,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
     print("DatNet.gstar stored sWsA df: "); print(class(DatNet.gstar$dat.sWsA))
     print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));
   }
-
 
   # browser()
   # # intervals defined for summary measure sA under g0
@@ -339,7 +352,16 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, O.datnetA = DatNet.gstar)
   # Define Intervals Under g_star Based on Union of Summary Measures under g_star and g0:
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, O.datnetA = DatNet.g0, datnet.gstar = DatNet.gstar)
-  summeas.gstar$fit(data = DatNet.gstar)
+
+  if (!is.null(h_gstar_SummariesModel)) {
+    message("user supplied model fit for h_gstar is not implemented yet")
+    # ...
+    # 1) verify h_gstar_SummariesModel is consistent with summeas.gstar
+    # 2) copy model fits in h_gstar_SummariesModel to summeas.gstar
+    # ...
+  } else {
+    summeas.gstar$fit(data = DatNet.gstar)
+  }
 
   summeas.gstar$predict(newdata = datNetObs)
   h_gstar <- summeas.gstar$predictAeqa(obs.DatNet.sWsA = datNetObs)

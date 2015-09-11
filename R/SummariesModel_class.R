@@ -1,5 +1,67 @@
 #' @importFrom assertthat assert_that
 
+## **********************************************************************
+## DESCRIPTION OF THE FITTING ALGORITHM(s) FOR CONTINUOUS SUMMARY MEASURE sA (TO ADD TO THE PACKAGE MANUAL)
+## LEFT TO DO: 
+# *) implement the hazard weighting by bin width for pooled cont sA fitting (in BinDat$logispredict.long)
+## **********************************************************************
+# *) Fit one density for P_{g_0}(sA | sW) implied by (A,W)~g_0(A|W)Q_0(W) 
+#    and another density for P_{g_star}(sA^* | sW) that is implied by (A^*,W)~g_star(A|W)Q_0(W).
+# *) Same algorithm is used for estimation of P_{g_0}(sA | sW) or P_{g_star}(sA^* | sW).
+# *) These two densities form the basis of the IPTW estimator,
+#    which is evaluated at the observed N data points o_i=(y_i, sa_i, sw_i), i=1,...,N.
+#    The IPTW is then given by \sum_i={1,...,N} {Y_i * P_{g_star}(sA^*=sa_i | sW=sw_i) / P_{g_0}(sA=sa_i | sW=sw_i)}
+# *) For simplicity, we now suppose sA is univariate and we first describe an algorithm for fitting P_{g_0}(sA | sW):
+  # 1) Generate a dataset of N observed continuous summary measures (sa_i:i=1,...,N) from observed ((a_i,w_i):i=1,...,N). Let sa\in{sa_i:i=1,...,M}.
+  # 2) Divide the range of sA values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point sa_i belongs to one interval in S, namely, 
+  #    for each possible value sa of sA there is k\in{1,...,M}, such that, i_k < sa <= i_{k+1}.
+  #    Let the mapping B(sa)\in{1,...,M} denote a unique interval in S for sa, such that, i_{B(sa)} < sa <= i_{B(sa)+1}.
+  #    Let bw_{B(sa)}:=i_{B(sa)+1}-i_{B(sa)} be the length of the interval (bandwidth) (i_{B(sa)},i_{B(sa)+1}).
+  #    Also define the binary indicators b_1,...,b_M, where b_j:=I(B(sa)=j), for all j <= B(sa) and b_j:=NA for all j>B(sa).
+  #    That is we set b_j to missing ones the indicator I(B(sa)=j) jumps from 0 to 1.
+  #    Now let sA denote the random variable for the observed summary measure for one unit
+  #    and denote by (B_1,...,B_M) the corresponding random indicators for sA defined as B_j := I(B(sA) = j) 
+  #    for all j <= B(sA) and B_j:=NA for all j>B(sA).
+  # 3) For each j=1,...,M, fit the logistic regression model for the conditional probability P(B_j = 1 | B_{j-1}=0, sW), i.e., 
+  #    at each j this is defined as the conditional probability of B_j jumping from 0 to 1 at bin j, given that B_{j-1}=0 and 
+  #    each of these logistic regression models is fit only among the observations that are still at risk of having B_j=1 with B_{j-1}=0.
+  # 4) Normalize the above conditional probability of B_j jumping from 0 to 1 by its corresponding interval length (bandwidth) bw_j to 
+  #    obtain the discrete conditional hazards h_j(sW):=P(B_j = 1 | (B_{j-1}=0, sW) / bw_j, for each j.
+  #    For the summary measure sA, the above conditional hazard h_j(sW) is equal to P(sA \in (i_j,i_{j+1}) | sA>=i_j, sW), 
+  #    i.e., this is the probability that sA falls in the interval (i_j,i_{j+1}), conditional on sW and conditional on the fact that
+  #    sA does not belong to any intervals before j.
+  # 4) Finally, for any given data-point (sa,sw), evaluate the discretized conditional density for P(sA=sa|sW=sw) by first 
+  #    evaluating the interval number k=B(sa)\in{1,...,M} for sa and then computing \prod{j=1,...,k-1}{1-h_j(sW))*h_k(sW)}
+  #    which is equivalent to the joint conditional probability that sa belongs to the interval (i_k,i_{k+1}) and does not belong
+  #    to any of the intervals 1 to k-1, conditional on sW. 
+  #    The evaluation above utilizes a discretization of the fact that any continous density f of random variable X can be written as f_X(x)=S_X(x)*h_X(x), 
+  #    for a continuous density f of X where S_X(x):=P(X>x) is the survival function for X, h_X=P(X>x|X>=x) is the hazard function for X; as well as the fact that
+  #    the discretized survival function S_X(x) can be written as a of the hazards for s<x: S_X(x)=\prod{s<x}h_X(x).
+## **********************************************************************
+## Two methods for discretizing (creating bin intervals) for a continuous summary measure sA
+## **********************************************************************
+# There are 2 alternative methods to defining the bin cutoffs S=(i_1,...,i_M,i_{M+1}) for a continuous summary measure sA.
+# The choice of which method is used along with other discretization parameters (e.g., total number of bins) is controlled via the tmlenet_options() function. 
+# See ?tmlenet_options for additional details.
+  # *********************
+  # Approach 1 (default, equal length intervals):
+  # *********************
+  # The bins are defined by splitting the range of observed sA (sa_1,...,sa_n) into equal length intervals. 
+  # This is the dafault discretization method, set by passing an argument \code{binByMass=FALSE} to the \code{tmlenet_options} function.
+  # The intervals will be defined by splitting the range of (sa_1,...,sa_N) into \code{nbins} number of equal length intervals, 
+  # where \code{nbins} is another argument of \code{tmlenet_options()} function.
+  # When \code{nbins=NA} (the default setting) the actual value of \code{nbins} is computed at run time by taking the integer value (floor) of \code{n/maxNperBin},
+  # for \code{n} - the total observed sample size and \code{maxNperBin=1000} - another argument of \code{tmlenet_options()} with the default value 1,000.
+  # *********************
+  # Approach 2 (data-adaptive unequal length intervals):
+  # *********************
+  # The intervals are defined by splitting the range of \code{sA} into non-equal length data-adaptive intervals that ensures that each interval contains around 
+  # \code{maxNperBin} observations from (sa_j:j=1,...,N).
+  # This interval definition approach is activated by passing an argument \code{binByMass = TRUE} to \code{tmlenet_options()}.
+  # The method ensures that an approximately equal number of observations will belong to each interval, where that number of observations for each interval
+  # is controlled by setting \code{maxNperBin}. The default setting is \code{maxNperBin=1000} observations per interval.
+## ---------------------------------------------------------------------
+
 # **********
 # TO DO (ContinOutModel)
 # x) Remove subset_expr definition from here, where is a more approapriate location?
@@ -38,11 +100,24 @@ RegressionClass <- R6Class("RegressionClass",
     nbins = NULL,                  # actual nbins used, for cont. outvar, defined in ContinOutModel$new()
     bin_nms = NULL,                # column names for bin indicators
     useglm = logical(),            # TRUE to fit reg with glm.fit(), FALSE to fit with speedglm.wfit
+    parfit = logical(),            # TRUE for fitting binary regressions in parallel
     bin_bymass = logical(),        # for cont outvar, create bin cutoffs based on equal mass distribution?
+    bin_bydhist = logical(),
     max_nperbin = integer(),       # maximum n observations allowed per binary bin
     pool_cont = logical(),         # Pool binned cont outvar obs into long format (adding bin_ID as a covaraite)
     outvars_to_pool = character(), # Names of the binned continuous sVars, should match bin_nms
-    # bin_width = 0L,              # (NOT IMPLEMENTED)
+
+
+    # NAMED VECTOR THAT CONTAINS (bw_j : j=1,...,M). CAN BE QUERIED BY BinOutModel$predictAeqa() as: intrvls.width[outvar]
+    # INSIDE BinOutModel$predictAeqa() EACH probA1 is adjusted as probA1/self$reg$intrvls.width[self$getoutvarnm]
+    # WHERE outvar is a discretized bin name for continuous sA
+    # BinOutModel$predictAeqa() THIS CLASS
+    # When sA is not continuous, intrvls.width IS SET TO 1.
+    # When sA is continuous, intrvls.width is SET TO self$intrvls.width INSIDE ContinOutModel$new() with names(intrvls.width) <- reg$bin_nms
+    intrvls.width = 1L,
+    intrvls = numeric(),
+
+
     # family = NULL,               # (NOT IMPLEMENTED) to run w/ other than "binomial" family
     # form = NULL,                 # (NOT IMPLEMENTED) reg formula, if provided run using the usual glm / speedglm functions
     initialize = function(outvar.class = gvars$sVartypes$bin,
@@ -50,7 +125,10 @@ RegressionClass <- R6Class("RegressionClass",
                           # Needed to add ReplMisVal0 = TRUE for case sA = (netA, sA[j]) with sA[j] continuous, was causing an error otherwise:
                           ReplMisVal0 = TRUE,  
                           useglm = getopt("useglm"),
+                          parfit = getopt("parfit"),
+                          nbins = getopt("nbins"),
                           bin_bymass = getopt("binByMass"),
+                          bin_bydhist = getopt("binBydhist"),
                           max_nperbin = getopt("maxNperBin"),
                           pool_cont = getopt("poolContinVar")
                           ) {
@@ -61,7 +139,11 @@ RegressionClass <- R6Class("RegressionClass",
       self$ReplMisVal0 <- ReplMisVal0
 
       self$useglm <- useglm
+      self$parfit <- parfit
+
+      self$nbins <- nbins
       self$bin_bymass <- bin_bymass
+      self$bin_bydhist <- bin_bydhist
       self$max_nperbin <- max_nperbin
       self$pool_cont <- pool_cont
 
@@ -153,18 +235,24 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 	portable = TRUE,
 	class = TRUE,
 	public = list(
-		n_regs = integer(),     # total no. of reg. models (logistic regressions)
+		n_regs = integer(),        # total no. of reg. models (logistic regressions)
+    parfit_allowed = FALSE,    # allow parallel fit of multivar outvar when 1) reg$parfit = TRUE & 2) all.outvar.bin = TRUE
     initialize = function(reg, ...) {
 			self$n_regs <- length(reg$outvar) # Number of sep. logistic regressions to run
+      all.outvar.bin <-  all(reg$outvar.class %in% gvars$sVartypes$bin)
 
-      if (gvars$verbose) {
+      if (reg$parfit & all.outvar.bin & (self$n_regs > 1)) self$parfit_allowed <- TRUE
+
+      # if (gvars$verbose) {
         print("#----------------------------------------------------------------------------------");
         print("New SummariesModel object:");
         print("No. of regressions: " %+% self$n_regs)
-        print("sA_nms (reg$outvar): " %+% paste(reg$outvar, collapse = ", "))
+        # print("sA_classes (reg$outvar.class): " %+% paste(reg$outvar.class, collapse = ", "))
+        print("All outvar binary? " %+% all.outvar.bin)
+        print("Doing parallel fit? " %+% self$parfit_allowed)
         print("sW_nms (reg$predvars): " %+% paste(reg$predvars, collapse = ", "))
         print("#----------------------------------------------------------------------------------");        
-      }
+      # }
 
       # factorize by dimensionality of the outcome variable (sA_nms):
 			for (k_i in 1:self$n_regs) {
@@ -183,10 +271,19 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		getcumprodAeqa = function() { private$cumprodAeqa },  # get joint prob as a vector of the cumulative prod over j for P(sA[j]=a[j]|sW)
 
     fit = function(data) {
-      # loop over all regressions in PsAsW.models:
-		  for (k_i in seq_along(private$PsAsW.models)) {
-		    private$PsAsW.models[[k_i]]$fit(data = data)
-		  }
+      if (!self$parfit_allowed) {
+        # loop over all regressions in PsAsW.models:
+        for (k_i in seq_along(private$PsAsW.models)) {
+          private$PsAsW.models[[k_i]]$fit(data = data)
+        }        
+      } else if (self$parfit_allowed) {
+        # parallel loop over all regressions in PsAsW.models:
+        fitRes <- foreach(k_i = seq_along(private$PsAsW.models)) %dopar% {
+          private$PsAsW.models[[k_i]]$fit(data = data)
+        }
+        # print("par fitRes"); print(fitRes)
+        private$PsAsW.models[] <- fitRes
+      }
 		  invisible(self)
 		},
 
@@ -229,11 +326,15 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 
 ## ---------------------------------------------------------------------
 # R6 clas inherits from SummariesModel, fitting for continuous outcome sA[j] in sA
-# Defines the fitting algorithm for sA[j] ~ \bar{sA[j-1]} + sW
+# Called from SummariesModel for contin sA[j]. Gets passed new subset definitions, e.g., (!mis(Bin_sA[j]_i))
+# Defines the fitting algorithm for probability sA[j] ~ \bar{sA[j-1]} + sW
 # Reconstructs the likelihood P(sA[j]=sa[j]|sW)
-# If needed, discretizes the continuous sA[j] and correctly defines regressions BinsA[j][i] ~ \bar{BinsA[j][i-1]} + \bar{sA[j-1]} + sW
-# Creates the appropriate dataset of discretized summary measures (BinsA[j][1],...,BinsA[j][M])
-# Called from SummariesModel for contin sA[j]. Gets passed new subset definitions, e.g., (!mis(BinsA))
+# Continuous sA[j] is discretized using data-adaptive bin defintions
+# then estimates regressions for the hazard Bin_sA[j][i] ~ \bar{sA[j-1]} + sW.
+# I.e., we estimate the probability that continuous sA[j] falls into bin Bin_sA[j]_i,
+# given that sA[j] is not in bins Bin_sA[1]_1, ..., Bin_sA[1]_{i-1}.
+# The dataset of discretized summary measures (BinsA[j]_1,...,BinsA[j]_M) is created 
+# while discretizing sA[j] into M bins.
 ## ---------------------------------------------------------------------
 ContinOutModel <- R6Class(classname = "ContinOutModel",
   inherit = SummariesModel,
@@ -249,50 +350,50 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
 
     # Define settings for fitting contin sA and then call $new for super class (SummariesModel)
     initialize = function(reg, O.datnetA, datnet.gstar, ...) {
-      # Define the number of bins (no. of regs to run), new outvar var names, predvars remain unchanged:
+
       self$O.datnetA <- O.datnetA
       self$reg <- reg
       self$outvar <- reg$outvar
-
-      # self$reg$nbins <- O.datnetA$nbins.sVar(reg$outvar)
-      # if (self$reg$nbins < 2) {
-      # if (gvars$verbose)  message("defining bin intervals that were not defined for continuous sA: " %+% reg$outvar)
-      # message("defining bin intervals that were not defined for continuous sA: " %+% reg$outvar)
-
       self$intrvls <- O.datnetA$detect.sVar.intrvls(reg$outvar,
+                                                    nbins = self$reg$nbins,
                                                     bin_bymass = self$reg$bin_bymass,
+                                                    bin_bydhist = self$reg$bin_bydhist,
                                                     max_nperbin = self$reg$max_nperbin)
-
       if (!missing(datnet.gstar)) {
         message("Found datnet.gstar! sVar intervals under gstar will be based on a union of intervals under g0 and gstar")
         gstar.intrvls <- datnet.gstar$detect.sVar.intrvls(reg$outvar,
+                                                    nbins = self$reg$nbins,
                                                     bin_bymass = self$reg$bin_bymass,
+                                                    bin_bydhist = self$reg$bin_bydhist,
                                                     max_nperbin = self$reg$max_nperbin)
         self$intrvls <- unique(sort(union(self$intrvls, gstar.intrvls)))
       }
 
-      self$intrvls.width <- diff(self$intrvls)
-
-      if (gvars$verbose)  {
-        print("defined bin intervals:"); print(self$intrvls)
-      }
-
+      # Define the number of bins (no. of binary regressions to run), new outvar var names (bin names) # all predvars remain unchanged
+      self$reg$intrvls <- self$intrvls
       self$reg$nbins <- length(self$intrvls) - 1
-
       self$reg$bin_nms <- O.datnetA$bin.nms.sVar(reg$outvar, self$reg$nbins)
-      new.sAclass <- as.list(rep_len(gvars$sVartypes$bin, self$reg$nbins))
-      names(new.sAclass) <- self$reg$bin_nms
 
-      if (gvars$verbose)  {
-        print("contin sA: "%+%self$outvar);
-        print("contin sA reg$nbins: " %+% self$reg$nbins);
-        print("contin binned sA names: " %+% paste(self$reg$bin_nms, collapse = ",")); 
-      }
+      # Save bin widths in reg class (naming the vector entries by bin names):
+      self$intrvls.width <- diff(self$intrvls)
+      self$intrvls.width[self$intrvls.width <= gvars$tolerr] <- 1
+      self$reg$intrvls.width <- self$intrvls.width
+      names(self$reg$intrvls.width) <- names(self$intrvls.width) <- self$reg$bin_nms
 
-      # INSTEAD OF DEFINING NEW RegressionClass now cloning reg and then COPY new SETTINGS:
+      # INSTEAD OF DEFINING NEW RegressionClass now cloning parent reg object and then ADDING new SETTINGS:
       bin_regs <- self$reg$clone()
+
+      # if (gvars$verbose)  {
+        print("ContinOutModel sA: "%+%self$outvar)
+        # print("ContinOutModel bin intervals:"); print(self$intrvls)
+        print("ContinOutModel reg$nbins: " %+% self$reg$nbins)
+        # print("ContinOutModel bin names: " %+% paste(self$reg$bin_nms, collapse = ","))
+        # print("ContinOutModel self$reg$intrvls.width: "); print(self$reg$intrvls.width)
+      # }
+
       # #todo 27 (ContinOutModel) +0: Put subset eval in a separate function (with var as arg + additional args)
       if (!self$reg$pool_cont) {
+
         add.oldsubset <- TRUE
         new.subsets_chr <- lapply(self$reg$bin_nms,
                                   function(var) {
@@ -308,17 +409,22 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
                                     if(inherits(subset_expr, "try-error")) stop("can't parse the subset formula", call.=FALSE)
                                     subset_expr
                                   })
+
+        new.sAclass <- as.list(rep_len(gvars$sVartypes$bin, self$reg$nbins))
+        names(new.sAclass) <- self$reg$bin_nms
         bin_regs$setToKthRegresssion(regs_list = list(outvar.class = new.sAclass, 
                                                       outvar = self$reg$bin_nms, 
                                                       predvars = self$reg$predvars, 
                                                       subset = new.subsets))
+
       } else {
+
         bin_regs$outvar.class <- gvars$sVartypes$bin
         bin_regs$outvar <- self$outvar
         bin_regs$outvars_to_pool <- self$reg$bin_nms
 
         if (gvars$verbose)  {
-          print("new bin_regs$outvar: "); print(bin_regs$outvar)
+          print("pooled bin_regs$outvar: "); print(bin_regs$outvar)
           print("bin_regs$outvars_to_pool: "); print(bin_regs$outvars_to_pool)
           print("bin_regs$subset: "); print(bin_regs$subset)
         }
@@ -348,10 +454,11 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
         print("active bin sVar after calling binirize.sVar: " %+% data$active.bin.sVar)
         print("data$dat.sVar for: " %+% self$outvar); print(head(data$dat.sVar, 5))
         print("binned dataset for: " %+% self$outvar); print(head(cbind(data$ord.sVar, data$dat.bin.sVar), 5))
-        print("freq count for transformed ord.sVar: "); print(table(data$ord.sVar))
       }
+      print("freq count for transformed ord.sVar: "); print(table(data$ord.sVar))
 
       super$fit(data) # call the parent class fit method
+
       if (gvars$verbose) message("fit for " %+% self$outvar %+% " var succeeded...")
 
       invisible(self)
@@ -387,15 +494,22 @@ ContinOutModel <- R6Class(classname = "ContinOutModel",
       assert_that(is.vector(obs.DatNet.sWsA$get.outvar(var = self$outvar)))
 
       # print("current active bin sVar: " %+% obs.DatNet.sWsA$active.bin.sVar)
-      # bintime <- system.time(
-        mat_bin <- obs.DatNet.sWsA$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
-        # )
+      mat_bin <- obs.DatNet.sWsA$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
       # print("bintime: "); print(bintime)
 
       bws <- obs.DatNet.sWsA$get.sVar.bw(name.sVar = self$outvar, intervals = self$intrvls)
       self$bin_weights <- (1 / bws) # weight based on 1 / (sVar bin widths)
 
+      print("mat_bin: "); print(dim(mat_bin))
+      # print(head(cbind(obs.DatNet.sWsA$get.outvar(var = self$outvar), bws = bws, bw_diff = bw_diff)))
+      # print("bws"); print(length(bws))
+
       cumprodAeqa <- super$predictAeqa(obs.DatNet.sWsA = obs.DatNet.sWsA) * self$bin_weights
+      # cumprodAeqa <- super$predictAeqa(obs.DatNet.sWsA = obs.DatNet.sWsA)
+      # bw_diff <- obs.DatNet.sWsA$get.sVar.bwdiff(name.sVar = self$outvar, intervals = self$intrvls)
+      # cumprodAeqa <- super$predictAeqa(obs.DatNet.sWsA = obs.DatNet.sWsA) * self$bin_weights * bw_diff
+      # cumprodAeqa <- super$predictAeqa(obs.DatNet.sWsA = obs.DatNet.sWsA) * bw_diff
+
       invisible(cumprodAeqa)
     }
   ),

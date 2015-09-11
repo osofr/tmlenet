@@ -284,7 +284,13 @@ make_EYg_obj <- function(alpha, onlyTMLE_B, datNetObs, tmle_g_out, tmle_g2_out=N
                     CIs = CIs_mat,
                     other.vars = (as.vars_obj$other.vars / nobs)
                     # other.vars = lapply(as.vars_obj$other.vars, function(var) var / nobs)
-                    )
+                    h_g0_SummariesModel = NULL,
+                    h_gstar_SummariesModel = NULL)
+
+  if (is.null(tmle_g2_out)) {
+    EY_g.star[["h_g0_SummariesModel"]] <- tmle_g_out$h_g0_SummariesModel
+    EY_g.star[["h_gstar_SummariesModel"]] <- tmle_g_out$h_gstar_SummariesModel
+  }
 
   return(EY_g.star)
 }

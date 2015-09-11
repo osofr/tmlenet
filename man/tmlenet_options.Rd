@@ -4,13 +4,15 @@
 \alias{tmlenet_options}
 \title{Setting Options for \code{tmlenet}}
 \usage{
-tmlenet_options(useglm = FALSE, nbins = 15, maxncats = 5,
-  binByMass = TRUE, poolContinVar = FALSE, maxNperBin = 1000)
+tmlenet_options(useglm = FALSE, nbins = NA, maxncats = 5,
+  binByMass = FALSE, poolContinVar = FALSE, maxNperBin = 1000)
 }
 \arguments{
 \item{useglm}{Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for \code{glm::glm.fit}.}
 
-\item{nbins}{Set the default number of bins to use when binning a continous outcome variable.}
+\item{nbins}{Set the default number of bins when discretizing a continous outcome variable under setting \code{binByMass = FALSE}.
+If left as \code{NA} the total number of equal intervals (bins) is determined by the nearest integer of \code{nobs}/\code{maxNperBin},
+where \code{nobs} is the total number of observations in the input data.}
 
 \item{maxncats}{Max number of unique categories a categorical variable \code{sA[j]} can have.
 If \code{sA[j]} has more it is automatically considered continuous.}
@@ -23,7 +25,8 @@ where each bin will be defined so that it contains an approximately the same num
 When fitting a model for binirized continuous outcome, set to \code{TRUE}
 for pooling bin indicators across several bins into one outcome regression?}
 
-\item{maxNperBin}{Max number of observations per 1 bin for a continuous outcome (only applies when \code{binByMass=TRUE})}
+\item{maxNperBin}{Max number of observations per 1 bin for a continuous outcome (applies directly when \code{binByMass=TRUE} and
+indirectly when \code{binByMass=FALSE}, but \code{nbins = NA}).}
 }
 \value{
 Invisibly returns a list with old option settings.

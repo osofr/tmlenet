@@ -37,16 +37,21 @@ print_tmlenet_opts <- function() {
 #'
 #' Additional options that control the estimation algorithm in \code{tmlenet} package
 #' @param useglm Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for \code{glm::glm.fit}.
-#' @param nbins Set the default number of bins to use when binning a continous outcome variable.
+#' @param parfit Set to \code{TRUE} to perform parallel glm fits for multivariate binary outcomes (default is \code{FALSE})
+#' @param nbins Set the default number of bins when discretizing a continous outcome variable under setting \code{binByMass = FALSE}. 
+#' If left as \code{NA} the total number of equal intervals (bins) is determined by the nearest integer of \code{nobs}/\code{maxNperBin}, 
+#' where \code{nobs} is the total number of observations in the input data.
 #' @param maxncats Max number of unique categories a categorical variable \code{sA[j]} can have. 
 #' If \code{sA[j]} has more it is automatically considered continuous.
 #' @param binByMass Define bin cutoffs for a continuous outcome using even mass distribution? 
 #' Setting to \code{TRUE} allows for data-adaptive bin cutoff definitions, 
 #' where each bin will be defined so that it contains an approximately the same number of observations across all bins.
+#' @param binBydhist \code{TRUE/FALSE}
 #' @param poolContinVar Set to \code{TRUE} for fitting a pooled regression which pools bin indicators across all bins.
 #' When fitting a model for binirized continuous outcome, set to \code{TRUE} 
 #' for pooling bin indicators across several bins into one outcome regression?
-#' @param maxNperBin Max number of observations per 1 bin for a continuous outcome (only applies when \code{binByMass=TRUE})
+#' @param maxNperBin Max number of observations per 1 bin for a continuous outcome (applies directly when \code{binByMass=TRUE} and 
+#' indirectly when \code{binByMass=FALSE}, but \code{nbins = NA}).
 #' @return Invisibly returns a list with old option settings.
 #' @seealso \code{\link{print_tmlenet_opts}}
 #' @export
@@ -56,14 +61,16 @@ print_tmlenet_opts <- function() {
 # n_MCsims = ceiling(sqrt(nrow(data))),
 # onlyTMLE_B = TRUE,
 # f_g0 = NULL
-tmlenet_options <- function(useglm = FALSE, nbins = 15, maxncats = 5, binByMass = TRUE, poolContinVar = FALSE, maxNperBin = 1000) {
+tmlenet_options <- function(useglm = FALSE, parfit = FALSE, nbins = NA, maxncats = 5, binByMass = FALSE, binBydhist = FALSE, poolContinVar = FALSE, maxNperBin = 1000) {
   # nbins = 50L, # maxncats = 10L
   old.opts <- gvars$opts
   opts <- list(
     useglm = useglm,
+    parfit = parfit,
     nbins = nbins,
     maxncats = maxncats,
     binByMass = binByMass,
+    binBydhist = binBydhist,
     poolContinVar = poolContinVar,
     maxNperBin = maxNperBin
   )
@@ -103,7 +110,7 @@ gvars$misfun <- testmisfun()
   op.tmlenet <- list(
     tmlenet.verbose = gvars$verbose
   )
-
+  # reset all options to default:
   tmlenet_options()
 
   toset <- !(names(op.tmlenet) %in% names(op))

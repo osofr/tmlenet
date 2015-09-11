@@ -410,17 +410,19 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       invisible(self) # returning self allows chaining object manipulations
     },
 
-    # #todo 82 (BitOutModel) +0: Need to roll predict & predictAeqa into one call to predictAeqa
-    # #todo 15 (BinOutModel, predictAeqa) +0: TO DO: MOVE PART OF THE CODE TO self
+    # #todo 82 (BitOutModel) +0: Want to be able to roll predict & predictAeqa into one call to predictAeqa
     # WARNING: This method cannot be chained together with methods that follow (s.a, class$predictAeqa()$fun())
     # Invisibly returns cumm. prob P(sA=sa|sW=sw)
     predictAeqa = function(obs.DatNet.sWsA) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
       assert_that(self$is.fitted)
       assert_that(is.logical(self$getsubset))
+
       # obtain predictions (likelihood) for response on fitted data:
       if (self$reg$pool_cont && length(self$reg$outvars_to_pool) > 1) {
+
         self$bindat$emptydata  # wipe out prediction data after getting the likelihood
         return(invisible(private$probAeqa))
+
       } else {
         if (missing(obs.DatNet.sWsA)) {
           n <- length(self$getsubset)
@@ -429,11 +431,45 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
           n <- obs.DatNet.sWsA$nobs
           indA <- obs.DatNet.sWsA$get.outvar(self$getsubset, self$getoutvarnm) # Always a vector of 0/1
         }
+
+        # Get the bin width (interval length) for the current bin name self$getoutvarnm (for discretized continuous sA only):
+        name.exist <- self$getoutvarnm %in% names(self$reg$intrvls.width)
+
+        if (name.exist) {
+          intrvl.idx <- which(names(self$reg$intrvls.width) %in% self$getoutvarnm)
+          # print("intrvl.idx: "); print(intrvl.idx)
+          if (length(intrvl.idx) > 1) stop("non-unique names for intrvls.width in RegressionClass")
+          bw.j <- self$reg$intrvls.width[intrvl.idx]
+          contin.sA.name <- obs.DatNet.sWsA$active.bin.sVar
+          bw.j.sA_diff <- obs.DatNet.sWsA$get.sVar.bwdiff(name.sVar = contin.sA.name, intervals = self$reg$intrvls)[self$getsubset]
+        } else {
+          bw.j <- 1L
+          bw.j.sA_diff <- 1L
+        }
+
+        # print("BinOutModel$predictAeqa() self$getoutvarnm: " %+% self$getoutvarnm)
+        # print("BinOutModel$predictAeqa() self$reg$intrvls.width: "); print(self$reg$intrvls.width)
+        # print("name.exist in reg$intrvls.width? " %+% name.exist)
+        # print("BinOutModel$predictAeqa() bw.j: " %+% bw.j)
+
         private$probAeqa <- rep_len(1L, n) # for missing, the likelihood is always set to P(A = a) = 1.
-        assert_that(!any(is.na(private$probA1[self$getsubset]))) # check that predictions P(A=1|dmat) exist for all obs.
+        assert_that(!any(is.na(private$probA1[self$getsubset]))) # check that predictions P(A=1 | dmat) exist for all obs.
         probA1 <- private$probA1[self$getsubset]
+
+
+        probA1 <- probA1 # ADJUST probA1 BY bw.j TO OBTAIN THE HAZARD P(sA\in bin.j | sA > bin.{j-1}, sW)
+        # probA1 <- probA1 * (1 / bw.j) # ADJUST probA1 BY bw.j TO OBTAIN THE HAZARD P(sA\in bin.j | sA > bin.{j-1}, sW)
+
         assert_that(is.integerish(indA)) # check B: obsdat.sA is a row of integers
-        private$probAeqa[self$getsubset] <- probA1^(indA) * (1L - probA1)^(1L - indA)
+
+        # discrete version of getting joint density:
+        private$probAeqa[self$getsubset] <- probA1^(indA) * (1 - probA1)^(1L - indA)
+        # private$probAeqa[self$getsubset] <- probA1^indA * (1 - bw.j.sA_diff*(1/bw.j)*probA1)^indA * (1-probA1)^(1 - indA)
+
+        # continuous version for getting the joint density:        
+        # private$probAeqa[self$getsubset] <- (probA1^indA) * exp(-bw.j.sA_diff*(1/bw.j)*probA1)^indA * exp(-probA1)^(1 - indA)
+        # private$probAeqa[self$getsubset] <- (probA1^indA) * exp(-probA1)^(1 - indA)
+
         self$bindat$emptydata  # wipe out prediction data after getting the likelihood
         return(invisible(private$probAeqa))
       }

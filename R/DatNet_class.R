@@ -100,9 +100,12 @@ normalize_sVar <- function(sVar_vec) {
 normalize_matsVar <- function(sVar_mat) apply(sVar_mat, 2, normalize_sVar)
 
 # Define bin cutt-offs for continuous x:
-define.intervals <- function(x, nbins = getopt("nbins"), bin_bymass, max_nperbin) {
+define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
   x <- x[!gvars$misfun(x)]  # remove missing vals
   nvals <- length(unique(x))
+
+  if (is.na(nbins)) nbins <- as.integer(length(x) / max_nperbin)
+
   if (nvals < nbins) { # if nbins is too high, for ordinal, set nbins to n unique obs and cancel quantile based interval defns
     nbins <- nvals 
     bin_bymass <- FALSE
@@ -113,16 +116,21 @@ define.intervals <- function(x, nbins = getopt("nbins"), bin_bymass, max_nperbin
       if ((length(x) / max_nperbin) > nbins) nbins <- as.integer(length(x) / max_nperbin)
     }
     intvec <- seq.int(from = min(x), to = max(x) + 1, length.out = (nbins + 1)) # interval type 1: bin x by equal length intervals of 0-1
+    # intvec <- c(min(x), sort(runif(n = nbins, min = min(x), max = max(x))), max(x) + 1)
   } else {  # when x is constant, force the smallest possible interval to be at least [0,1]
     intvec <- seq.int(from = min(0L, min(x)), to = max(1L, max(x)), length.out = (nbins + 1))
   }
 
-  if (bin_bymass) intvec <- quantile(x = x, probs = normalize(intvec)) # interval type 2: bin x by mass (quantiles of 0-1 intvec as probs)
+  if (bin_bymass) {
+    intvec <- quantile(x = x, probs = normalize(intvec)) # interval type 2: bin x by mass (quantiles of 0-1 intvec as probs)
+  } else if (bin_bydhist) {
+    intvec <- dhist(x, plot = FALSE, nbins=nbins)$xbr
+    intvec[length(intvec)] <- intvec[length(intvec)]+1
+  }
 
   # adding -Inf & +Inf as leftmost & rightmost cutoff points to make sure all future data points end up in one of the intervals:
-  # intvec <- c(-10, intvec)
-  # intvec <- c(-Inf, intvec)
-  # intvec <- c(-Inf, intvec, +Inf)
+  # intvec <- c(-Inf, min(intvec)-0.01, intvec)
+  intvec <- c(min(intvec) - 0.1, intvec)
 
   return(intvec) # return(list(intbylen = intvec, intbymass = intvecq))
 }
@@ -146,6 +154,7 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
   colnames(dummies_mat) <- bin.nms
   dummies_mat
 }
+
 # (4) Approach 2A using model.matrix (a bit slower than manual)
 # make.bins_mtx_2A = function(x.ordinal, self) { 
 #   # Creates B_j that jumps to 1 and then back to 0 (degenerate) and uses category 1 as ref
@@ -308,7 +317,8 @@ DatNet <- R6Class(classname = "DatNet",
     },
 
     # #todo 18 (DatNet, DatNet.sWsA) +0: (OPTIONAL) ENABLE ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO DatNet
-    # #todo 25 (DatNet, add_det) +0: Need to save det node flags as a separate mat, can't add them to sVar since all sVars will be automatically added to A ~ predictors
+    # #todo 25 (DatNet, add_det) +0: Need to save det node flags as a separate mat, can't add them to sVar since all sVars 
+    # will be automatically added to A ~ predictors
     add_deterministic = function(Odata, userDETcol) {
       determ.g_user <- as.vector(Odata[,userDETcol]) # get deterministic As for the entire network of each unit (set by user)
       # determ.gvals_user <- Odata[,AnodeDET] # add values to be assigned to deterministic nodes (already have: netA)
@@ -433,8 +443,10 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       } else {
         # REPLACING WITH env that is made of data.frames instead of matrices
         # # todo 31 (evalsubst) +0: NEED TO RE-WRITE ALL SUBSET EVALUATIONs SO THAT IT WORKS WITH MATRICES (can't use expressions for subset anymore)
-        # #todo 36 (evalsubst) +0: Possible ideas, instead of sVar.name inside the expression !misfun(sum_1mAW2_nets), use !misfun(dat.sWsA[,sVar.name]) / !misfun(dat.sVar[,sVar.name]) or !misfun(dat.bin.sVar[,sVar.name])
-        # Could do evaluation in a special env with a custom subsetting fun '[' that will dynamically find the write dataset that contains sVar.name (dat.sVar or dat.bin.sVar) and will return sVar vector
+        # #todo 36 (evalsubst) +0: Possible ideas, instead of sVar.name inside the expression !misfun(sum_1mAW2_nets), 
+        # use !misfun(dat.sWsA[,sVar.name]) / !misfun(dat.sVar[,sVar.name]) or !misfun(dat.bin.sVar[,sVar.name])
+        # Could do evaluation in a special env with a custom subsetting fun '[' that will dynamically find the write dataset that contains 
+        # sVar.name (dat.sVar or dat.bin.sVar) and will return sVar vector
         # makedfevalsubs_time <- system.time(
           eval.env <- c(data.frame(self$dat.sWsA), data.frame(self$dat.bin.sVar), as.list(gvars))
           # eval.env <- c(self$dat.sWsA, self$dat.bin.sVar, as.list(gvars))
@@ -492,10 +504,11 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     bin.nms.sVar = function(name.sVar, nbins) { name.sVar%+%"_"%+%"B."%+%(1L:nbins) }, 
     pooled.bin.nm.sVar = function(name.sVar) { name.sVar %+% "_allB.j" },
     # #todo 71 (DatNet.sWsA) +0: *** NOTE *** When sVar is cat might be better to set bin_bymass = FALSE to avoid collapsing of categories for sVar
-    detect.sVar.intrvls = function(name.sVar, nbins = getopt("nbins"), bin_bymass, max_nperbin) {
-      int <- define.intervals(x = self$dat.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass, max_nperbin = max_nperbin)
+    detect.sVar.intrvls = function(name.sVar, nbins, bin_bymass, bin_bydhist, max_nperbin) {
+      int <- define.intervals(x = self$dat.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass, bin_bydhist = bin_bydhist, max_nperbin = max_nperbin)
       if (length(unique(int)) < length(int)) {
-        message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+% (length(int)-1) %+% " to " %+% (length(unique(int))-1) %+% " due to too few obs.")
+        message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+% 
+                (length(int)-1) %+% " to " %+% (length(unique(int))-1) %+% " due to too few obs.")
         print("old intervals: "); print(int)
         int <- unique(int)
         print("new intervals: "); print(int)
@@ -513,6 +526,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       self$mat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
       invisible(self$mat.bin.sVar)
     },
+
     # return the bin widths vector for the discretized continuous sVar (self$ord.sVar):
     get.sVar.bw = function(name.sVar, intervals) {
       if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")
@@ -521,6 +535,17 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       intrvls.width[intrvls.width <= gvars$tolerr] <- 1
       ord.sVar_bw <- intrvls.width[self$ord.sVar]
       return(ord.sVar_bw)
+    },
+
+   # return the bin widths vector for the discretized continuous sVar (self$ord.sVar):
+    get.sVar.bwdiff = function(name.sVar, intervals) {
+      if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")
+      if (is.null(self$ord.sVar)) stop("sVar hasn't been discretized yet")
+      # intrvls.width <- diff(intervals)
+      # intrvls.width[intrvls.width <= gvars$tolerr] <- 1
+      ord.sVar_leftint <- intervals[self$ord.sVar]
+      diff_bw <- self$dat.sVar[, name.sVar] - ord.sVar_leftint
+      return(diff_bw)
     },
 
     # This function returns mat.sVar, which is a matrix that combines all sW and sA summary measures;
@@ -560,7 +585,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           datnetA.gstar$make.sVar(Odata = Odata, sVar.object = sA.object) # create new summary measures sA (under g.star)
 
           # Assigning the summary measures to one output data matrix:
-          df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetA.gstar$dat.sVar)[,]
+          df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetA.gstar$dat.sVar)[, ]
         }
 
       }
