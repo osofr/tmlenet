@@ -247,16 +247,15 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # (1) Capture expression as characeter string: subsetexpr <- deparse(substitute(subsetexpr))
   # (2) Parse the characteer expression into call (make subset expressions into a list of calls (one call per sA[j] in sA))
   # (3) Then substitute the actual var names in the data for generic node names (nFnode, Wnodes, Anode):
-  # TO DO: Replace var with the index (column) such as, which(colnames(dat)%in%var)
-  # Then can use evaluator even when dat is matrix
-  subsets_chr <- lapply(sA_nms, function(var) {"!misfun("%+%var%+%")"})  # subsetting by !gvars$misval on sA:
-  substitute_list <- lapply(nodes, as.name)
-  subsets_expr <- lapply(subsets_chr, function(subset_chr) {
-                                          subset_expr <- try(parse(text=subset_chr)[[1]]) # parses chr into a call
-                                          if(inherits(subset_expr, "try-error")) stop("can't parse the subset formula", call.=FALSE)
-                                          eval(substitute(substitute(e, env = substitute_list), list(e = subset_expr)))
-                                        })
-  # print("subsets_expr: "); print(subsets_expr)
+  # subsets_chr <- lapply(sA_nms, function(var) {"!misfun("%+%var%+%")"})  # subsetting by !gvars$misval on sA:
+  # substitute_list <- lapply(nodes, as.name)
+  # subsets_expr <- lapply(subsets_chr, function(subset_chr) {
+  #                                         subset_expr <- try(parse(text=subset_chr)[[1]]) # parses chr into a call
+  #                                         if(inherits(subset_expr, "try-error")) stop("can't parse the subset formula", call.=FALSE)
+  #                                         eval(substitute(substitute(e, env = substitute_list), list(e = subset_expr)))
+  #                                       })
+  subsets_expr <- lapply(sA_nms, function(var) {var})  # subsetting by !gvars$misval on sA:
+  print("new subsets_expr: "); print(subsets_expr)
 
   ##########################################
   # Summary class params:
@@ -290,6 +289,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
     message("user supplied model fit for h_g0 is not implemented yet")
     # ...
     # 1) verify h_g0_SummariesModel is consistent with summeas.g0
+    # ... has to be recursive ...
     # 2) copy model fits in h_g0_SummariesModel to summeas.g0
     # ...
   } else {

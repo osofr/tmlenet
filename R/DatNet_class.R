@@ -12,14 +12,6 @@
 # * NOTE: Changing datnetA/datnetW in one copy of DatNet.sWsA will result them being changed in the other copy of DatNet.sWsA as well.
 
 #-----------------------------------------------------------------------------
-# Changes to Subsetting / Delayed eval (DatNet.sWsA$evalsubst)
-#-----------------------------------------------------------------------------
-# x) Delayed eval. is inside DatNet.sWsA
-# x) Delayed evaluation of subsets implies that data / newdata have to be data.frames at the time of subseting.
-# x) **** Since data is now stored as matrix that means 3 conversions matrix -> df for each call to $evalsubst **** 
-# x) See implementation of subset.data.frame and subset.matrix
-
-#-----------------------------------------------------------------------------
 # TO DO: 
 #-----------------------------------------------------------------------------
 # - DatNet.sWsA$binirize: Current implementation will often create fewer new cats than unique(sVar) for categorical sVar.
@@ -35,9 +27,6 @@
   # ord.sVar
   #   2   4   6   7 
   # 197 292 234 277
-
-# - DatNet.sWsA$evalsubst: Instead of expressions need to call pre-defined subsetting functions?
-# - DatNet.sWsA$evalsubst: Could try the same approach as in Define_sVar, using custom '[' to select rows and cols based on subset_expr
 
 # - Is there a way to avoid constant repeating of "self$Var <- Var"? A copy method, s.a., self$copy(arg1, arg2, ...) that will do self$arg1 <- arg1, etc...?
 # - See Copy/Close Issue for R6: https://github.com/wch/R6/issues/27 & https://github.com/wch/R6/pull/57 (implemented copy)
@@ -328,7 +317,7 @@ DatNet <- R6Class(classname = "DatNet",
       determ_cols <- determ_cols_user
       # THIS IS A VERY BAD WAY TO DO THAT, REMOVING
       # self$mat.sVar <- cbind(determ_cols, self$mat.sVar)
-      determ_cols_type <- as.list(rep_len(gvars$sVartypes$bin, ncol(determ_cols)))
+      determ_cols_type <- as.list(rep.int(gvars$sVartypes$bin, ncol(determ_cols)))
       names(determ_cols_type) <- colnames(determ_cols)
       self$type.sVar <- c(determ_cols_type, self$type.sVar)
       invisible(self)
@@ -366,8 +355,9 @@ DatNet <- R6Class(classname = "DatNet",
     dat.sVar = function() { self$mat.sVar },
     dat.bin.sVar = function() { self$mat.bin.sVar },
 
-    emptydat.netVar = function() {self$mat.netVar <- NULL },   # wipe out mat.netVar
-    emptydat.sVar = function() { self$mat.sVar <- NULL }       # wipe out mat.sVar
+    emptydat.netVar = function() {self$mat.netVar <- NULL },     # wipe out mat.netVar
+    emptydat.sVar = function() { self$mat.sVar <- NULL },        # wipe out mat.sVar
+    emptydat.bin.sVar = function() { self$mat.bin.sVar <- NULL } # wipe out binirized mat.sVar
   ),
   private = list(
     placeholder = list()
@@ -425,7 +415,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       self$netind_cl <- datnetW$netind_cl
 
       if (!missing(YnodeVals)) {
-        if (missing(det.Y)) det.Y <- rep_len(FALSE, length(YnodeVals))
+        if (missing(det.Y)) det.Y <- rep.int(FALSE, length(YnodeVals))
         self$noNA.Ynodevals <- YnodeVals  # Adding actual observed Y as protected (without NAs)
         self$YnodeVals <- YnodeVals
         self$YnodeVals[det.Y] <- NA       # Adding public YnodeVals & setting det.Y values to NA
@@ -435,28 +425,42 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       invisible(self)
     },
 
-    # x) Note that if this feature is to be open to the user, eval() has to be done in the parent.frame of the calling function, not baseenv().
-    # x) Same with summary measures: need to eval them in the calling environment (in addition to the envir of data.frame(netW,netA))
-    evalsubst = function(subsetexpr) { # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):      
-      if (is.logical(subsetexpr)) {
-        return(subsetexpr)
-      } else {
-        # REPLACING WITH env that is made of data.frames instead of matrices
-        # # todo 31 (evalsubst) +0: NEED TO RE-WRITE ALL SUBSET EVALUATIONs SO THAT IT WORKS WITH MATRICES (can't use expressions for subset anymore)
-        # #todo 36 (evalsubst) +0: Possible ideas, instead of sVar.name inside the expression !misfun(sum_1mAW2_nets), 
-        # use !misfun(dat.sWsA[,sVar.name]) / !misfun(dat.sVar[,sVar.name]) or !misfun(dat.bin.sVar[,sVar.name])
-        # Could do evaluation in a special env with a custom subsetting fun '[' that will dynamically find the write dataset that contains 
-        # sVar.name (dat.sVar or dat.bin.sVar) and will return sVar vector
-        # makedfevalsubs_time <- system.time(
-          eval.env <- c(data.frame(self$dat.sWsA), data.frame(self$dat.bin.sVar), as.list(gvars))
-          # eval.env <- c(self$dat.sWsA, self$dat.bin.sVar, as.list(gvars))
-        # )
-        # print("makedfevalsubs_time: "); print(makedfevalsubs_time)
-        # evalsubs_time <- system.time(
-          res <- try(eval(subsetexpr, envir = eval.env, enclos = baseenv())) # to evaluate vars not found in data in baseenv()
-        # )
-        # print("evalsubs_time: "); print(evalsubs_time)
+    evalsubst = function(subsetexpr, subsetvars) { # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):      
+      # Could also do evaluation in a special env with a custom subsetting fun '[' that will dynamically find the correct dataset that contains 
+      # sVar.name (dat.sVar or dat.bin.sVar) and will return sVar vector
+      if (missing(subsetexpr)) {
+        assert_that(!missing(subsetvars))
+        res <- rep.int(TRUE, self$nobs)
+
+        for (subsetvar in subsetvars) {
+          # print("evaluating subset vector for var: " %+% subsetvar)
+          # *) find the var of interest (in self$dat.sWsA or self$dat.bin.sVar), give error if not found
+          sVar.vec <- self$get.outvar(var = subsetvar)
+          assert_that(!is.null(sVar.vec))
+          # *) reconstruct correct expression that tests for missing values
+          res <- res & (!gvars$misfun(sVar.vec))
+        }
         return(res)
+
+      } else {
+        if (is.logical(subsetexpr)) {
+          return(subsetexpr)
+        } else {
+          # ******************************************************
+          # THIS IS A BOTTLENECK
+          # for 500K w/ 1000 bins: 4-5sec
+          # ******************************************************
+          # makedfevalsubs_time <- system.time(
+            # REPLACING WITH env that is made of data.frames instead of matrices
+            eval.env <- c(data.frame(self$dat.sWsA), data.frame(self$dat.bin.sVar), as.list(gvars))
+          # )
+          # print("makedfevalsubs_time: "); print(makedfevalsubs_time)
+          # evalsubs_time <- system.time(
+            res <- try(eval(subsetexpr, envir = eval.env, enclos = baseenv())) # to evaluate vars not found in data in baseenv()
+          # )
+          # print("evalsubs_time: "); print(evalsubs_time)
+          return(res)
+        }
       }
     },
 
