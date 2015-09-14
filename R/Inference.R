@@ -135,102 +135,102 @@ est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
 est_sigmas <- function(n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat, onlyTMLE_B) {
   fWi <- fWi_mat[, "fWi_Qinit"]
   QY.init <- QY_mat[, "QY.init"] # QY.star <- QY_mat[, "QY.star_A"]
-  h_wts <- wts_mat[,"h_wts"]
-  g_wts <- wts_mat[,"g_wts"]
-
+  h_wts <- wts_mat[, "h_wts"]
+  # g_wts <- wts_mat[,"g_wts"]
   var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
   var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
-
   # NetInd as sparse adjacency matrix (new version returns pattern sparse mat ngCMatrix):
   sparse_mat <- NetInd.to.sparseAdjMat(NetInd_k, nF = nF, add_diag = TRUE)
   # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
   connectmtx_1stO <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
 
-  # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
-  if (!onlyTMLE_B) {
-    # iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + fWi_A
-    iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
-    var_tmle_A <- est.sigma_sparse(iidIC_tmle_A, connectmtx_1stO)
-  }
+  # # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
+  # if (!onlyTMLE_B) {
+  #   # iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + fWi_A
+  #   iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
+  #   var_tmle_A <- est.sigma_sparse(iidIC_tmle_A, connectmtx_1stO)
+  # }
 
   # TMLE B (weighted model update): Inference based on the iid IC:
   # iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + fWi_B
   iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
   var_tmle_B <- est.sigma_sparse(iidIC_tmle_B, connectmtx_1stO)
-
   # simple iid estimator of the asymptotic variance (no adjustment made when two observations i!=j are dependent):
   var_iid.tmle_B <- mean((iidIC_tmle_B)^2)
 
   # TMLE based on iptw clever covariate (more non-parametric):
-  if (!onlyTMLE_B) {
-    iidIC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
-    var_tmleiptw_1stO <- est.sigma_sparse(iidIC_tmleiptw, connectmtx_1stO)
-  }
+  # if (!onlyTMLE_B) {
+  #   iidIC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
+  #   var_tmleiptw_1stO <- est.sigma_sparse(iidIC_tmleiptw, connectmtx_1stO)
+  # }
 
   # IPTW h (based on the mixture density clever covariate (h)):
   iidIC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_iptw",])
   var_iptw_h <- est.sigma_sparse(iidIC_iptw_h, connectmtx_1stO)
 
-  # IPTW g:
-  if (!onlyTMLE_B) {
-    iidIC_iptw_g <- g_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"g_iptw",])
-    var_iptw_1stO <- est.sigma_sparse(iidIC_iptw_g, connectmtx_1stO)
-  }
+  # # IPTW g:
+  # if (!onlyTMLE_B) {
+  #   iidIC_iptw_g <- g_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"g_iptw",])
+  #   var_iptw_1stO <- est.sigma_sparse(iidIC_iptw_g, connectmtx_1stO)
+  # }
 
   # Inference based on the EIC, with factorization into orthogonal components sigma2_DY and sigma2_W_N
   # sigma2_DY_i are independent (since they are conditioned on W,A)
   # sigma2_W_N_i are dependent => need to take double sum of their crossprod among dependent units
-  if (!onlyTMLE_B) {
-    D_star_Yi.Qinit <- h_wts * (obsYvals - QY.init) # h*(Y-Q_bar_N):
-    sigma2_DY <- (1/n) * sum(D_star_Yi.Qinit^2)  # Sum_{i} (D_star_Yi)^2
+  # if (!onlyTMLE_B) {
+  #   D_star_Yi.Qinit <- h_wts * (obsYvals - QY.init) # h*(Y-Q_bar_N):
+  #   sigma2_DY <- (1/n) * sum(D_star_Yi.Qinit^2)  # Sum_{i} (D_star_Yi)^2
 
-    # fW_A_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]))
-    # sigma2_W_N_A <- est.sigma_fsum(fW_A_crossprod, connectmtx_1stO)
-    fW_A_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]
-    sigma2_W_N_A <- est.sigma_sparse(fW_A_i, connectmtx_1stO)
-    var_tmle_A_Q.init <- sigma2_W_N_A + sigma2_DY
+  #   # fW_A_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]))
+  #   # sigma2_W_N_A <- est.sigma_fsum(fW_A_crossprod, connectmtx_1stO)
+  #   fW_A_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]
+  #   sigma2_W_N_A <- est.sigma_sparse(fW_A_i, connectmtx_1stO)
+  #   var_tmle_A_Q.init <- sigma2_W_N_A + sigma2_DY
 
-    # **NEW** TMLE B (weights model update)
-    # fW_B_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]))
-    # sigma2_W_N_B <- est.sigma_fsum(fW_B_crossprod, connectmtx_1stO)
-    fW_B_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]
-    sigma2_W_N_B <- est.sigma_sparse(fW_B_i, connectmtx_1stO)
-    var_tmle_B_Q.init <- sigma2_W_N_B + sigma2_DY
+  #   # **NEW** TMLE B (weights model update)
+  #   # fW_B_crossprod <- get.crossprodmtx((fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]))
+  #   # sigma2_W_N_B <- est.sigma_fsum(fW_B_crossprod, connectmtx_1stO)
+  #   fW_B_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]
+  #   sigma2_W_N_B <- est.sigma_sparse(fW_B_i, connectmtx_1stO)
+  #   var_tmle_B_Q.init <- sigma2_W_N_B + sigma2_DY
 
-    # D_star_Yi.Qstar <- h_wts * (obsYvals - QY.star)
-    # D_star_Yi.Qstar[determ.Q] <- 0
-    # fDY_crossprod <- get.crossprodmtx(D_star_Yi.Qstar)
-    # double sum over dependent subjects, Sum_{i,j} R_W(i,j)*D_star_Yi*D_star_Yj
-    # sigma2_Y_N <- est.sigma_fsum(fDY_crossprod, connectmtx_1stO)
-    # sigma2_Y_N <- est.sigma_sparse(D_star_Yi.Qstar, connectmtx_1stO)
-    # var_tmle_Q.init_c <- sigma2_W_N_A + sigma2_Y_N
+  #   # D_star_Yi.Qstar <- h_wts * (obsYvals - QY.star)
+  #   # D_star_Yi.Qstar[determ.Q] <- 0
+  #   # fDY_crossprod <- get.crossprodmtx(D_star_Yi.Qstar)
+  #   # double sum over dependent subjects, Sum_{i,j} R_W(i,j)*D_star_Yi*D_star_Yj
+  #   # sigma2_Y_N <- est.sigma_fsum(fDY_crossprod, connectmtx_1stO)
+  #   # sigma2_Y_N <- est.sigma_sparse(D_star_Yi.Qstar, connectmtx_1stO)
+  #   # var_tmle_Q.init_c <- sigma2_W_N_A + sigma2_Y_N
 
-    # #--------
-    # # conservative estimate of the as. variance from EIC for TMLE A:
-    # # abs terms double sum over dependent subjects, Sum_{i,j} R_W(i,j)*|D_star_Yi|*|D_star_Yj|:
-    # fabsDY_crossprod <- get.crossprodmtx(abs(D_star_Yi.Qstar))
-    # abs_sigma2_Y_N <- est.sigma_fsum(fabsDY_crossprod, connectmtx_1stO)
-    # abs_sigma2_Y_N <- est.sigma_sparse(abs(D_star_Yi.Qstar), connectmtx_1stO)
-    # var_tmle_A_Q.star_cons <- sigma2_W_N_A + abs_sigma2_Y_N
-    # # --------
-  }
+  #   # #--------
+  #   # # conservative estimate of the as. variance from EIC for TMLE A:
+  #   # # abs terms double sum over dependent subjects, Sum_{i,j} R_W(i,j)*|D_star_Yi|*|D_star_Yj|:
+  #   # fabsDY_crossprod <- get.crossprodmtx(abs(D_star_Yi.Qstar))
+  #   # abs_sigma2_Y_N <- est.sigma_fsum(fabsDY_crossprod, connectmtx_1stO)
+  #   # abs_sigma2_Y_N <- est.sigma_sparse(abs(D_star_Yi.Qstar), connectmtx_1stO)
+  #   # var_tmle_A_Q.star_cons <- sigma2_W_N_A + abs_sigma2_Y_N
+  #   # # --------
+  # }
 
-  var.ests <- c(abs(var_tmle_A), abs(var_tmle_B), abs(var_tmleiptw_1stO), abs(var_iptw_h), abs(var_iptw_1stO), 0)
-  estnames <- c(      "tmle_A",     "tmle_B",       "tmle_g_iptw",        "h_iptw",         "g_iptw", "mle")
+  var.ests <- c(abs(var_tmle_B), abs(var_iptw_h), NA)
+  # var.ests <- c(abs(var_tmle_A), abs(var_tmle_B), abs(var_tmleiptw_1stO), abs(var_iptw_h), abs(var_iptw_1stO), 0)
+  estnames <- c("tmle_B", "h_iptw", "mle")
+  # estnames <- c(      "tmle_A",     "tmle_B",       "tmle_g_iptw",        "h_iptw",         "g_iptw", "mle")
   as.var_mat <- matrix(0, nrow = length(var.ests), ncol = 1)
   as.var_mat[,1] <- var.ests
   rownames(as.var_mat) <- estnames
   colnames(as.var_mat) <- "var"
 
-  other.vars = c(
-                var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
-                var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
-                var_iptw_2ndO = abs(var_iptw_2ndO), # adjusting for 2nd order dependence of i,j
-                var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
-                var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
-                )
+  # other.vars = c(
+  #               var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
+  #               var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
+  #               var_iptw_2ndO = abs(var_iptw_2ndO), # adjusting for 2nd order dependence of i,j
+  #               var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
+  #               var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
+  #               )
 
-  return(list(as.var_mat = as.var_mat, other.vars = other.vars))
+  return(list(as.var_mat = as.var_mat))
+  # return(list(as.var_mat = as.var_mat, other.vars = other.vars))
                 # other.vars = list(
                 #   var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
                 #   var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
@@ -248,6 +248,7 @@ make_EYg_obj <- function(alpha, onlyTMLE_B, datNetObs, tmle_g_out, tmle_g2_out=N
   nF <- datNetObs$netind_cl$nF
 
   ests_mat <- tmle_g_out$ests_mat
+
   QY_mat <- tmle_g_out$QY_mat
   fWi_mat <- tmle_g_out$fWi_mat
   wts_mat <- tmle_g_out$wts_mat
@@ -278,6 +279,10 @@ make_EYg_obj <- function(alpha, onlyTMLE_B, datNetObs, tmle_g_out, tmle_g2_out=N
 
   CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$as.var_mat), 1, get_CI, n = nobs))
   colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
+
+  rownames(ests_mat)[1] <- "tmle"
+  rownames(as.vars_obj$as.var_mat)[1] <- "tmle"
+  rownames(CIs_mat)[1] <- "tmle"
 
   EY_g.star <- list(estimates = ests_mat,
                     vars = (as.vars_obj$as.var_mat / nobs),

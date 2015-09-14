@@ -4,7 +4,7 @@
 \name{BinDat}
 \alias{BinDat}
 \title{#}
-\format{\preformatted{Class 'R6ClassGenerator' <environment: 0x7fbe47861c68> 
+\format{\preformatted{Class 'R6ClassGenerator' <environment: 0x7fd88ba03cd0> 
  - attr(*, "name")= chr "BinDat_generator"
 }}
 \usage{

@@ -16,89 +16,8 @@ f.gen.probA.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
   probA <- .f_g_wrapper(k, df_AllW, fcn_name, f_args)
   return(probA)
 }
-f.gen.A.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
-  n <- nrow(df_AllW)
-  rbinom(n, 1, f.gen.probA.star(k, df_AllW, fcn_name, f_args))
-}
 f.gen.A.star.cont <- function(k, df_AllW, fcn_name, f_args = NULL) {
   f.gen.probA.star(k, df_AllW, fcn_name, f_args)
-}
-
-# (DEPRECATED) NEEDS TO BE REPLACED WITH BinOutModel based prediction
-# get the prob of A (under g_0) using fit g_N, estimated regression model for g0;
-.f.gen.probA_N <- function(df, deterministic, m.gN) {
-    SuppressGivenWarnings({
-    	g_N <- predict(m.gN, newdata=df, type="response")
-					},
-					GetWarningsToSuppress())
-    #************************************************
-  	g_N[deterministic] <- 0
-    #************************************************
-  	return(g_N)
-}
-
-#------------------------------------------------------------------------------
-# NOT FINISHED, CURRENTLY NOT WORKING
-# # todo 65 (iptw_est) +0: rework iptw_est functions for new package structure
-# IPTW ESTIMATOR (est Y_g_star based on weights g_star(A|W)/g_N(A|W) )
-#------------------------------------------------------------------------------
-iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial", NetInd_k, lbound=0, max_npwt=50, f.g0=NULL, f.g0_args=NULL, iidIPTW=FALSE) {
-	n <- nrow(data)
-	netW <- NULL
-  nFnode <- node_l$nFnode
-  Anode <- node_l$Anode
-	for (Wnode in node_l$Wnodes) {
-	 	netW <- data.frame(cbind(netW, .f.allCovars(k, NetInd_k, data[, Wnode], Wnode)))
-	}
-  cA.mtx <- cbind(netW, subset(data, select=nFnode))
-	indA <- data.frame(.f.allCovars(k, NetInd_k, data[, Anode], Anode))
-
-  determ.g <- data$determ.g
-  determ.g_vals <- data[determ.g, Anode]
-	# predict g*(A=1|W):
-	pA_gstar <- f.gen.probA.star(k, cA.mtx, f.gstar, f.g_args)
-	netpA_gstar <- .f.allCovars(k, NetInd_k, pA_gstar, Anode)
-
-	# calculate likelihoods P_*(A=a|W):
-  if (iidIPTW) { # for iid IPTW, use only A_i, no A_j, for j\in F_i:
-    indA <- indA[, Anode, drop=FALSE]
-    netpA_gstar <- netpA_gstar[, Anode, drop=FALSE]
-  }
-
-  gstar_A <- .f.cumprod.matrix(indA, netpA_gstar) # calculate likelihoods P_0(A=a|W) under g_star:
-  #************************************************
-  if (is.null(f.g0)) { #If g_0 is unknown, use logistic fit m.gN
-    # print("RUNNING IPTW ON FITTED g0_N"); print(m.gN)
-    pA_g0N <- .f.gen.probA_N(cA.mtx, determ.g, m.gN)
-  }
-  else {   # If g_0 is known get true P_g0
-    # print("RUNNING IPTW ON TRUE g0")
-    pA_g0N <- f.gen.probA.star(k, cA.mtx, f.g0, f.g0_args)
-  }
-  #************************************************
-	netpA_g0 <- .f.allCovars(k, NetInd_k, pA_g0N, Anode)
-
-  # for iid IPTW, use only A_i, no A_j, for j\in F_i:
-  if (iidIPTW) {
-    indA <- indA[,Anode,drop=FALSE]
-    netpA_g0 <- netpA_g0[,Anode,drop=FALSE]
-  }
-  # print("head(indA)"); print(head(indA))
-  # print("head(netpA_g0)"); print(head(netpA_g0))
-
-  # calculate likelihoods P_0(A=a|W):
-  g0_A <- .f.cumprod.matrix(indA, netpA_g0)
-  ipweights <- gstar_A / g0_A
-  ipweights[is.nan(ipweights)] <- 0     # 0/0 detection
-  # ipweights <- bound(ipweights, c(0,10^6))
-  # lower bound g0 by lbound
-  ipweights <- bound(ipweights, c(0,1/lbound))
-
-  # scale weights by total contribution (instead of bounding by consts):
-  # cap the prop weights scaled at max_npwt (for =50 -> translates to max 10% of total weight for n=500 and 5% for n=1000)
-  # ipweights <- scale_bound(ipweights, max_npwt, n)
-  # print("iptw wts range after bound"); print(summary(ipweights))
-	return(ipweights)
 }
 
 # @title Predict h weights under g_0 and g_star using existing m.h.fit model fit
@@ -123,8 +42,10 @@ pred.hbars <- function(newdatnet = NULL, m.h.fit) {
     }
     # PASS ENTIRE newdatnet which will get subset, rather than constructing cY_mtx...
     # if (h_user==FALSE) {
-    h_gN <- m.h.fit$summeas.g0$predict(newdata = newdatnet)$predictAeqa(obs.DatNet.sWsA = newdatnet)
-    h_gstar <- m.h.fit$summeas.gstar$predict(newdata = newdatnet)$predictAeqa(obs.DatNet.sWsA = newdatnet)
+    h_gN <- m.h.fit$summeas.g0$predictAeqa(obs.DatNet.sWsA = newdatnet)
+    # h_gN <- m.h.fit$summeas.g0$predict(newdata = newdatnet)$predictAeqa(obs.DatNet.sWsA = newdatnet)
+    h_gstar <- m.h.fit$summeas.gstar$predictAeqa(obs.DatNet.sWsA = newdatnet)
+    # h_gstar <- m.h.fit$summeas.gstar$predict(newdata = newdatnet)$predictAeqa(obs.DatNet.sWsA = newdatnet)
     # }
     h_gstar_gN <- h_gstar / h_gN
     h_gstar_gN[is.nan(h_gstar_gN)] <- 0     # 0/0 detection
@@ -172,8 +93,8 @@ fit.hbars <- function(datNetObs, est_params_list) {
   f.gstar <- est_params_list$f.gstar
   f.g0 <- est_params_list$f.g0
 
-  f.g_args <- est_params_list$f.g_args # TO BE REmoVED
-  f.g0_args <- est_params_list$f.g0_args # TO BE REmoVED
+  f.g_args <- est_params_list$f.g_args # (HAVE BEEN DISABLED)
+  f.g0_args <- est_params_list$f.g0_args # (HAVE BEEN DISABLED)
 
   h_g0_SummariesModel <- est_params_list$h_g0_SummariesModel
   if (!is.null(h_g0_SummariesModel)) message("h_g0 will not be fit, predicting h_g0 based on the existing fit supplied in h_g0_SummariesModel object")
@@ -242,7 +163,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # subset_exprs <- lapply(sA_nms, function(var) {var%+%" != "%+%"misval"}) # compares to misval constant from gvars envir.    
   # subset_exprs <- lapply(netvar("determ.g_Friend", c(0:Kmax)), function(var) {var%+%" != "%+%"misval"}) # based on the variable of gvars$misval (requires passing gvars envir for eval)
   # subset_exprs <- lapply(netvar("determ.g_true", c(0:Kmax)), function(var) {var%+%" != "%+%TRUE}) # based on existing logical determ_g columns (TRUE = degenerate/determ):
-
   #-----------------------------------------------------------
   # (1) Capture expression as characeter string: subsetexpr <- deparse(substitute(subsetexpr))
   # (2) Parse the characteer expression into call (make subset expressions into a list of calls (one call per sA[j] in sA))
@@ -255,7 +175,7 @@ fit.hbars <- function(datNetObs, est_params_list) {
   #                                         eval(substitute(substitute(e, env = substitute_list), list(e = subset_expr)))
   #                                       })
   subsets_expr <- lapply(sA_nms, function(var) {var})  # subsetting by !gvars$misval on sA:
-  print("new subsets_expr: "); print(subsets_expr)
+  # print("new subsets_expr: "); print(subsets_expr)
 
   ##########################################
   # Summary class params:
@@ -289,7 +209,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
     message("user supplied model fit for h_g0 is not implemented yet")
     # ...
     # 1) verify h_g0_SummariesModel is consistent with summeas.g0
-    # ... has to be recursive ...
     # 2) copy model fits in h_g0_SummariesModel to summeas.g0
     # ...
   } else {
@@ -298,14 +217,11 @@ fit.hbars <- function(datNetObs, est_params_list) {
 
   # *********
   # NEED TO PASS obsdat.sW.sA (observed data sWsA) to predict() funs.
-  # predict() expects obsdat.sW.sA to be also of class DatNet.sWsA and will call on the same methods of DatNet.sWsA as does fit() (constructing bins, asking for data.frame, etc)
   # If !is.null(f.g_name) then DatNet.g0$dat.sWsA IS NOT THE OBSERVED data (sWsA), but rather sWsA data sampled under known g_0.
   # Option 1: Wipe out DatNet.g0$dat.sWsA with actually observed data - means that we can't use DatNet.g0$dat.sWsA in the future.
   # Option 2: Create a new class DatNet.Obs of DatNet.sWsA - pain in the ass...
   # Going with OPTION 1 for now:
-
   # Already generated datNetObs in tmlenet:
-  summeas.g0$predict(newdata = datNetObs) # DOESN'T HAVE TO BE CALLED if (is.null(f.g0)), since PREDICATIONS ARE ALREADY SAVED for obsdat.sW.sA
   h_gN <- summeas.g0$predictAeqa(obs.DatNet.sWsA = datNetObs)
   # *********
 
@@ -337,13 +253,10 @@ fit.hbars <- function(datNetObs, est_params_list) {
   # print(head(cbind(DatNet.gstar$ord.sVar, DatNet.gstar$dat.bin.sVar), 5))
   # print("freq count for transformed ord.sVar: "); print(table(DatNet.gstar$ord.sVar))
 
-
   regclass.gstar <- RegressionClass$new(outvar.class = sA_class,
                                         outvar = sA_nms,
                                         predvars = sW.gstar_nms,
                                         subset = subsets_expr
-                                        # max_nperbin = as.integer(getopt("maxNperBin"))
-                                        # max_nperbin = 2000L
                                         # max_nperbin = as.integer(getopt("maxNperBin")*ng.MCsims)
                                         )
   # Define Intervals Under g_star to Be The Same as under g0:
@@ -363,9 +276,8 @@ fit.hbars <- function(datNetObs, est_params_list) {
     summeas.gstar$fit(data = DatNet.gstar)
   }
 
-  summeas.gstar$predict(newdata = datNetObs)
+  # summeas.gstar$predict(newdata = datNetObs)
   h_gstar <- summeas.gstar$predictAeqa(obs.DatNet.sWsA = datNetObs)
-
   # # new_h_gstar <- h_gstar
   # # newint_pred <- as.vector(new_h_gstar)
   # # old_h_gstar <- h_gstar
@@ -418,7 +330,6 @@ fit.hbars <- function(datNetObs, est_params_list) {
   h_gstar_gN <- h_gstar / h_gN
   h_gstar_gN[is.nan(h_gstar_gN)] <- 0     # 0/0 detection
   h_gstar_gN <- bound(h_gstar_gN, c(0, 1/lbound))
-
 
   # # new_wts <- h_gstar_gN
   # # mean(new_wts)

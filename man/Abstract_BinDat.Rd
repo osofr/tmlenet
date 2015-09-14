@@ -4,7 +4,7 @@
 \name{Abstract_BinDat}
 \alias{Abstract_BinDat}
 \title{(NOT USED) Abstract summary measure class for P(sA[j]|sW,sA[j])}
-\format{\preformatted{Class 'R6ClassGenerator' <environment: 0x7fbe4787eb50> 
+\format{\preformatted{Class 'R6ClassGenerator' <environment: 0x7fd88b9c5ce8> 
  - attr(*, "name")= chr "Abstract_BinDat_generator"
 }}
 \usage{

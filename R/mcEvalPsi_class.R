@@ -27,10 +27,10 @@ get.MCS_ests <- function(datNetObs,  DatNet.gstar, MC_fit_params, m.h.fit) {
 
     TMLE_A <- 0 # TMLE A (adjusted by coefficient epsilon on h_bar ratio)
     TMLE_gIPTW <- 0 # gIPTW  TMLE
-    if (!onlyTMLE_B) {
-      TMLE_A <- evaluator$get.tmleA(m.Q.starA = m.Q.starA, m.h.fit = m.h.fit) # TMLE A (adjusted by coefficient epsilon on h_bar ratio)
-      TMLE_gIPTW <- 0 # gIPTW  TMLE
-    }
+    # if (!onlyTMLE_B) {
+    #   TMLE_A <- evaluator$get.tmleA(m.Q.starA = m.Q.starA, m.h.fit = m.h.fit) # TMLE A (adjusted by coefficient epsilon on h_bar ratio)
+    #   TMLE_gIPTW <- 0 # gIPTW  TMLE
+    # }
 
     TMLE_B <- evaluator$get.tmleB(m.Q.starB = m.Q.starB) # TMLE B (adjusted by intercept epsilon where h_bar were used as weights)
     fiWs_list <- evaluator$get.fiW(m.Q.starA = m.Q.starA, m.Q.starB = m.Q.starB) # Get fi_W - hold W fixed to observed values
@@ -81,7 +81,6 @@ get.MCS_ests <- function(datNetObs,  DatNet.gstar, MC_fit_params, m.h.fit) {
 
   return(psi_est_mean)
 }
-
 
 # Class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention gstar
   # For given data, take Q[Y|cY]=m.Q.init and calcualte est. of psi under gstar using Monte-Carlo integration:
@@ -158,6 +157,7 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       self$m.Q.init <- m.Q.init
       datNetObs <- self$datNetObs
       DatNet.gstar <- self$DatNet.gstar
+      # print("getting predictions for gcomp...")
       QY.init <- m.Q.init$predict(newdata = DatNet.gstar)$getprobA1
       QY.init[datNetObs$det.Y] <- datNetObs$noNA.Ynodevals[datNetObs$det.Y]
       self$QY.init <- QY.init

@@ -4,11 +4,21 @@
 \alias{tmlenet_options}
 \title{Setting Options for \code{tmlenet}}
 \usage{
-tmlenet_options(useglm = FALSE, nbins = NA, maxncats = 5,
-  binByMass = FALSE, poolContinVar = FALSE, maxNperBin = 1000)
+tmlenet_options(useglm = FALSE, bin.method = c("equal.len", "equal.mass",
+  "dhist"), parfit = FALSE, nbins = NA, maxncats = 5, binByMass = FALSE,
+  binBydhist = FALSE, poolContinVar = FALSE, maxNperBin = 1000)
 }
 \arguments{
 \item{useglm}{Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for \code{glm::glm.fit}.}
+
+\item{bin.method}{The method for choosing bins when discretizing and fitting the conditional continuous summary exposure variable \code{sA}.
+The default method is \code{"equal.len"}, which partitions the range of \code{sA} into equal length \code{nbins} intervals.
+Method \code{"equal.mass"} results in a data-adaptive selection of the bins based on equal mass (equal number of observations),
+i.e., each bin is defined so that it contains an approximately the same number of observations across all bins.
+The maximum number of observations in each bin is controlled by parameter \code{maxNperBin}.
+Method \code{"dhist"} is a combination of the above two approaches.}
+
+\item{parfit}{Set to \code{TRUE} to perform parallel glm fits for multivariate binary outcomes (default is \code{FALSE})}
 
 \item{nbins}{Set the default number of bins when discretizing a continous outcome variable under setting \code{binByMass = FALSE}.
 If left as \code{NA} the total number of equal intervals (bins) is determined by the nearest integer of \code{nobs}/\code{maxNperBin},
@@ -20,6 +30,8 @@ If \code{sA[j]} has more it is automatically considered continuous.}
 \item{binByMass}{Define bin cutoffs for a continuous outcome using even mass distribution?
 Setting to \code{TRUE} allows for data-adaptive bin cutoff definitions,
 where each bin will be defined so that it contains an approximately the same number of observations across all bins.}
+
+\item{binBydhist}{\code{TRUE/FALSE}}
 
 \item{poolContinVar}{Set to \code{TRUE} for fitting a pooled regression which pools bin indicators across all bins.
 When fitting a model for binirized continuous outcome, set to \code{TRUE}

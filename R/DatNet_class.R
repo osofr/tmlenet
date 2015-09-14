@@ -14,6 +14,12 @@
 #-----------------------------------------------------------------------------
 # TO DO: 
 #-----------------------------------------------------------------------------
+# Defining "equal.len" bins based on sA under g0 for estimating h_g0 and based on sA under gstar for estimating h_gstar 
+  # results in an error, since bins defined under gstar might not include the entire range of sA under g0. 
+  # Need a way to fix this so that the intervals are automatically expanded 
+  # E.g., add one very very large positive and one very very abs(large) neg value to each interval?)
+
+#-----------------------------------------------------------------------------
 # - DatNet.sWsA$binirize: Current implementation will often create fewer new cats than unique(sVar) for categorical sVar.
   # One way to avoid this is to set bin_by_mass = FALSE for sVar categoricals;
   # Another approach is to collapse the intervals to only unique(intrvls) with a warning;
@@ -27,7 +33,7 @@
   # ord.sVar
   #   2   4   6   7 
   # 197 292 234 277
-
+#-----------------------------------------------------------------------------
 # - Is there a way to avoid constant repeating of "self$Var <- Var"? A copy method, s.a., self$copy(arg1, arg2, ...) that will do self$arg1 <- arg1, etc...?
 # - See Copy/Close Issue for R6: https://github.com/wch/R6/issues/27 & https://github.com/wch/R6/pull/57 (implemented copy)
   # copytoR6fields <- function(R6obj, ...) {
@@ -36,6 +42,7 @@
   #   argnames <- names(arglist)
   #   R6obj[[argnames[i]]] <- arglist[[i]]
   # }
+#-----------------------------------------------------------------------------
 # - Replace all node name references (columns) with indices? See ?subset.data.frame:
   # nl <- as.list(seq_along(data.df))
   # names(nl) <- names(data.df)

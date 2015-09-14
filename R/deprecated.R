@@ -202,6 +202,89 @@
   return(y[,dim(data.probA)[2]])
 }
 
+# (DEPRECATED) No longer called
+f.gen.A.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
+  n <- nrow(df_AllW)
+  rbinom(n, 1, f.gen.probA.star(k, df_AllW, fcn_name, f_args))
+}
+
+# (DEPRECATED)
+# get the prob of A (under g_0) using fit g_N, estimated regression model for g0;
+.f.gen.probA_N <- function(df, deterministic, m.gN) {
+    SuppressGivenWarnings({
+      g_N <- predict(m.gN, newdata=df, type="response")
+          },
+          GetWarningsToSuppress())
+    #************************************************
+    g_N[deterministic] <- 0
+    #************************************************
+    return(g_N)
+}
+
+#------------------------------------------------------------------------------
+# (DISABLED, RETIRING)
+# IPTW ESTIMATOR (est Y_g_star based on weights g_star(A|W)/g_N(A|W) )
+#------------------------------------------------------------------------------
+iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial", NetInd_k, lbound=0, max_npwt=50, f.g0=NULL, f.g0_args=NULL, iidIPTW=FALSE) {
+  n <- nrow(data)
+  netW <- NULL
+  nFnode <- node_l$nFnode
+  Anode <- node_l$Anode
+  for (Wnode in node_l$Wnodes) {
+    netW <- data.frame(cbind(netW, .f.allCovars(k, NetInd_k, data[, Wnode], Wnode)))
+  }
+  cA.mtx <- cbind(netW, subset(data, select=nFnode))
+  indA <- data.frame(.f.allCovars(k, NetInd_k, data[, Anode], Anode))
+
+  determ.g <- data$determ.g
+  determ.g_vals <- data[determ.g, Anode]
+  # predict g*(A=1|W):
+  pA_gstar <- f.gen.probA.star(k, cA.mtx, f.gstar, f.g_args)
+  netpA_gstar <- .f.allCovars(k, NetInd_k, pA_gstar, Anode)
+
+  # calculate likelihoods P_*(A=a|W):
+  if (iidIPTW) { # for iid IPTW, use only A_i, no A_j, for j\in F_i:
+    indA <- indA[, Anode, drop=FALSE]
+    netpA_gstar <- netpA_gstar[, Anode, drop=FALSE]
+  }
+
+  gstar_A <- .f.cumprod.matrix(indA, netpA_gstar) # calculate likelihoods P_0(A=a|W) under g_star:
+  #************************************************
+  if (is.null(f.g0)) { #If g_0 is unknown, use logistic fit m.gN
+    # print("RUNNING IPTW ON FITTED g0_N"); print(m.gN)
+    pA_g0N <- .f.gen.probA_N(cA.mtx, determ.g, m.gN)
+  }
+  else {   # If g_0 is known get true P_g0
+    # print("RUNNING IPTW ON TRUE g0")
+    pA_g0N <- f.gen.probA.star(k, cA.mtx, f.g0, f.g0_args)
+  }
+  #************************************************
+  netpA_g0 <- .f.allCovars(k, NetInd_k, pA_g0N, Anode)
+
+  # for iid IPTW, use only A_i, no A_j, for j\in F_i:
+  if (iidIPTW) {
+    indA <- indA[,Anode,drop=FALSE]
+    netpA_g0 <- netpA_g0[,Anode,drop=FALSE]
+  }
+  # print("head(indA)"); print(head(indA))
+  # print("head(netpA_g0)"); print(head(netpA_g0))
+
+  # calculate likelihoods P_0(A=a|W):
+  g0_A <- .f.cumprod.matrix(indA, netpA_g0)
+  ipweights <- gstar_A / g0_A
+  ipweights[is.nan(ipweights)] <- 0     # 0/0 detection
+  # ipweights <- bound(ipweights, c(0,10^6))
+  # lower bound g0 by lbound
+  ipweights <- bound(ipweights, c(0,1/lbound))
+
+  # scale weights by total contribution (instead of bounding by consts):
+  # cap the prop weights scaled at max_npwt (for =50 -> translates to max 10% of total weight for n=500 and 5% for n=1000)
+  # ipweights <- scale_bound(ipweights, max_npwt, n)
+  # print("iptw wts range after bound"); print(summary(ipweights))
+  return(ipweights)
+}
+
+
 #-----------------------------------------------------------------------------
 # (DEPRECATED)
 # return entire network matrix from indiv. covar (Var) + covariate itself as first column

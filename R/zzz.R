@@ -35,8 +35,16 @@ print_tmlenet_opts <- function() {
 
 #' Setting Options for \code{tmlenet}
 #'
+# todo: combine binning methods into one arg tmlenet_options(bin.method = c("equal.len", "equal.mass", "dhist"))
+# state that the default method is "equal.len"
 #' Additional options that control the estimation algorithm in \code{tmlenet} package
 #' @param useglm Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for \code{glm::glm.fit}.
+#' @param bin.method The method for choosing bins when discretizing and fitting the conditional continuous summary exposure variable \code{sA}. 
+#' The default method is \code{"equal.len"}, which partitions the range of \code{sA} into equal length \code{nbins} intervals.
+#' Method \code{"equal.mass"} results in a data-adaptive selection of the bins based on equal mass (equal number of observations),
+#' i.e., each bin is defined so that it contains an approximately the same number of observations across all bins. 
+#' The maximum number of observations in each bin is controlled by parameter \code{maxNperBin}.
+#' Method \code{"dhist"} is a combination of the above two approaches.
 #' @param parfit Set to \code{TRUE} to perform parallel glm fits for multivariate binary outcomes (default is \code{FALSE})
 #' @param nbins Set the default number of bins when discretizing a continous outcome variable under setting \code{binByMass = FALSE}. 
 #' If left as \code{NA} the total number of equal intervals (bins) is determined by the nearest integer of \code{nobs}/\code{maxNperBin}, 
@@ -61,11 +69,13 @@ print_tmlenet_opts <- function() {
 # n_MCsims = ceiling(sqrt(nrow(data))),
 # onlyTMLE_B = TRUE,
 # f_g0 = NULL
-tmlenet_options <- function(useglm = FALSE, parfit = FALSE, nbins = NA, maxncats = 5, binByMass = FALSE, binBydhist = FALSE, poolContinVar = FALSE, maxNperBin = 1000) {
+tmlenet_options <- function(useglm = FALSE, bin.method = c("equal.len", "equal.mass", "dhist"), parfit = FALSE, nbins = NA, maxncats = 5, binByMass = FALSE, binBydhist = FALSE, poolContinVar = FALSE, maxNperBin = 1000) {
   # nbins = 50L, # maxncats = 10L
   old.opts <- gvars$opts
+  bin.method <- bin.method[1L]
   opts <- list(
     useglm = useglm,
+    bin.method = bin.method,
     parfit = parfit,
     nbins = nbins,
     maxncats = maxncats,

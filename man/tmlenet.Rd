@@ -4,18 +4,23 @@
 \alias{tmlenet}
 \title{Estimate Average Network Effects Under Arbitrary (Stochastic) Interventions}
 \usage{
-tmlenet(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET = NULL,
+tmlenet(data, estimators = c("tmle", "iptw", "gcomp"), sW = NULL,
+  sA = NULL, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET = NULL,
   nFnode = "nF", IDnode = NULL, NETIDnode = NULL, sep = " ",
-  NETIDs_mat = NULL, f_gstar1, f_gstar2 = NULL, sW = NULL, sA = NULL,
-  Qform = NULL, hform = NULL, hform.gstar = NULL, gform = NULL,
-  Qform.depr = NULL, gform.depr = NULL, hform.depr = NULL,
-  verbose = getOption("tmlenet.verbose"), args_f_g1star = NULL,
-  args_f_g2star = NULL, optPars = list(alpha = 0.05, gbound = 0.005, family
-  = "binomial", n_MCsims = ceiling(sqrt(nrow(data))), onlyTMLE_B = TRUE, f_g0 =
-  NULL))
+  NETIDs_mat = NULL, f_gstar1, f_gstar2 = NULL, Qform = NULL,
+  hform = NULL, hform.gstar = NULL,
+  verbose = getOption("tmlenet.verbose"), optPars = list(alpha = 0.05,
+  lbound = 0.005, family = "binomial", n_MCsims = ceiling(sqrt(nrow(data))),
+  f_g0 = NULL, h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
 }
 \arguments{
 \item{data}{Input observed data as a \code{data.frame}, with named columns for baseline covariates (W), assigned treatment (A), the outcome (Y) and network of friends (F)}
+
+\item{estimators}{(NOT IMPLEMENTED) Character vector with estimator names.}
+
+\item{sW}{Summary measures constructed from variables in \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sW when it is left missing)}
+
+\item{sA}{Summary measures constructed from variables in \code{Anode} and \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sA when its missing)}
 
 \item{Kmax}{Absolute maximum number of friends (connected units) for any observation in the input \code{data}}
 
@@ -41,31 +46,15 @@ tmlenet(data, Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET = NULL,
 
 \item{f_gstar2}{(Optional) Function for specifying another intervention of interest when estimating the treatment effects under two interventions}
 
-\item{sW}{Summary measures constructed from variables in \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sW when it is left missing)}
-
-\item{sA}{Summary measures constructed from variables in \code{Anode} and \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sA when its missing)}
-
 \item{Qform}{(Optional) Regression formula for outcome in Ynode, when NULL (default) Ynode is regressed on all variables defined in \code{sW} and \code{sA}. See Details.}
 
 \item{hform}{(Optional) Regression formula for estimating the conditional probability of P(sA | sW) under gN (observed treatment mechanism), when NULL (default) sA includes all variables in \code{sA} argument and sW includes all variables in \code{sW}. See Details.}
 
 \item{hform.gstar}{(Optional) Regression formula for estimating the conditional probability P(sA | sW) under gstar, when NULL (default) the same regression formula as in hform will be used. See Details.}
 
-\item{gform}{(Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all friends treatments, P(A_i, A_{F_i} | W). See Details.}
-
-\item{Qform.depr}{(DEPRECATED)}
-
-\item{gform.depr}{(DEPRECATED)}
-
-\item{hform.depr}{(DEPRECATED)}
-
 \item{verbose}{Set to \code{TRUE} to print all messages}
 
-\item{args_f_g1star}{(Optional) Additional arguments to be passed to \code{f_gstar1} intervention function}
-
-\item{args_f_g2star}{(Optional) Additional arguments to be passed to \code{f_gstar2} intervention function}
-
-\item{optPars}{(Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as alpha, gbound, family, n_MCsims, onlyTMLE_B, f_g0. See Details.}
+\item{optPars}{(Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{onlyTMLE_B}, \code{f_g0}, \code{h_g0_SummariesModel} and \code{h_gstar_SummariesModel}. See Details.}
 }
 \value{
 A named list of the target parameter estimates of the population mean under intervention \code{f_gstar1} (EY_gstar1), their asymptotic variance estimates and CI estimates at \code{alpha} level.
@@ -75,12 +64,9 @@ the third for the estimates of the additive treatment effect (EY_gstar1 - EY_gst
 
 Currently available estimators are:
 \itemize{
-\item \code{\link{tmle_A}} - Covariate-based efficient TMLE using covariate h_gstar/h_gN.
-\item \code{\link{tmle_B}} - Intercept-based efficient TMLE using weights h_gstar/h_gN.
-\item \code{\link{tmle_g_iptw}} - Covariate-based more non-parametric TMLE using covariate gN/gstar.
-\item \code{\link{h_iptw}} - Efficient IPTW based on weights h_gstar/h_gN.
-\item \code{\link{g_iptw}} - More non-parametric IPTW based on weights gN/gstar.
-\item \code{\link{mle}} - Parametric G-computation-based substitution estimator.
+\item \code{\link{tmle}} - Intercept-based efficient TMLE that uses weights h_gstar/h_gN.
+\item \code{\link{iptw}} - Efficient IPTW based on weights h_gstar/h_gN.
+\item \code{\link{gcomp}} - Parametric G-computation-based substitution estimator.
 }
 }
 \description{
@@ -109,7 +95,7 @@ Note that the ordering of the friends in \code{NETIDnode} or \code{NETIDs_mat} i
 The number of friends (\code{nFnode}) is calculate automatically. However, if the column \code{data[,nFnode]} already exists in the input data
 it will be compared to the automatically calculated values, with an error produced if the two variables do not exactly match.
 
-The formalas in \code{Qform}, \code{hform}, \code{hform.gstar}, \code{gform} can include any summary measures defined in sW and sA,
+The formalas in \code{Qform}, \code{hform} and \code{hform.gstar} can include any summary measures defined in sW and sA,
 referenced by their individual variable names or by their aggregate summary measure names.
 For example, \code{hform = "netA ~ netW"} is equivalent to \code{hform = "A + A_netF1 + A_netF2 ~ W + W_netF1 + W_netF2"}
 for \code{sW,sA} summary measures defined by \code{def.sW(netW=W[[0:2]], noname=TRUE)} and \code{def.sA(netA=A[[0:2]], noname=TRUE)}.
@@ -120,10 +106,9 @@ the functions have to return a vector of length \code{nrow(data)} that represent
 Additional optional parameters that can be passed inside a named list \code{optPars} include:
 \itemize{
 \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs);
-\item \code{gbound} - One value for symmetrical bounds on g(A | W) and P(sW | sW), or a vector of length 2 specifying upper and lower bounds.
+\item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
 \item \code{n_MCsims} - Number of Monte-Carlo simulations to perform when evaluating P(sA | sW) under gstar and f_g0 (if specified) and while evaluating the target parameter estimator under gstar;
 \item \code{family} - Family specification for regression models, defaults to binomial. CURRENTLY ONLY BINOMIAL FAMILY IS IMPLEMENTED.
-\item \code{onlyTMLE_B} - When \code{TRUE}, only one of the 3 TMLE estimators is evaluated, tmle_B, which is the intercept-based TMLE (no clever covariate, h_gN / h_gstar is used as weights in parametric model fluctuation).
 \item \code{f_g0} - A function for generating true treatment mechanism A, when it is known (for example in a randomized trial). Used only when estimating P(sA | sW) under g0 by sampling large vector of A (of length n*n_MCsims) from \code{f_g0};
 }
 }
@@ -143,7 +128,7 @@ If observation \code{i} has fewer than \code{Kmax} friends, the remainder of \co
 Note that the ordering of friend indices is irrelevant.
 }
 \examples{
-rm(list=ls())
+# rm(list=ls())
 
 #--------------------------------------------------------
 # NOTE: argument n_MCsims specifies the number of Monte-Carlo sims tmlenet needs to run. If running time is too slow try lower that number.
@@ -229,42 +214,43 @@ mean(df_Kmax6$nFriends) # [1] 3.307
 #----------------------------------------------------------------------------------
 # Example 1. Mean population outcome under deterministic intervention A=0 with 6 friends
 #----------------------------------------------------------------------------------
+library(tmlenet)
 Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
 head(df_Kmax6)
-# library(tmlenet)
+
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
             def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
 
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE) +
             def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
-(Qform.depr <- "Y ~ I(" \%+\% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") \%+\% ")" \%+\% "+"  \%+\% "netW3_sum")
-(gform.depr <- "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends")
-(hform.depr <- "sA ~ " \%+\% paste(netvar("W2", (1:6)), collapse = "+") \%+\% " + netW3_sum + nFriends")
+# (Qform.depr <- "Y ~ I(" \%+\% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") \%+\% ")" \%+\% "+"  \%+\% "netW3_sum")
+# (gform.depr <- "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends")
+# (hform.depr <- "sA ~ " \%+\% paste(netvar("W2", (1:6)), collapse = "+") \%+\% " + netW3_sum + nFriends")
 
-trun <- system.time(
-res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
-                  Kmax = Kmax,
-                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                  f_gstar1 = f.A_0,
-                  # OLD regs specification (TO BE REMOVED):
-                  Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
-                  # new way to specify regressions:
-                  sW = def_sW, sA = def_sA,
-                  Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
-                  hform = "netA ~ netW2 + netW3_sum + nFriends",
-                  hform.gstar = "netA ~ netW3_sum",
-                  gform = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
-                  optPars = list(
-                    onlyTMLE_B = FALSE,  # remove
-                    # f_g0 = f.A, # tested, works
-                    n_MCsims = 10)
-                  )
+run_time <- system.time(
+  res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
+                    Kmax = Kmax,
+                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0,
+                    # OLD regs specification (TO BE REMOVED):
+                    # Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
+                    # new way to specify regressions:
+                    sW = def_sW, sA = def_sA,
+                    Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
+                    hform = "netA ~ netW2 + netW3_sum + nFriends",
+                    hform.gstar = "netA ~ netW3_sum",
+                    # gform = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
+                    optPars = list(
+                      onlyTMLE_B = FALSE,  # remove
+                      # f_g0 = f.A, # tested, works
+                      n_MCsims = 10)
+                    )
 )
-print("run t: "); print(trun)
-                # alternative ways to pass summary measures:
-                # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
-                # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
+print("run time: "); print(run_time)
+# alternative ways to pass summary measures:
+# sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
+# sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
 
 res_K6$EY_gstar1$estimates
 res_K6$EY_gstar1$vars
@@ -280,7 +266,6 @@ res_K6$EY_gstar1$other.vars
 # epsilon (covariate)      0.02549743 0.02549743
 # alpha (intercept)        0.05410938 0.05410938
 # iptw epsilon (covariate) 0.03556655 0.03556655
-
               # old:	# new:
 # tmle_A     0.5053725 0.5053725
 # tmle_B     0.5051903 0.5051903
@@ -328,6 +313,7 @@ res_K6$EY_gstar1$other.vars
 # h_iptw      0.0021023317
 # g_iptw      0.0060034386
 # mle         0.0000000000
+
 # > tmlenet_K6out2$EY_gstar1$CIs
 #             LBCI_0.025 UBCI_0.975
 # tmle_A       0.4457134  0.5650315
@@ -360,10 +346,7 @@ res_K6$EY_gstar1$other.vars
 # mle          0.4970377  0.4970377
 # > tmlenet_K6out2$EY_gstar1$other.vars
 #    var_iid.tmle_B var_tmleiptw_2ndO     var_iptw_2ndO var_tmle_A_Q.init var_tmle_B_Q.init 
-#      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512 
-
-
-
+#      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512
 
 #----------------------------------------------------------------------------------
 # Same as Example 1, but specifying the network with NETIDs_mat: a matrix of friend row numbers from the input data
@@ -407,7 +390,6 @@ all.equal(res_K6net$EY_gstar1$CIs, res_K6$EY_gstar1$CIs)
 all.equal(res_K6net$EY_gstar1$other.vars, res_K6$EY_gstar1$other.vars)
 
 
-
 #----------------------------------------------------------------------------------
 # Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
 # OLD. REMOVE OR MODIFY.
@@ -434,7 +416,7 @@ head(sample_network_k2)
 # 	netVAR_2 to refer to covariate VAR of the 2nd friend and so on...
 #--------------------------------------------------------
 Qform <- "Y ~  W1 + A + netW1_1 + netW1_2 + netA_1 + netA_2 + nFriends"
-gform <- "A ~  W1 + netW1_1 + netW1_2 + nFriends"
+# gform <- "A ~  W1 + netW1_1 + netW1_2 + nFriends"
 
 #----------------------------------------------------------------------------------
 # Example 1. Mean population outcome under deterministic intervention A=0

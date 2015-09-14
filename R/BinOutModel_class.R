@@ -39,13 +39,15 @@ logisfit.speedglmS3 <- function(datsum_obj) {
   if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA's and avoid throwing exception
     m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
   } else {
-    m.fit <- speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial())
+    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial()), silent=TRUE)
     # m.fit <- speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), sparse = TRUE)
+    if (inherits(m.fit, "try-error")) { # if failed, fall back on stats::glm
+      message("speedglm::speedglm.wfit failed, falling back on stats:glm.fit; ", m.fit)
+      return(logisfit.glmS3(datsum_obj))
+    }
   }
   fit <- list(coef = m.fit$coef, linkfun = "logitlinkinv", fitfunname = "speedglm")
-
   if (gvars$verbose) print(fit$coef)
-
   class(fit) <- c(class(fit), c("speedglmS3"))
   return(fit)
 }
@@ -205,29 +207,33 @@ BinDat <- R6Class(classname = "BinDat",
       invisible(self)
     },
 
+    define.subset_idx = function(data) {
+      if (is.logical(self$subset_expr)) {
+        subset_idx <- self$subset_expr
+      } else if (is.call(self$subset_expr)) {
+        subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
+      } else if (is.character(self$subset_expr)) {
+        subset_idx <- data$evalsubst(subsetvars = self$subset_expr)
+      }
+      assert_that(is.logical(subset_idx))
+      if ((length(subset_idx) < self$n) && (length(subset_idx) > 1L)) {
+        message("subset_idx has smaller length than self$n; repeating subset_idx p times, for p: " %+% data$p)
+        subset_idx <- rep.int(subset_idx, data$p)
+        if (length(subset_idx) != self$n) stop("BinDat$define.subset_idx: self$n is not equal to nobs*p!")
+      }
+      assert_that((length(subset_idx) == self$n) || (length(subset_idx) == 1L))
+      return(subset_idx)
+    },
+
     # TO DO: move to private method...
     # Sets X_mat, Yvals, evaluates subset and performs correct subseting of data
     # everything is performed using data$ methods (data is of class DatNet.sWsA)
     setdata = function(data, ...) {
       assert_that(is.DatNet.sWsA(data))
       self$n <- data$nobs
-      if (is.logical(self$subset_expr)) {self$subset_idx <- self$subset_expr}
-      if (is.call(self$subset_expr)) {
-        self$subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
-      } else if (is.character(self$subset_expr)) {
-        # message("applying character based subset eval for subset: "); print(self$subset_expr)
-        evalsubst_t <- system.time(
-          self$subset_idx <- data$evalsubst(subsetvars = self$subset_expr)
-          )
-        # print("evalsubst_t"); print(evalsubst_t)
-        
-        # print("got self$subset_idx: "); print(head(self$subset_idx)); print(sum(self$subset_idx))
-      }
-      assert_that(is.logical(self$subset_idx))
-      assert_that((length(self$subset_idx) == self$n) || (length(self$subset_idx) == 1L))
+      self$subset_idx <- self$define.subset_idx(data)
 
       private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Always a vector
-
       # if (getoutcome) private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Always a vector
       if (sum(self$subset_idx) == 0L) {  # When nrow(X_mat) == 0L avoids exception (when nrow == 0L => prob(A=a) = 1)
         private$X_mat <- matrix(, nrow = 0L, ncol = (length(self$predvars) + 1))
@@ -246,15 +252,7 @@ BinDat <- R6Class(classname = "BinDat",
     setdata.long = function(data, ...) {
       assert_that(is.DatNet.sWsA(data))
       self$n <- data$nobs
-      if (is.logical(self$subset_expr)) {self$subset_idx <- self$subset_expr}
-      if (is.call(self$subset_expr)) {
-        self$subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
-      } else if (is.character(self$subset_expr)) {
-        self$subset_idx <- data$evalsubst(subsetvars = self$subset_expr)
-      }
-      assert_that(is.logical(self$subset_idx))
-      assert_that((length(self$subset_idx) == self$n) || (length(self$subset_idx) == 1L))
-
+      self$subset_idx <- self$define.subset_idx(data)
       if (!(data$active.bin.sVar %in% self$outvar)) { stop("currently binirized sVar does not match self$outvar argument") }
 
       # Setting up object fields related to pooling of continuous sA:
@@ -379,7 +377,6 @@ BinDat <- R6Class(classname = "BinDat",
 #'
 #' @importFrom assertthat assert_that is.flag
 #' @export
-
 BinOutModel  <- R6Class(classname = "BinOutModel",
   cloneable = FALSE,
   portable = TRUE,
@@ -396,7 +393,6 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       assert_that(is.flag(reg$useglm))
       if (!reg$useglm) self$glmfitclass <- "speedglmS3"
       # self$reg <- reg
-
       self$bindat <- BinDat$new(reg = reg, ...) # postponed adding data in BinDat until self$fit() is called
       class(self$bindat) <- c(class(self$bindat), self$glmfitclass)
       # can also use: self$bindat <- BinDat$new(glm = self$glmfitclass, ...)
@@ -405,15 +401,15 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
         print("Init BinOutModel:"); print(self$show())
       }
 
-      # # Get the bin width (interval length) for the current bin name self$getoutvarnm (for discretized continuous sA only):
-      # self$cont.sVar.flag <- self$getoutvarnm %in% names(reg$intrvls.width)
-      # if (self$cont.sVar.flag) {
-      #   intrvl.idx <- which(names(reg$intrvls.width) %in% self$getoutvarnm)
-      #   if (length(intrvl.idx) > 1) stop("non-unique names for intrvls.width in RegressionClass")
-      #   self$bw.j <- reg$intrvls.width[intrvl.idx]
-      # } else {
-      #   self$bw.j <- 1L
-      # }
+      # Get the bin width (interval length) for the current bin name self$getoutvarnm (for discretized continuous sA only):
+      self$cont.sVar.flag <- self$getoutvarnm %in% names(reg$intrvls.width)
+      if (self$cont.sVar.flag) {
+        intrvl.idx <- which(names(reg$intrvls.width) %in% self$getoutvarnm)
+        if (length(intrvl.idx) > 1) stop("non-unique names for intrvls.width in RegressionClass")
+        self$bw.j <- reg$intrvls.width[intrvl.idx]
+      } else {
+        self$bw.j <- 1L
+      }
 
       invisible(self)
     },
@@ -422,12 +418,12 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       if (!overwrite) assert_that(!self$is.fitted) # do not allow overwrite of prev. fitted model unless explicitely asked
       self$bindat$newdata(newdata = data, ...) # populate bindat with X_mat & Y_vals
       # self$bindat$newdata(newdata = data, getoutcome = TRUE, ...) # populate bindat with X_mat & Y_vals
-      # ... additional checks & assertions... # ... add try() to below: # ... add checks for testing a successful fit
       private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() 
       # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
+
       # **********************************************************************
-      # to save space when doing many stacked regressions:
+      # to save RAM space when doing many stacked regressions:
       # **********************************************************************
       # if (self$reg$pool_cont && length(self$reg$outvars_to_pool) > 1) {
       #   private$probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit)
@@ -435,13 +431,14 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       #   private$probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
       # }
 
-      self$bindat$emptydata  # Xmat in bindat is no longer needed, only subset, outvar & probA1 (probOut1)
       # **********************************************************************
       # NOTE THIS WILL BREAK SUBSTITUTION ESTIMATOR FOR Q.n and Q.n^*, but is necessary to save space for many stacked regressions:
       # **********************************************************************
-      self$bindat$emptyY
-      self$bindat$emptySubset_idx
-      self$bindat$emptyN
+      # self$bindat$emptydata  # Xmat in bindat is no longer needed, only subset, outvar & probA1 (probOut1)
+      self$wipe.alldat
+      # self$bindat$emptyY
+      # self$bindat$emptySubset_idx
+      # self$bindat$emptyN
 
       invisible(self)
     },
@@ -455,75 +452,88 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     },
 
     # rename to:
-    # predictP_1 = function(newdata, ...) { # P(A^s[i]=1|W^s=w^s): uses private$m.fit to generate predictions for newdata
+    # predictP_1 = function(newdata, ...)
     predict = function(newdata, ...) { # P(A^s[i]=1|W^s=w^s): uses private$m.fit to generate predictions for newdata
       assert_that(self$is.fitted) # vs. stopifnot(self$is.fitted)
       if (missing(newdata)) {
+        stop("must provide newdata for BinOutModel$predict()")
         # ... Do nothing, predictions for fitted data are already saved
-        # stop("must provide newdata for BinOutModel$predict()")
-        return(invisible(self))
+        # return(invisible(self))
       }
-      self$bindat$newdata(newdata = newdata, ...) # re-populate bindat with new X_mat
+      # re-populate bindat with new X_mat:
+      self$bindat$newdata(newdata = newdata, ...) 
       if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
-        private$probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit) # overwrite probA1 with new predictions:
+        private$probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit)
       } else {
-        private$probA1 <- self$bindat$logispredict(m.fit = private$m.fit) # overwrite probA1 with new predictions:
+        private$probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
       }
-      self$bindat$emptydata  # Xmat in bindat is no longer needed, but subset, outvar & probA1 may be needed
-      invisible(self) # returning self allows chaining object manipulations
+      self$bindat$emptydata  # Xmat in bindat is no longer needed, but subset, outvar & probA1 may be needed for private$probA1
+      invisible(self)
     },
 
+    # take BinOutModel class object that contains the predictions for P(A=1|sW) and save these predictions to itself
+    copy.predict = function(bin.out.model) {
+      assert_that("BinOutModel" %in% class(bin.out.model))
+      assert_that(self$is.fitted)
+      if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
+        private$probAeqa <- bin.out.model$getprobAeqa
+      } else {
+        private$probA1 <- bin.out.model$getprobA1
+      }
+    },
+
+
+    # **************************************
+    # TO DO; Redo predictAeqa so that it has no side-effects, i.e., eliminate field private$probAeqa and only returns the result, without saving it.
+    # **************************************
     # WARNING: This method cannot be chained together with methods that follow (s.a, class$predictAeqa()$fun())
     # Invisibly returns cumm. prob P(sA=sa|sW=sw)
     # rename to:
-    # predict.like.P_a = function(newdata) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
-    predictAeqa = function(obs.DatNet.sWsA) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
+    # predict.like.P_a = function(newdata)
+    predictAeqa = function(obs.DatNet.sWsA, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
       assert_that(self$is.fitted)
       assert_that(!missing(obs.DatNet.sWsA))
       self$bindat$newdata(newdata = obs.DatNet.sWsA) # populate bindat with new design matrix covars X_mat
       assert_that(is.logical(self$getsubset))
+      n <- obs.DatNet.sWsA$nobs
 
       # obtain predictions (likelihood) for response on fitted data (from long pooled regression):
       if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
-        private$probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit) # overwrite probA1 with new predictions:
-        # **********************************************************************
-        # to save space when doing many stacked regressions:
-        # **********************************************************************
-        self$bindat$emptydata  # wipe out prediction data after getting the likelihood
-        self$bindat$emptyY
-        self$bindat$emptySubset_idx
-        private$probA1 <- NULL
-        return(invisible(private$probAeqa))
+        probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit) # overwrite probA1 with new predictions:
 
       } else {
         # get predictions for P(sA[j]=1|sW=newdata) from newdata:
-        private$probA1 <- self$bindat$logispredict(m.fit = private$m.fit) 
-        n <- obs.DatNet.sWsA$nobs
+        probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
         indA <- obs.DatNet.sWsA$get.outvar(self$getsubset, self$getoutvarnm) # Always a vector of 0/1
         assert_that(is.integerish(indA)) # check that obsdat.sA is always a vector of of integers
 
-        # print("BinOutModel$predictAeqa() self$getoutvarnm: " %+% self$getoutvarnm)
-        # print("BinOutModel$predictAeqa() self$reg$intrvls.width: "); print(self$reg$intrvls.width)
-        # print("self$cont.sVar.flag in reg$intrvls.width? " %+% self$cont.sVar.flag)
-        # print("BinOutModel$predictAeqa() self$bw.j: " %+% self$bw.j)
-
-        private$probAeqa <- rep.int(1L, n) # for missing, the likelihood is always set to P(A = a) = 1.
-        assert_that(!any(is.na(private$probA1[self$getsubset]))) # check that predictions P(A=1 | dmat) exist for all obs.
-        probA1 <- private$probA1[self$getsubset]
+        probAeqa <- rep.int(1L, n) # for missing, the likelihood is always set to P(A = a) = 1.
+        assert_that(!any(is.na(probA1[self$getsubset]))) # check that predictions P(A=1 | dmat) exist for all obs.
+        probA1 <- probA1[self$getsubset]
         # discrete version for the joint density:
-        private$probAeqa[self$getsubset] <- probA1^(indA) * (1 - probA1)^(1L - indA)        
+        probAeqa[self$getsubset] <- probA1^(indA) * (1 - probA1)^(1L - indA)
         # continuous version for the joint density:
-        # private$probAeqa[self$getsubset] <- (probA1^indA) * exp(-probA1)^(1 - indA)
-        # **********************************************************************
-        # to save space when doing many stacked regressions:
-        # **********************************************************************
-        self$bindat$emptydata  # wipe out prediction data after getting the likelihood
-        self$bindat$emptyY
-        self$bindat$emptySubset_idx
-        private$probA1 <- NULL
+        # probAeqa[self$getsubset] <- (probA1^indA) * exp(-probA1)^(1 - indA)
 
-        return(invisible(private$probAeqa))
+        # Alternative intergrating the last hazard chunk up to x:
+        # difference of sA value and its left most bin cutoff: x - b_{j-1}
+        if (!missing(bw.j.sA_diff)) {
+          # + integrating the constant hazard all the way up to value of each sa:
+          # probAeqa[self$getsubset] <- probAeqa[self$getsubset] * (1 - bw.j.sA_diff[self$getsubset]*(1/self$bw.j)*probA1)^(indA)
+          # cont. version of above:
+          probAeqa[self$getsubset] <- probAeqa[self$getsubset] * exp(-bw.j.sA_diff[self$getsubset]*(1/self$bw.j)*probA1)^(indA)
+        }
       }
+      # private$probAeqa <- probAeqa # disabling internal saving of probAeqa
+      # **********************************************************************
+      # to save RAM space when doing many stacked regressions wipe out all internal data:
+      self$wipe.alldat
+      # **********************************************************************
+      # self$bindat$emptydata  # wipe out prediction data after getting the likelihood
+      # self$bindat$emptyY
+      # self$bindat$emptySubset_idx
+      # private$probA1 <- NULL
+      return(probAeqa)
     },
 
     show = function() {self$bindat$show()}
@@ -536,11 +546,12 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       self$bindat$emptydata
       self$bindat$emptyY
       self$bindat$emptySubset_idx
+      self$bindat$emptyN
       return(self)
     },
-
     getfit = function() { private$m.fit },
     getprobA1 = function() { private$probA1 },
+    getprobAeqa = function() { private$probAeqa },
     getsubset = function() { self$bindat$subset_idx },
     getoutvarval = function() { self$bindat$getY },
     getoutvarnm = function() { self$bindat$outvar }

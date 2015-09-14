@@ -1,4 +1,4 @@
-rm(list=ls())
+# rm(list=ls())
 
 #--------------------------------------------------------
 # NOTE: argument n_MCsims specifies the number of Monte-Carlo sims tmlenet needs to run. If running time is too slow try lower that number.
@@ -84,42 +84,43 @@ mean(df_Kmax6$nFriends) # [1] 3.307
 #----------------------------------------------------------------------------------
 # Example 1. Mean population outcome under deterministic intervention A=0 with 6 friends
 #----------------------------------------------------------------------------------
+library(tmlenet)
 Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
 head(df_Kmax6)
-# library(tmlenet)
+
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
             def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
 
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE) +
             def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
-(Qform.depr <- "Y ~ I(" %+% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") %+% ")" %+% "+"  %+% "netW3_sum")
-(gform.depr <- "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends")
-(hform.depr <- "sA ~ " %+% paste(netvar("W2", (1:6)), collapse = "+") %+% " + netW3_sum + nFriends")
+# (Qform.depr <- "Y ~ I(" %+% paste(str_c(netvar("W2", (1:6)), "*", "(1-",netvar("A", (1:6)), ")"), collapse = "+") %+% ")" %+% "+"  %+% "netW3_sum")
+# (gform.depr <- "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends")
+# (hform.depr <- "sA ~ " %+% paste(netvar("W2", (1:6)), collapse = "+") %+% " + netW3_sum + nFriends")
 
-trun <- system.time(
-res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
-                  Kmax = Kmax,
-                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                  f_gstar1 = f.A_0,
-                  # OLD regs specification (TO BE REMOVED):
-                  Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
-                  # new way to specify regressions:
-                  sW = def_sW, sA = def_sA,
-                  Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
-                  hform = "netA ~ netW2 + netW3_sum + nFriends",
-                  hform.gstar = "netA ~ netW3_sum",
-                  gform = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
-                  optPars = list(
-                    onlyTMLE_B = FALSE,  # remove
-                    # f_g0 = f.A, # tested, works
-                    n_MCsims = 10)
-                  )
+run_time <- system.time(
+  res_K6 <- tmlenet(data = df_Kmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y", nFnode = "nFriends",
+                    Kmax = Kmax,
+                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0,
+                    # OLD regs specification (TO BE REMOVED):
+                    # Qform.depr = Qform.depr, hform.depr = hform.depr, #gform.depr = gform.depr,  # remove
+                    # new way to specify regressions:
+                    sW = def_sW, sA = def_sA,
+                    Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
+                    hform = "netA ~ netW2 + netW3_sum + nFriends",
+                    hform.gstar = "netA ~ netW3_sum",
+                    # gform = "A ~  W1 + netW1_sum + netW2_sum + netW3_sum + nFriends",
+                    optPars = list(
+                      onlyTMLE_B = FALSE,  # remove
+                      # f_g0 = f.A, # tested, works
+                      n_MCsims = 10)
+                    )
 )
-print("run t: "); print(trun)
-                # alternative ways to pass summary measures:
-                # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
-                # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
+print("run time: "); print(run_time)
+# alternative ways to pass summary measures:
+# sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", netW1_sum = "rowSums(W1[[1:Kmax]]"), netW2_sum = "rowSums(W2[[1:Kmax]])", netW3_sum = "rowSums(W3[[1:Kmax]])"), 
+# sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
 
 res_K6$EY_gstar1$estimates
 res_K6$EY_gstar1$vars
@@ -135,7 +136,6 @@ res_K6$EY_gstar1$other.vars
 # epsilon (covariate)      0.02549743 0.02549743
 # alpha (intercept)        0.05410938 0.05410938
 # iptw epsilon (covariate) 0.03556655 0.03556655
-
               # old:	# new:
 # tmle_A     0.5053725 0.5053725
 # tmle_B     0.5051903 0.5051903
@@ -183,6 +183,7 @@ res_K6$EY_gstar1$other.vars
 # h_iptw      0.0021023317
 # g_iptw      0.0060034386
 # mle         0.0000000000
+
 # > tmlenet_K6out2$EY_gstar1$CIs
 #             LBCI_0.025 UBCI_0.975
 # tmle_A       0.4457134  0.5650315
@@ -215,10 +216,7 @@ res_K6$EY_gstar1$other.vars
 # mle          0.4970377  0.4970377
 # > tmlenet_K6out2$EY_gstar1$other.vars
 #    var_iid.tmle_B var_tmleiptw_2ndO     var_iptw_2ndO var_tmle_A_Q.init var_tmle_B_Q.init 
-#      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512 
-
-
-
+#      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512
 
 #----------------------------------------------------------------------------------
 # Same as Example 1, but specifying the network with NETIDs_mat: a matrix of friend row numbers from the input data
@@ -262,7 +260,6 @@ all.equal(res_K6net$EY_gstar1$CIs, res_K6$EY_gstar1$CIs)
 all.equal(res_K6net$EY_gstar1$other.vars, res_K6$EY_gstar1$other.vars)
 
 
-
 #----------------------------------------------------------------------------------
 # Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
 # OLD. REMOVE OR MODIFY.
@@ -289,7 +286,7 @@ head(sample_network_k2)
 # 	netVAR_2 to refer to covariate VAR of the 2nd friend and so on...
 #--------------------------------------------------------
 Qform <- "Y ~  W1 + A + netW1_1 + netW1_2 + netA_1 + netA_2 + nFriends"
-gform <- "A ~  W1 + netW1_1 + netW1_2 + nFriends"
+# gform <- "A ~  W1 + netW1_1 + netW1_2 + nFriends"
 
 #----------------------------------------------------------------------------------
 # Example 1. Mean population outcome under deterministic intervention A=0
