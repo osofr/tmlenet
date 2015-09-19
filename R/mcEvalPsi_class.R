@@ -80,29 +80,50 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
 }
 
 ## ---------------------------------------------------------------------
-# Class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention gstar
-  # For given data, take Q[Y|cY]=m.Q.init and calcualte est. of psi under gstar using Monte-Carlo integration:
-  # * W_i can be iid or not (W's are never resampled);
-  # * Draw from the distributions of W and \bar{g}^*
-  # * Recalculate Y^c under \bar{g}^*;
-  # * Repeat nrep times and average.
+  # 
 
+## ---------------------------------------------------------------------
+#' R6 class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention.
+#'
+#' This R6 class performs the Monte-Carlo evaluation of the target parameters using the data generated under 
+#'  the user-specified arbitrary intervention \code{gstar}.
+#'  For a given dataset, take \code{E[Y|sA,sW] = m.Q.init} and calcualte estimate of \code{psi_n} under \code{g_star}
+#'  using Monte-Carlo integration:
+#'  (*) \code{W} can be iid or not (\code{W}'s are never resampled).
+#'  (*) Use \code{P_n(W) = 1} for the distribution of \code{W = (W_1,...,W_n)} and draw \code{n} new exposures 
+#'  \code{A=(A_1,...,A_n)} from the distribution of \code{g_star}.
+#'  (*) Evaluate \code{n} summary measures \code{sA=(sA_1,...,sA_n)} using these \code{n} newly sampled exposures \code{A}.
+#'  (*) Evaluate the subsititution estimators as an average of n predictions \code{E[Y=1|sA,sW]}.
+#'  (*) Repeat \code{nrep} times until convergence of \code{psi_n}.
+#'
+#' @docType class
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords R6 class
+#' @details
+#' \itemize{
+#' \item{\code{DatNet.ObsP0}} - .
+#' \item{\code{DatNet.gstar}} - .
+#' \item{\code{m.Q.init}} - .
+#' \item{\code{m.Q.starA}} - .
+#' \item{\code{m.Q.starB}} - .
+#' \item{\code{QY.init}} - .
+#' \item{\code{QY.starA}} - .
+#' \item{\code{QY.starB}} - .
+#' \item{\code{nOdata}} - .
+#' \item{\code{p}} - .
+#' }
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(DatNet.ObsP0, DatNet.gstar, ...)}}{...}
+#'   \item{\code{get.gcomp(m.Q.init)}}{...}
+#'   \item{\code{get.tmleA(m.Q.starA, m.h.fit)}}{...}
+#'   \item{\code{get.tmleB(m.Q.starB)}}{...}
+#'   \item{\code{get.fiW()}}{...}
+#' }
 # data.table is used on fiW_Qinit for performing unit-level mean and var evaluation (n-length result)
 #' @import data.table
-## ---------------------------------------------------------------------
-#' @title Class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention gstar.
-#' @docType class
-#' @format An R6 class object.
-#' @name mcEvalPsi
-#' @details Following fields are created during initialization
-#' \itemize{
-#' \item{subset_regs} ...
-#' \item{sA_nms} ...
-#' \item{sW_nms} ...
-#' }
-#' Class for evaluating and storing arbitrary summary measures sVar.
 #' @importFrom assertthat assert_that is.count is.flag
-# @export
+#' @export
 mcEvalPsi <- R6Class(classname = "mcEvalPsi",
   portable = TRUE,
   class = TRUE,

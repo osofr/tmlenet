@@ -41,45 +41,76 @@ NewSummaryModel.contin <- function(reg, DatNet.sWsA.g0, ...) {
 #' R6 class that defines regression models evaluating P(sA|sW), for summary measures (sW,sA)
 #'
 #' This R6 class defines fields and methods for defining all the parameters that control the non-parametric 
-#'  modelling and estimation of multivariate joint conditional probability model P(sA|sW) for summary measures (sA,sW).
-#'  Note that sA can be multivariate and any component of sA[j] can be either binary, categorical or continuous.
-#'  The joint probability for P(sA|sA) = P(sA[1],...,sA[k]|sA) is first factorized as 
-#'  P(sA[1]|sA) * P(sA[2]|sA, sA[1]) * ... * P(sA[k]|sA, sA[1],...,sA[k-1]), 
-#'  where each of these conditional probability models is defined by a new instance of a SummariesModel class
-#'  (and the corresponding instance of a RegressionClass class).
-#'  If sA[j] is binary, the conditional probability for P(sA[j]|sW,sA[1],...,sA[j-1]) is evaluated via logistic regression model.
-#'  When sA[j] is categorical or continuous, its estimation will be controlled with a new instance of 
-#'  the ContinSummaryModel class (and the accompanying instance of a RegressionClass class), which first partitions the range of
-#'  continuous/categorical sA[j] into K bins and corresponding K bin indicators (B_1,...,B_K) and then instantiates K new 
-#'  SummariesModel classes (with their corresponding RegressionClass classes), where each of these K classes now defines a 
-#'  single logistic regression model with binary bin indicator outcome B_j and predictors (sW, sA[1],...,sA[k-1]).
-#'  Thus, the first instance of RegressionClass and SummariesModel classes will automatically 
+#'  modelling and estimation of multivariate joint conditional probability model \code{P(sA|sW)} for summary measures \code{(sA,sW)}.
+#'  Note that sA can be multivariate and any component of \code{sA[j]} can be either binary, categorical or continuous.
+#'  The joint probability for \code{P(sA|sA)} = \code{P(sA[1],...,sA[k]|sA)} is first factorized as
+#'  \code{P(sA[1]|sA) * P(sA[2]|sA, sA[1]) * ... * P(sA[k]|sA, sA[1],...,sA[k-1])}, 
+#'  where each of these conditional probability models is defined by a new instance of a \code{\link{SummariesModel}} class
+#'  (and the corresponding instance of a \code{RegressionClass} class).
+#'  If \code{sA[j]} is binary, the conditional probability for \code{P(sA[j]|sW,sA[1],...,sA[j-1])} is evaluated via logistic regression model.
+#'  When \code{sA[j]} is categorical or continuous, its estimation will be controlled with a new instance of 
+#'  the \code{\link{ContinSummaryModel}} class (and the accompanying instance of a \code{RegressionClass} class), which first partitions the range of
+#'  continuous/categorical \code{sA[j]} into \code{K} bins and corresponding \code{K} bin indicators (\code{B_1,...,B_K}) and then instantiates \code{K} new 
+#'  \code{SummariesModel} classes (with their corresponding \code{RegressionClass} classes), where each of these \code{K} classes now defines a 
+#'  single logistic regression model with binary bin indicator outcome \code{B_j} and predictors (\code{sW, sA[1],...,sA[k-1]}).
+#'  Thus, the first instance of \code{RegressionClass} and \code{SummariesModel} classes will automatically 
 #'  spawn recursive calls to new instances of these classes until the entire tree of binary logistic regressions that defines 
-#'  the joint probability P(sA|sW) is build.
+#'  the joint probability \code{P(sA|sW)} is build.
 #'
 #' @docType class
 #' @format An \code{\link{R6Class}} generator object
 #' @keywords R6 class
 #' @details
 #' \itemize{
-#' \item{NetInd_k} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-#' \item{nF} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-#' \item{nobs} - Number of observations
-#' \item{Kmax} - Maximum number of friends for any observation.
+#' \item{\code{outvar.class}} - Character vector indicating a class of each outcome var: \code{bin} / \code{cont} / \code{cat}.
+#' \item{\code{outvar}} - Character vector of regression outcome variable names.
+#' \item{\code{predvars}} - Either a pool of all character predictors (\code{sW}) or regression-specific predictor names.
+#' \item{{reg_hazard}} - Logical, if TRUE, the joint probability model P(outvar | predvars) is factorized as 
+#'  \\prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard).
+#' \item{\code{subset}} - Subset expression (later evaluated to logical vector in the envir of the data).
+#' \item{\code{ReplMisVal0}} - Logical, if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0).
+#' \item{\code{nbins}} - Integer number of bins used for a continuous outvar, the intervals are defined inside 
+#'  \code{ContinSummaryModel$new()} and then saved in this field.
+#' \item{\code{bin_nms}} - Character vector of column names for bin indicators.
+#' \item{\code{useglm}} - Logical, if TRUE then fit the logistic regression model using \code{\link{glm.fit}},
+#'  if FALSE use \code{\link{speedglm.wfit}}..
+#' \item{\code{parfit}} - Logical, if TRUE then use parallel \code{\link{foreach}} loop to fit and predict binary logistic 
+#'  regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
+#' \item{\code{bin_bymass}} - Logical, for continuous outvar, create bin cutoffs based on equal mass distribution.
+#' \item{\code{bin_bydhist}} - Logical, if TRUE, use dhist approach for bin definitions.  See Denby and Mallows "Variations on the 
+#'  Histogram" (2009)) for more..
+#' \item{\code{max_nperbin}} - Integer, maximum number of observations allowed per one bin.
+#' \item{\code{pool_cont}} - Logical, pool binned continuous outvar observations across bins and only fit only regression model 
+#'  across all bins (adding bin_ID as an extra covaraite)..
+#' \item{\code{outvars_to_pool}} - Character vector of names of the binned continuous outvars, should match \code{bin_nms}.
+#' \item{\code{intrvls.width}} - Named numeric vector of bin-widths (\code{bw_j : j=1,...,M}) for each each bin in \code{self$intrvls}. 
+#'    When \code{sA} is not continuous, \code{intrvls.width} IS SET TO 1. When sA is continuous and this variable \code{intrvls.width} 
+#'    is not here, the intervals are determined inside \code{ContinSummaryModel$new()} and are assigned to this variable as a list, 
+#'    with \code{names(intrvls.width) <- reg$bin_nms}. Can be queried by \code{BinOutModel$predictAeqa()} as: \code{intrvls.width[outvar]}.
+#' \item{\code{intrvls}} - Numeric vector of cutoffs defining the bins or a named list of numeric intervals for \code{length(self$outvar) > 1}.
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(nobs, Kmax = 1)}}{Uses \code{nobs} and \code{Kmax} to instantiate an object of R6 class and pre-allocate memory 
-#'          for the future network ID matrix.}
-#'   \item{\code{makeNetInd.fromIDs(Net_str, IDs_str = NULL, sep = ' ')}}{Build the matrix of network IDs (\code{NetInd_k}) from IDs string vector,
-#'          all friends of one observation \code{i} are located in a string Net_str[i], with two distinct friend IDs of \code{i} 
-#'          separated by character \code{sep}. If \code{IDs_str} is NULL it is assumed that the friends in Net_str are 
-#'          actual row numbers in \code{1:nobs}, otherwise IDs from Net_str will be used for looking up the observation row numbers in \code{IDs_str}.}
-#'   \item{\code{make.nF(NetInd_k = self$NetInd_k, nobs = self$nobs, Kmax = self$Kmax)}}{This method calculates the integer number of 
-#'         friends for each row of the network ID matrix (\code{self$NetInd_k}). The result is assigned to a field \code{self$nF} and 
-#'         is returned invisibly.}
-#'   \item{\code{mat.nF(nFnode)}}{\code{nFnode} - the character name for the number of friends variable that is assigned as a column 
-#'   name to a single column matrix in \code{self$nF}.}
+#'   \item{\code{new(outvar.class = gvars$sVartypes$bin,
+#'                   outvar, predvars, subset, intrvls,
+#'                   ReplMisVal0 = TRUE,
+#'                   useglm = getopt("useglm"),
+#'                   parfit = getopt("parfit"),
+#'                   nbins = getopt("nbins"),
+#'                   bin_bymass = getopt("bin.method")%in%"equal.mass",
+#'                   bin_bydhist = getopt("bin.method")%in%"dhist",
+#'                   max_nperbin = getopt("maxNperBin"),
+#'                   pool_cont = getopt("poolContinVar")}}{Uses the arguments to instantiate an object of R6 class and define the future regression model.}
+#'   \item{\code{ChangeManyToOneRegresssion(k_i, reg)}}{ Take a clone of a parent \code{RegressionClass} (\code{reg}) for \code{length(self$outvar)} regressions
+#'    and set self to a single univariate \code{k_i} regression for outcome \code{self$outvar[[k_i]]}.}
+#'   \item{\code{ChangeOneToManyRegresssions(regs_list)}}{ Take the clone of a parent \code{RegressionClass} for univariate (continuous outvar) regression
+#'     and set self to \code{length(regs_list)} bin indicator outcome regressions.}
+#'   \item{\code{resetS3class()}}{...}
+#' }
+#' @section Active Bindings:
+#' \describe{
+#'   \item{\code{S3class}}{...}
+#'   \item{\code{get.reg}}{...}
 #' }
 #' @export
 RegressionClass <- R6Class("RegressionClass",
@@ -115,9 +146,7 @@ RegressionClass <- R6Class("RegressionClass",
                           parfit = getopt("parfit"),
                           nbins = getopt("nbins"),
                           bin_bymass = getopt("bin.method")%in%"equal.mass",
-                          # bin_bymass = getopt("binByMass"),
                           bin_bydhist = getopt("bin.method")%in%"dhist",
-                          # bin_bydhist = getopt("binBydhist"),
                           max_nperbin = getopt("maxNperBin"),
                           pool_cont = getopt("poolContinVar")
                           ) {
@@ -239,40 +268,47 @@ RegressionClass <- R6Class("RegressionClass",
 
 
 ## ---------------------------------------------------------------------
-# Class for defining, fitting and predicting the probability model P(sA = sa | sW = sw) under g.star or under g.0 for summary measures (sW,sA)
-# Defines and manages the factorization of the joint P(sA = sa | ... ) into reg models sA[j] ~ \bar{sA[j-1]} + sW;
-# Accepts (1) data (DatNet.sWsA) for fitting P(sA|sW), (2) newdata (DatNet.sWsA) for prediction, (3) obsdat.sA (DatNet.sWsA) for getting the likelihood;
-# Figures out reg mdel factorization based on name ordering in (sA_nms, sW_nms);
-# Evaluates subset_exprs in the envirs of data and newdata data.frames
-# Calls BinOutModel$new, assumes each sA[j] is binary in reg (sA[j] ~ \bar{sA[j-1]} + sW);
-## ---------------------------------------------------------------------
 #' R6 class for fitting and predicting model P(sA|sW) under g.star or g.0
 #'
-#' This R6 class Class for defining, fitting and predicting the probability model P(sA = sa | sW = sw) under g_star or under g_0 for summary measures (sW,sA).
+#' This R6 class Class for defining, fitting and predicting the probability model 
+#'  \code{P(sA|sW)} under \code{g_star} or under \code{g_0} for summary measures 
+#'  (\code{sW,sA}). Defines and manages the factorization of the multivariate conditional
+#'  probability model \code{P(sA=sa|...)} into univariate regression models 
+#'  \code{sA[j] ~ sA[j-1] + ... + sA[1] + sW}. The class \code{self$new} method automatically
+#'  figures out the correct joint probability factorization into univariate conditional
+#'  probabilities based on name ordering provided by (\code{sA_nms}, \code{sW_nms}).
+#'  When the outcome variable \code{sA[j]} is binary, this class will automatically call 
+#'  a new instance of \code{\link{BinOutModel}} class.
+#'  Provide \code{self$fit()} function argument \code{data} as a \code{\link{DatNet.sWsA}} class object. 
+#'  This data will be used for fitting the model \code{P(sA|sW)}.
+#'  Provide \code{self$fit()} function argument \code{newdata} (also as \code{DatNet.sWsA} class) for predictions of the type
+#'  \code{P(sA=1|sW=sw)}, where \code{sw} values are coming from \code{newdata} object. 
+#'  Finally, provide \code{self$predictAeqa} function \code{newdata} argument 
+#'  (also \code{DatNet.sWsA} class object) for getting the likelihood predictions \code{P(sA=sa|sW=sw)}, where 
+#'  both, \code{sa} and \code{sw} values are coming from \code{newdata} object.
 #'
 #' @docType class
 #' @format An \code{\link{R6Class}} generator object
 #' @keywords R6 class
 #' @details
 #' \itemize{
-#' \item{NetInd_k} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-#' \item{nF} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-#' \item{nobs} - Number of observations
-#' \item{Kmax} - Maximum number of friends for any observation.
+#' \item{\code{n_regs}} - .
+#' \item{\code{parfit_allowed}} - .
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(nobs, Kmax = 1)}}{Uses \code{nobs} and \code{Kmax} to instantiate an object of R6 class and pre-allocate memory 
-#'          for the future network ID matrix.}
-#'   \item{\code{makeNetInd.fromIDs(Net_str, IDs_str = NULL, sep = ' ')}}{Build the matrix of network IDs (\code{NetInd_k}) from IDs string vector,
-#'          all friends of one observation \code{i} are located in a string Net_str[i], with two distinct friend IDs of \code{i} 
-#'          separated by character \code{sep}. If \code{IDs_str} is NULL it is assumed that the friends in Net_str are 
-#'          actual row numbers in \code{1:nobs}, otherwise IDs from Net_str will be used for looking up the observation row numbers in \code{IDs_str}.}
-#'   \item{\code{make.nF(NetInd_k = self$NetInd_k, nobs = self$nobs, Kmax = self$Kmax)}}{This method calculates the integer number of 
-#'         friends for each row of the network ID matrix (\code{self$NetInd_k}). The result is assigned to a field \code{self$nF} and 
-#'         is returned invisibly.}
-#'   \item{\code{mat.nF(nFnode)}}{\code{nFnode} - the character name for the number of friends variable that is assigned as a column 
-#'   name to a single column matrix in \code{self$nF}.}
+#'   \item{\code{new(reg, ...)}}{...}
+#'   \item{\code{length}}{...}
+#'   \item{\code{getPsAsW.models}}{...}
+#'   \item{\code{getcumprodAeqa}}{...}
+#'   \item{\code{copy.fit(SummariesModel)}}{...}
+#'   \item{\code{fit(data)}}{...}
+#'   \item{\code{predict(newdata)}}{...}
+#'   \item{\code{predictAeqa(newdata, ...)}}{...}
+#' }
+#' @section Active Bindings:
+#' \describe{
+#'   \item{\code{wipe.alldat}}{...}
 #' }
 #' @importFrom foreach foreach
 #' @export
@@ -408,8 +444,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         private$PsAsW.models[[k_i]]$wipe.alldat
       }
       return(self)
-    },
-		actplhold = function() {} # placeholder, not used
+    }
 	),
 
 	private = list(
@@ -420,44 +455,41 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 )
 
 ## ---------------------------------------------------------------------
-# R6 clas inherits from SummariesModel, fitting for continuous outcome sA[j] in sA
-# Called from SummariesModel for contin sA[j]. Gets passed new subset definitions, e.g., (!mis(Bin_sA[j]_i))
-# Defines the fitting algorithm for probability sA[j] ~ \bar{sA[j-1]} + sW
-# Reconstructs the likelihood P(sA[j]=sa[j]|sW)
-# Continuous sA[j] is discretized using data-adaptive bin defintions
-# then estimates regressions for the hazard Bin_sA[j][i] ~ \bar{sA[j-1]} + sW.
-# I.e., we estimate the probability that continuous sA[j] falls into bin Bin_sA[j]_i,
-# given that sA[j] is not in bins Bin_sA[1]_1, ..., Bin_sA[1]_{i-1}.
-# The dataset of discretized summary measures (BinsA[j]_1,...,BinsA[j]_M) is created 
-# while discretizing sA[j] into M bins.
-## ---------------------------------------------------------------------
-#' R6 class for fitting and predicting model P(sA[j]|sW,...) under g.star or g.0 for univariate continuous summary measure sA[j]
+#' R6 class for fitting and predicting joint probability for a univariate continuous summary measure sA[j]
 #'
-#' This R6 class Class for defining, fitting and predicting the probability model P(sA = sa | sW = sw) under g_star or under g_0 for summary measures (sW,sA).
+#' This R6 class defines and fits a conditional probability model \code{P(sA[j]|sW,...)} for a univariate 
+#'  continuous summary measure \code{sA[j]}. This class inherits from \code{\link{SummariesModel}} class.
+#'  Defines the fitting algorithm for a regression model \code{sA[j] ~ sW + ...}. 
+#'  Reconstructs the likelihood \code{P(sA[j]=sa[j]|sW,...)} afterwards.
+#'  Continuous \code{sA[j]} is discretized using either of the 3 interval cutoff methods, 
+#'  defined via \code{\link{RegressionClass}} object \code{reg} passed to this class constructor.
+#'  The fitting algorithm estimates the binary regressions for hazard \code{Bin_sA[j][i] ~ sW}, 
+#'  i.e., the probability that continuous \code{sA[j]} falls into bin \code{i}, \code{Bin_sA[j]_i},
+#'  given that \code{sA[j]} does not belong to any prior bins \code{Bin_sA[j]_1, ..., Bin_sA[j]_{i-1}}.
+#'  The dataset of discretized summary measures (\code{BinsA[j]_1,...,BinsA[j]_M}) is created 
+#'  inside the passed \code{data} or \code{newdata} object while discretizing \code{sA[j]} into \code{M} bins.
 #'
 #' @docType class
 #' @format An \code{\link{R6Class}} generator object
 #' @keywords R6 class
 #' @details
 #' \itemize{
-#' \item{NetInd_k} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-#' \item{nF} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-#' \item{nobs} - Number of observations
-#' \item{Kmax} - Maximum number of friends for any observation.
+#' \item{\code{reg}} - .
+#' \item{\code{outvar}} - .
+#' \item{\code{intrvls}} - .
+#' \item{\code{intrvls.width}} - .
+#' \item{\code{bin_weights}} - .
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(nobs, Kmax = 1)}}{Uses \code{nobs} and \code{Kmax} to instantiate an object of R6 class and pre-allocate memory 
-#'          for the future network ID matrix.}
-#'   \item{\code{makeNetInd.fromIDs(Net_str, IDs_str = NULL, sep = ' ')}}{Build the matrix of network IDs (\code{NetInd_k}) from IDs string vector,
-#'          all friends of one observation \code{i} are located in a string Net_str[i], with two distinct friend IDs of \code{i} 
-#'          separated by character \code{sep}. If \code{IDs_str} is NULL it is assumed that the friends in Net_str are 
-#'          actual row numbers in \code{1:nobs}, otherwise IDs from Net_str will be used for looking up the observation row numbers in \code{IDs_str}.}
-#'   \item{\code{make.nF(NetInd_k = self$NetInd_k, nobs = self$nobs, Kmax = self$Kmax)}}{This method calculates the integer number of 
-#'         friends for each row of the network ID matrix (\code{self$NetInd_k}). The result is assigned to a field \code{self$nF} and 
-#'         is returned invisibly.}
-#'   \item{\code{mat.nF(nFnode)}}{\code{nFnode} - the character name for the number of friends variable that is assigned as a column 
-#'   name to a single column matrix in \code{self$nF}.}
+#'   \item{\code{new(reg, DatNet.sWsA.g0, DatNet.sWsA.gstar, ...)}}{...}
+#'   \item{\code{fit(data)}}{...}
+#'   \item{\code{predict(newdata)}}{...}
+#'   \item{\code{predictAeqa(newdata)}}{...}
+#' }
+#' @section Active Bindings:
+#' \describe{
+#'   \item{\code{cats}}{...}
 #' }
 #' @export
 ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
@@ -581,8 +613,8 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
     },
 
     # TO DO: rename to:
-    # predictP_1 = function(newdata, response = FALSE) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
-    predict = function(newdata, response = FALSE) {
+    # predictP_1 = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
+    predict = function(newdata) {
       if (missing(newdata)) {
         stop("must provide newdata")
       }

@@ -144,31 +144,33 @@ parse.sVar.out <- function(sVar.idx, self) {
 
 
 ## ---------------------------------------------------------------------
-#' R6 class for storing, parsing and evaluating user-specified summary measures (in \code{sVar.exprs})
+#' R6 class for parsing and evaluating user-specified summary measures (in \code{sVar.exprs})
 #'
 #' This R6 class can parse and evaluate (given the input data) the summary measures defined with functions 
 #'  \code{\link{def.sW}} and \code{\link{def.sA}}. 
 #'  The summary measure expressions (stored in \code{sVar.exprs}) are evaluated in the environment of the input data.frame.
+#'  Note that the resulting summary measures are never stored inside this class, 
+#'  the data is stored only in \code{\link{DatNet}} and \code{\link{DatNet.sWsA}} R6 classes.
 #'
 #' @docType class
 #' @format An \code{\link{R6Class}} generator object
 #' @keywords R6 class
 #' @details
 #' \itemize{
-#' \item{data.df} - Input data frame that will be used for evaluating the summary measure expressions.
-#' \item{Kmax} - Maximum number of friends for any observation.
-#' \item{netind_cl} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
-#' \item{ReplMisVal0} - A logical vector that captures args \code{replaceNAw0=TRUE/FALSE} in functions \code{def.sW}, \code{def.sA}.
+#' \item{\code{data.df}} - Input data frame that will be used for evaluating the summary measure expressions.
+#' \item{\code{Kmax}} - Maximum number of friends for any observation.
+#' \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
+#' \item{\code{ReplMisVal0}} - A logical vector that captures args \code{replaceNAw0=TRUE/FALSE} in functions \code{def.sW}, \code{def.sA}.
 #'  If \code{TRUE} for a particular summary measure in \code{sVar.exprs} then all missing network \code{VarNode} 
 #'  values (when \code{nF[i] < Kmax}) will get replaced with \code{tmlenet:::gvars$misXreplace} (default is 0).
-#' \item{sVar.misXreplace} - Maximum number of friends for any observation.
-#' \item{sVar.noname} - Vector, for each \code{TRUE}, \code{sVar.expr[[idx]]} ignores user-supplied name and generates names automatically.
-#' \item{sVar.exprs} - Deparsed summary measure expressions expressions (character vector).
-#' \item{sVar.expr.names} - User-provided names for each summary measure in \code{sVar.expr}.
-#' \item{sVar.names.map} - Map of the summary measure names given by the user to its actual column names
+#' \item{\code{sVar.misXreplace}} - Maximum number of friends for any observation.
+#' \item{\code{sVar.noname}} - Vector, for each \code{TRUE}, \code{sVar.expr[[idx]]} ignores user-supplied name and generates names automatically.
+#' \item{\code{sVar.exprs}} - Deparsed summary measure expressions expressions (character vector).
+#' \item{\code{sVar.expr.names}} - User-provided names for each summary measure in \code{sVar.expr}.
+#' \item{\code{sVar.names.map}} - Map of the summary measure names given by the user to its actual column names
 #'  (one name can represent a multivariate summary measure).
-#' \item{type} - Type of the summary measure, sW or sA, determined by the calling functions \code{def.sW} or \code{def.sA}.
-#' \item{user.env} - Captured user-environment from which \code{def.sW} or \code{def.sA} was called.
+#' \item{\code{type}} - Type of the summary measure, sW or sA, determined by the calling functions \code{def.sW} or \code{def.sA}.
+#' \item{\code{user.env}} - Captured user-environment from which \code{def.sW} or \code{def.sA} was called.
 #' }
 #' @section Methods:
 #' \describe{

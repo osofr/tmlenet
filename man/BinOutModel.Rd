@@ -17,10 +17,10 @@ This R6 class can request, store and manage the design matrix Xmat, as well as t
 }
 \details{
 \itemize{
-\item{cont.sVar.flag} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-\item{bw.j} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-\item{glmfitclass} - Number of observations
-\item{bindat} - Maximum number of friends for any observation.
+\item{cont.sVar.flag} - Is the original outcome variable continuous?
+\item{bw.j} - Bin width (interval length) for an outcome that is a bin indicator of a discretized continous outcome.
+\item{glmfitclass} - Controls which package will be used for performing model fits (\code{glm} or \code{speedglm}).
+\item{bindat} - Pointer to an instance of \code{BinDat} class that contains the data.
 }
 }
 \section{Methods}{

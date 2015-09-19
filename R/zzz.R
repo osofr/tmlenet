@@ -80,14 +80,8 @@ tmlenet_options <- function(useglm = FALSE,
   bin.method <- bin.method[1L]
 
   if (bin.method %in% "equal.len") {
-    # gvars$binByMass <- FALSE
-    # gvars$binBydhist <- FALSE
   } else if (bin.method %in% "equal.mass") {
-    # gvars$binByMass <- TRUE
-    # gvars$binBydhist <- FALSE
   } else if (bin.method %in% "dhist") {
-    # gvars$binByMass <- FALSE
-    # gvars$binBydhist <- TRUE
   } else {
     stop("bin.method argument must be either 'equal.len', 'equal.mass' or 'dhist'")
   }
@@ -98,8 +92,6 @@ tmlenet_options <- function(useglm = FALSE,
     parfit = parfit,
     nbins = nbins,
     maxncats = maxncats,
-    # binByMass = binByMass,
-    # binBydhist = binBydhist,
     poolContinVar = poolContinVar,
     maxNperBin = maxNperBin
   )

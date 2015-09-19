@@ -3,31 +3,67 @@
 \docType{class}
 \name{DatNet}
 \alias{DatNet}
-\title{Class for storing netW (or netA) (network variables for all W (or A) variables)}
-\format{An R6 class object.}
+\title{R6 class for storing and managing already evaluated summary measures \code{sW} or \code{sA} (but not both at the same time).}
+\format{An \code{\link{R6Class}} generator object}
 \usage{
 DatNet
 }
 \description{
-Class for storing netW (or netA) (network variables for all W (or A) variables)
+Class for evaluating and storing arbitrary summary measures sVar.
+ The summary measures are evaluated based on the user-specified sVar expressions in sVar.object (sW or sA),
+ in the environment of the input data.frame (Odata).
+ The evaluated summary measures from sVar.object are stored as a matrix (self$mat.sVar).
+ Contains methods for replacing missing values with default in gvars$misXreplace.
+ Also contains method for detecting /setting sVar variable type (binary, categor, contin).
+ For continous sVar this class provides methods for detecting / setting bin intervals,
+ normalization, disretization and construction of bin indicators.
 }
 \details{
-Following fields are created during initialization
 \itemize{
-\item{Kmax} ...
-\item{netind_cl} ...
-\item{subset_regs} ...
-\item{sA_nms} ...
-\item{sW_nms} ...
-\item{Kmax} ...
+\item{\code{Kmax}} - Maximum number of friends for any observation.
+\item{\code{addnFnode}} - Flag to add number of friends as an additional vector to the matrix of existing summary measures.
+\item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
+\item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
+\item{\code{ord.sVar}} - Ordinal (categorical) transformation of a continous covariate \code{sVar}.
+\item{\code{active.bin.sVar}} - Currently discretized continous \code{sVar} column in data matrix \code{mat.sVar}.
+\item{\code{Odata}} - Pointer to the input (observed) data frame.
+\item{\code{mat.bin.sVar}} - Matrix of the binary indicators for discretized continuous covariate \code{active.bin.sVar}.
+\item{\code{mat.sVar}} - The evaluated matrix of summary measures for \code{sW} or \code{sA}.
+\item{\code{sVar.object}} - Instance of the \code{Define_sVar} class which contains the summary measure expressions for \code{sW} or \code{sA}.
+\item{\code{type.sVar}} - named list of length \code{ncol(mat.sVar)} with \code{sVar} variable types: "binary"/"categor"/"contin".
+\item{\code{norm.c.sVars}} - \code{flag = TRUE} if continous covariates need to be normalized.
+\item{\code{nOdata}} - number of observations in the observed data frame.
 }
-Class for evaluating and storing arbitrary summary measures sVar.
-The summary measures are evaluated based on the user-specified sVar expressions in sVar.object (sW or sA),
-in the environment of the input data.frame (Odata).
-The evaluated summary measures from sVar.object are stored as a matrix (self$mat.sVar).
-Contains methods for replacing missing values with default in gvars$misXreplace.
-Also contains method for detecting /setting sVar variable type (binary, categor, contin).
-For continous sVar this class provides methods for detecting / setting bin intervals, normalization, disretization and construction of bin indicators.
 }
-\keyword{datasets}
+\section{Methods}{
+
+\describe{
+  \item{\code{new(netind_cl, nodes, nFnode, addnFnode = FALSE, ...)}}{...}
+  \item{\code{make.sVar(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE)}}{...}
+  \item{\code{def_types_sVar(type.sVar = NULL)}}{...}
+  \item{\code{norm_c_sVars()}}{...}
+  \item{\code{fixmiss_sVar()}}{...}
+  \item{\code{norm.sVar(name.sVar)}}{...}
+  \item{\code{set.sVar(name.sVar, new.sVar)}}{...}
+  \item{\code{get.sVar(name.sVar)}}{...}
+  \item{\code{set.sVar.type(name.sVar, new.type)}}{...}
+  \item{\code{get.sVar.type(name.sVar)}}{...}
+}
+}
+
+\section{Active Bindings}{
+
+\describe{
+   \item{\code{names.sVar}}{...}
+   \item{\code{names.c.sVar}}{...}
+   \item{\code{ncols.sVar}}{...}
+   \item{\code{dat.sVar}}{...}
+   \item{\code{dat.bin.sVar}}{...}
+   \item{\code{emptydat.sVar}}{...}
+   \item{\code{emptydat.bin.sVar}}{...}
+   \item{\code{nodes}}{...}
+}
+}
+\keyword{R6}
+\keyword{class}
 

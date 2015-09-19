@@ -3,36 +3,47 @@
 \docType{class}
 \name{ContinSummaryModel}
 \alias{ContinSummaryModel}
-\title{R6 class for fitting and predicting model P(sA[j]|sW,...) under g.star or g.0 for univariate continuous summary measure sA[j]}
+\title{R6 class for fitting and predicting joint probability for a univariate continuous summary measure sA[j]}
 \format{An \code{\link{R6Class}} generator object}
 \usage{
 ContinSummaryModel
 }
 \description{
-This R6 class Class for defining, fitting and predicting the probability model P(sA = sa | sW = sw) under g_star or under g_0 for summary measures (sW,sA).
+This R6 class defines and fits a conditional probability model \code{P(sA[j]|sW,...)} for a univariate
+ continuous summary measure \code{sA[j]}. This class inherits from \code{\link{SummariesModel}} class.
+ Defines the fitting algorithm for a regression model \code{sA[j] ~ sW + ...}.
+ Reconstructs the likelihood \code{P(sA[j]=sa[j]|sW,...)} afterwards.
+ Continuous \code{sA[j]} is discretized using either of the 3 interval cutoff methods,
+ defined via \code{\link{RegressionClass}} object \code{reg} passed to this class constructor.
+ The fitting algorithm estimates the binary regressions for hazard \code{Bin_sA[j][i] ~ sW},
+ i.e., the probability that continuous \code{sA[j]} falls into bin \code{i}, \code{Bin_sA[j]_i},
+ given that \code{sA[j]} does not belong to any prior bins \code{Bin_sA[j]_1, ..., Bin_sA[j]_{i-1}}.
+ The dataset of discretized summary measures (\code{BinsA[j]_1,...,BinsA[j]_M}) is created
+ inside the passed \code{data} or \code{newdata} object while discretizing \code{sA[j]} into \code{M} bins.
 }
 \details{
 \itemize{
-\item{NetInd_k} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-\item{nF} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-\item{nobs} - Number of observations
-\item{Kmax} - Maximum number of friends for any observation.
+\item{\code{reg}} - .
+\item{\code{outvar}} - .
+\item{\code{intrvls}} - .
+\item{\code{intrvls.width}} - .
+\item{\code{bin_weights}} - .
 }
 }
 \section{Methods}{
 
 \describe{
-  \item{\code{new(nobs, Kmax = 1)}}{Uses \code{nobs} and \code{Kmax} to instantiate an object of R6 class and pre-allocate memory
-         for the future network ID matrix.}
-  \item{\code{makeNetInd.fromIDs(Net_str, IDs_str = NULL, sep = ' ')}}{Build the matrix of network IDs (\code{NetInd_k}) from IDs string vector,
-         all friends of one observation \code{i} are located in a string Net_str[i], with two distinct friend IDs of \code{i}
-         separated by character \code{sep}. If \code{IDs_str} is NULL it is assumed that the friends in Net_str are
-         actual row numbers in \code{1:nobs}, otherwise IDs from Net_str will be used for looking up the observation row numbers in \code{IDs_str}.}
-  \item{\code{make.nF(NetInd_k = self$NetInd_k, nobs = self$nobs, Kmax = self$Kmax)}}{This method calculates the integer number of
-        friends for each row of the network ID matrix (\code{self$NetInd_k}). The result is assigned to a field \code{self$nF} and
-        is returned invisibly.}
-  \item{\code{mat.nF(nFnode)}}{\code{nFnode} - the character name for the number of friends variable that is assigned as a column
-  name to a single column matrix in \code{self$nF}.}
+  \item{\code{new(reg, DatNet.sWsA.g0, DatNet.sWsA.gstar, ...)}}{...}
+  \item{\code{fit(data)}}{...}
+  \item{\code{predict(newdata)}}{...}
+  \item{\code{predictAeqa(newdata)}}{...}
+}
+}
+
+\section{Active Bindings}{
+
+\describe{
+  \item{\code{cats}}{...}
 }
 }
 \keyword{R6}

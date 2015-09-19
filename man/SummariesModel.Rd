@@ -9,30 +9,47 @@
 SummariesModel
 }
 \description{
-This R6 class Class for defining, fitting and predicting the probability model P(sA = sa | sW = sw) under g_star or under g_0 for summary measures (sW,sA).
+This R6 class Class for defining, fitting and predicting the probability model
+ \code{P(sA|sW)} under \code{g_star} or under \code{g_0} for summary measures
+ (\code{sW,sA}). Defines and manages the factorization of the multivariate conditional
+ probability model \code{P(sA=sa|...)} into univariate regression models
+ \code{sA[j] ~ sA[j-1] + ... + sA[1] + sW}. The class \code{self$new} method automatically
+ figures out the correct joint probability factorization into univariate conditional
+ probabilities based on name ordering provided by (\code{sA_nms}, \code{sW_nms}).
+ When the outcome variable \code{sA[j]} is binary, this class will automatically call
+ a new instance of \code{\link{BinOutModel}} class.
+ Provide \code{self$fit()} function argument \code{data} as a \code{\link{DatNet.sWsA}} class object.
+ This data will be used for fitting the model \code{P(sA|sW)}.
+ Provide \code{self$fit()} function argument \code{newdata} (also as \code{DatNet.sWsA} class) for predictions of the type
+ \code{P(sA=1|sW=sw)}, where \code{sw} values are coming from \code{newdata} object.
+ Finally, provide \code{self$predictAeqa} function \code{newdata} argument
+ (also \code{DatNet.sWsA} class object) for getting the likelihood predictions \code{P(sA=sa|sW=sw)}, where
+ both, \code{sa} and \code{sw} values are coming from \code{newdata} object.
 }
 \details{
 \itemize{
-\item{NetInd_k} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-\item{nF} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-\item{nobs} - Number of observations
-\item{Kmax} - Maximum number of friends for any observation.
+\item{\code{n_regs}} - .
+\item{\code{parfit_allowed}} - .
 }
 }
 \section{Methods}{
 
 \describe{
-  \item{\code{new(nobs, Kmax = 1)}}{Uses \code{nobs} and \code{Kmax} to instantiate an object of R6 class and pre-allocate memory
-         for the future network ID matrix.}
-  \item{\code{makeNetInd.fromIDs(Net_str, IDs_str = NULL, sep = ' ')}}{Build the matrix of network IDs (\code{NetInd_k}) from IDs string vector,
-         all friends of one observation \code{i} are located in a string Net_str[i], with two distinct friend IDs of \code{i}
-         separated by character \code{sep}. If \code{IDs_str} is NULL it is assumed that the friends in Net_str are
-         actual row numbers in \code{1:nobs}, otherwise IDs from Net_str will be used for looking up the observation row numbers in \code{IDs_str}.}
-  \item{\code{make.nF(NetInd_k = self$NetInd_k, nobs = self$nobs, Kmax = self$Kmax)}}{This method calculates the integer number of
-        friends for each row of the network ID matrix (\code{self$NetInd_k}). The result is assigned to a field \code{self$nF} and
-        is returned invisibly.}
-  \item{\code{mat.nF(nFnode)}}{\code{nFnode} - the character name for the number of friends variable that is assigned as a column
-  name to a single column matrix in \code{self$nF}.}
+  \item{\code{new(reg, ...)}}{...}
+  \item{\code{length}}{...}
+  \item{\code{getPsAsW.models}}{...}
+  \item{\code{getcumprodAeqa}}{...}
+  \item{\code{copy.fit(SummariesModel)}}{...}
+  \item{\code{fit(data)}}{...}
+  \item{\code{predict(newdata)}}{...}
+  \item{\code{predictAeqa(newdata, ...)}}{...}
+}
+}
+
+\section{Active Bindings}{
+
+\describe{
+  \item{\code{wipe.alldat}}{...}
 }
 }
 \keyword{R6}

@@ -1,10 +1,6 @@
 #-----------------------------------------------------------------------------
 # TO DO:  (Low priority) Consider merging these two classes into one (BinDat & BinOutModel)
 #-----------------------------------------------------------------------------
-
-# logitlinkinv <- function (eta) .Call(stats:::"C_logit_linkinv", eta) # glm logitlink inverse fun
-# logitlinkinv <- function (eta) logit_linkinv(eta) # cpp version of the glm logitlink inverse fun
-
 logisfit <- function(datsum_obj) UseMethod("logisfit") # Generic for fitting the logistic model
 
 # S3 method for glm binomial family fit, takes BinDat data object:
@@ -142,16 +138,16 @@ Abstract_BinDat <- R6Class(classname = "Abstract_BinDat",
 #' @keywords R6 class
 #' @details
 #' \itemize{
-#' \item{bin_names} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-#' \item{ID} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-#' \item{pooled_bin_name} - Number of observations
-#' \item{nbins} - Maximum number of friends for any observation.
-#' \item{outvar} - Maximum number of friends for any observation.
-#' \item{predvars} - Maximum number of friends for any observation.
-#' \item{pool_cont} - Maximum number of friends for any observation.
-#' \item{outvars_to_pool} - Maximum number of friends for any observation.
-#' \item{subset_expr} - Maximum number of friends for any observation.
-#' \item{subset_idx} - Maximum number of friends for any observation.
+#' \item{bin_names} - Names of the bins.
+#' \item{ID} - Vector of observation IDs, \code{1:n}, used for pooling.
+#' \item{pooled_bin_name} - Original name of the continuous covariate that was discretized into bins and then pooled.
+#' \item{nbins} - Number of bins.
+#' \item{outvar} - Outcome name.
+#' \item{predvars} - Predictor names.
+#' \item{pool_cont} - Perform pooling of bins?
+#' \item{outvars_to_pool} - Outcome bin indicators to pool?
+#' \item{subset_expr} - Defines the subset which would be used for fitting this model (logical, expression or indices).
+#' \item{subset_idx} - Subset \code{subset_expr} converted to logical vector.
 #' }
 #' @section Methods:
 #' \describe{
@@ -408,10 +404,10 @@ BinDat <- R6Class(classname = "BinDat",
 #' @keywords R6 class
 #' @details
 #' \itemize{
-#' \item{cont.sVar.flag} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-#' \item{bw.j} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-#' \item{glmfitclass} - Number of observations
-#' \item{bindat} - Maximum number of friends for any observation.
+#' \item{cont.sVar.flag} - Is the original outcome variable continuous?
+#' \item{bw.j} - Bin width (interval length) for an outcome that is a bin indicator of a discretized continous outcome.
+#' \item{glmfitclass} - Controls which package will be used for performing model fits (\code{glm} or \code{speedglm}).
+#' \item{bindat} - Pointer to an instance of \code{BinDat} class that contains the data.
 #' }
 #' @section Methods:
 #' \describe{

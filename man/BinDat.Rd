@@ -13,16 +13,16 @@ BinDat
 }
 \details{
 \itemize{
-\item{bin_names} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-\item{ID} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-\item{pooled_bin_name} - Number of observations
-\item{nbins} - Maximum number of friends for any observation.
-\item{outvar} - Maximum number of friends for any observation.
-\item{predvars} - Maximum number of friends for any observation.
-\item{pool_cont} - Maximum number of friends for any observation.
-\item{outvars_to_pool} - Maximum number of friends for any observation.
-\item{subset_expr} - Maximum number of friends for any observation.
-\item{subset_idx} - Maximum number of friends for any observation.
+\item{bin_names} - Names of the bins.
+\item{ID} - Vector of observation IDs, \code{1:n}, used for pooling.
+\item{pooled_bin_name} - Original name of the continuous covariate that was discretized into bins and then pooled.
+\item{nbins} - Number of bins.
+\item{outvar} - Outcome name.
+\item{predvars} - Predictor names.
+\item{pool_cont} - Perform pooling of bins?
+\item{outvars_to_pool} - Outcome bin indicators to pool?
+\item{subset_expr} - Defines the subset which would be used for fitting this model (logical, expression or indices).
+\item{subset_idx} - Subset \code{subset_expr} converted to logical vector.
 }
 }
 \section{Methods}{

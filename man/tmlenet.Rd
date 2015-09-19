@@ -88,8 +88,8 @@ Currently available estimators are:
  \item \code{tmle} - Either weighted regression intercept-based TMLE (\code{tmle.intercept} - the default)
  with weights \code{h_gstar/h_gN} or
  covariate-based unweighted TMLE (\code{tmle.covariate}) that uses the covariate \code{h_gstar/h_gN}.
- \item \code{iptw} - Efficient IPTW based on weights h_gstar/h_gN.
- \item \code{gcomp} - Parametric G-computation-based substitution estimator.
+ \item \code{h_iptw} - Efficient IPTW based on weights h_gstar/h_gN.
+ \item \code{gcomp} - Parametric G-computation substitution estimator.
 }
 }
 \description{
@@ -100,20 +100,6 @@ Estimate the average network effect among dependent units with known network str
 }
 \section{Details}{
 
-
-(NOT IMPLEMENTED) When \code{sW} is missing, by default \code{sW} is constructed as follows.
- For each \code{"W"} in \code{Wnodes}, add a vector \code{data[,"W"]} as well as all friends covariate values of
- \code{"W"} to \code{sW} by running \code{netW = def.sW(W[[0:Kmax]], noname = TRUE)}.
- For each \code{"W"} in \code{Wnode}, a vector of \code{"W"} values of the first friend of observations
- \code{i} = 1,...,\code{nrow(data)} will be created and named \code{"W_netF1"}
- (i.e., variable "W_netF1" is constructed as def.sW(W_netF1 = W[[1]])).
- Similarly, the vector of "W" values of the jth friend for observations \code{i} = 1, ..., \code{nrow(data)}
- will be created and named "W_netFj", for j from 1 to \code{Kmax}, with all \code{W_netFj} then being added to
- \code{sW}.
-
-(NOT IMPLEMENTED) Similarly, when \code{sA} is missing, it is constructed by running
- \code{def.sW(netA = A[[0:Kmax]], noname = TRUE)} (assuming \code{"A"} is the value of \code{Anode} in \code{data}),
- which combines the column \code{data[,"A"]} with all the friends treatment assignments of variable "A".
 
 Note that when observation \code{i} has only \code{j-1} friends, the i's value of \code{"W_netFj"} is
  automatically set to \code{NA}.
@@ -150,8 +136,8 @@ Additional optional parameters that can be passed inside a named list \code{optP
  \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
  \item \code{n_MCsims} - Number of Monte-Carlo simulations to perform when evaluating P(sA | sW) under gstar and
  f_g0 (if specified) and while evaluating the target parameter estimator under gstar;
- \item \code{family} - Family specification for regression models, defaults to binomial. CURRENTLY ONLY BINOMIAL
- FAMILY IS IMPLEMENTED.
+ \item \code{family} - Family specification for regression models, defaults to binomial (CURRENTLY ONLY BINOMIAL
+ FAMILY IS IMPLEMENTED).
 \item \code{f_g0} - A function for generating true treatment mechanism A, when it is known (for example in a
  randomized trial). Used only when estimating P(sA | sW) under g0 by sampling large vector of A
  (of length n*n_MCsims) from \code{f_g0};

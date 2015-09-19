@@ -17,15 +17,27 @@
 #------------------------------------
 # TO DO LIST:
 #------------------------------------
-  # *) Unify interface for sA/sW specification with simcausal
-    # - replaceNAw0
-    # - automatic names
-    # - summary functions (rowMeans() in tmlenet, but mean() in simcausal)
-  # *) (11/05/14) Make as. var estimates to be at least \\sum{(D^*^2)(O_i)}, i.e. lower bounded by as. var in iid case,
-  #     ... since there is no reason to expect that more information will be available for dependent units than there is for indep. units
   # *) Implement data-adaptive weight truncation wrt minimization of MSE (taking max of 5% weight of total as truth)
-  # *) Implement pooling when estimating P(sA[j]|sW) for continous sA[j]
   # *) Allow SL to fit Q_N, g_N and h (i.e P(A_j|A_{1},..,A_{j-1}, W_i\\inF_j))
+#----------------------------------------------------------------------------------
+# Input checks:
+#----------------------------------------------------------------------------------
+# todo 58 (tmlenet, Q.sVars, g.sVars) +0: Check that outvars & predvars in Q.sVars & g.sVars actually exist in sW, sA
+# Currently, if sW,sA doesn't exist it will not be included, without any warning/message.
+#todo 8 (tmlenet) +0: check all names exist in data (Anode, Wnodes, Ynode, etc...)
+#todo 11 (tmlenet) +0: Wnodes & Anode are no longer needed if sW, sA are provided, give a warning that Wnodes, Anodes will be ignored?
+#----------------------------------------------------------------------------------
+#todo 52 (tmlenet) +0: Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
+  # When sW / sA are just lists of character vectors need to capture the calling env and call Define_sVar constructor:
+    # user.env <- parent.frame()
+    # user.env_l <- list(user.env = user.env)
+    # sW <- do.call(Define_sVar$new, c(sW, list(type = "sW"), user.env_l))
+    # sW.gstar <- do.call(Define_sVar$new, c(sW.gstar, list(type = "sW.gstar"), user.env_l))
+    # sA <- do.call(Define_sVar$new, c(sA, list(type = "sA"), user.env_l))  
+#todo 53 (tmlenet) +0: If no sVars were defined (default), use netW (Wnode[[0:Kmax]]) and netA for sVars (Anode[[0:Kmax]])
+#todo 54 (tmlenet) +0: Check all sVar names are unique
+#---------------------------------------------------------------------------------
+
 
 #-----------------------------------------------------------------------------
 # Class Membership Tests
@@ -149,7 +161,6 @@ RhsVars <- function(f) {
 
 #---------------------------------------------------------------------------------
 # Estimate h_bar under g_0 and g* given observed data and vector of c^Y's data is an DatNet.sWsA object
-# #todo 22 (get_all_ests) +0: rename get_all_ests into fit.param.fluct
 #---------------------------------------------------------------------------------
 get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   #---------------------------------------------------------------------------------
@@ -485,9 +496,6 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  when NULL (default) the same regression formula as in hform will be used. See Details.
 # @param gform  (Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all
 # friends treatments, P(A_i, A_{F_i} | W). See Details.
-# @param Qform.depr (DEPRECATED)
-# @param hform.depr (DEPRECATED)
-# @param gform.depr (DEPRECATED)
 # @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
 # @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
 #' @param verbose Set to \code{TRUE} to print all messages
@@ -498,8 +506,8 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 # assigned A (alternative to AnodeDET)
 #((NOT IMPLEMENTED)) @param YnodeDETfun function that evaluates to TRUE for observations with deterministically
 # assigned Y (alternative to YnodeDET)
-#((NOT IMPLEMENTED)) @param Q.SL.library SuperLearner libraries for outcome, Q (NOT IMPLEMENTED)
-#((NOT IMPLEMENTED)) @param g.SL.library SuperLearner libraries for treatment mechanism, g (NOT IMPLEMENTED)
+#((NOT IMPLEMENTED)) @param Q.SL.library SuperLearner libraries for outcome, Q
+#((NOT IMPLEMENTED)) @param g.SL.library SuperLearner libraries for treatment mechanism, g
 #((NOT IMPLEMENTED)) @param h_f.g0_args Additional arguments to be passed to f_g0
 #((NOT IMPLEMENTED)) @param h_user_fcn User supplied function to calculate the clever covariate, h
 #((NOT IMPLEMENTED)) @param h_logit_sep_k Flag for fitting a separate logistic regression for each strata of nFnode,
@@ -507,20 +515,20 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #' 
 #' @section Details:
 #' 
-#' (NOT IMPLEMENTED) When \code{sW} is missing, by default \code{sW} is constructed as follows. 
-#'  For each \code{"W"} in \code{Wnodes}, add a vector \code{data[,"W"]} as well as all friends covariate values of
-#'  \code{"W"} to \code{sW} by running \code{netW = def.sW(W[[0:Kmax]], noname = TRUE)}.
-#'  For each \code{"W"} in \code{Wnode}, a vector of \code{"W"} values of the first friend of observations
-#'  \code{i} = 1,...,\code{nrow(data)} will be created and named \code{"W_netF1"} 
-#'  (i.e., variable "W_netF1" is constructed as def.sW(W_netF1 = W[[1]])).
-#'  Similarly, the vector of "W" values of the jth friend for observations \code{i} = 1, ..., \code{nrow(data)}
-#'  will be created and named "W_netFj", for j from 1 to \code{Kmax}, with all \code{W_netFj} then being added to
-#'  \code{sW}.
-#' 
-#' (NOT IMPLEMENTED) Similarly, when \code{sA} is missing, it is constructed by running
-#'  \code{def.sW(netA = A[[0:Kmax]], noname = TRUE)} (assuming \code{"A"} is the value of \code{Anode} in \code{data}), 
-#'  which combines the column \code{data[,"A"]} with all the friends treatment assignments of variable "A".
-#' 
+# (NOT IMPLEMENTED) When \code{sW} is missing, by default \code{sW} is constructed as follows. 
+#  For each \code{"W"} in \code{Wnodes}, add a vector \code{data[,"W"]} as well as all friends covariate values of
+#  \code{"W"} to \code{sW} by running \code{netW = def.sW(W[[0:Kmax]], noname = TRUE)}.
+#  For each \code{"W"} in \code{Wnode}, a vector of \code{"W"} values of the first friend of observations
+#  \code{i} = 1,...,\code{nrow(data)} will be created and named \code{"W_netF1"} 
+#  (i.e., variable "W_netF1" is constructed as def.sW(W_netF1 = W[[1]])).
+#  Similarly, the vector of "W" values of the jth friend for observations \code{i} = 1, ..., \code{nrow(data)}
+#  will be created and named "W_netFj", for j from 1 to \code{Kmax}, with all \code{W_netFj} then being added to
+#  \code{sW}.
+# 
+# (NOT IMPLEMENTED) Similarly, when \code{sA} is missing, it is constructed by running
+#  \code{def.sW(netA = A[[0:Kmax]], noname = TRUE)} (assuming \code{"A"} is the value of \code{Anode} in \code{data}), 
+#  which combines the column \code{data[,"A"]} with all the friends treatment assignments of variable "A".
+# 
 #' Note that when observation \code{i} has only \code{j-1} friends, the i's value of \code{"W_netFj"} is
 #'  automatically set to \code{NA}. 
 #'  This can be an undersirable behavior in some circumstances, in which case one can automatically replace all such
@@ -559,10 +567,8 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
 #'  \item \code{n_MCsims} - Number of Monte-Carlo simulations to perform when evaluating P(sA | sW) under gstar and
 #'  f_g0 (if specified) and while evaluating the target parameter estimator under gstar;
-#'  \item \code{family} - Family specification for regression models, defaults to binomial. CURRENTLY ONLY BINOMIAL
-#'  FAMILY IS IMPLEMENTED.
-# \item \code{onlyTMLE_B} - When \code{TRUE}, only one of the 3 TMLE estimators is evaluated, tmle_B, which is the 
-# intercept-based TMLE (no clever covariate, h_gN / h_gstar is used as weights in parametric model fluctuation).
+#'  \item \code{family} - Family specification for regression models, defaults to binomial (CURRENTLY ONLY BINOMIAL
+#'  FAMILY IS IMPLEMENTED).
 #' \item \code{f_g0} - A function for generating true treatment mechanism A, when it is known (for example in a
 #'  randomized trial). Used only when estimating P(sA | sW) under g0 by sampling large vector of A
 #'  (of length n*n_MCsims) from \code{f_g0};
@@ -677,9 +683,9 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  with weights \code{h_gstar/h_gN} or 
 #'  covariate-based unweighted TMLE (\code{tmle.covariate}) that uses the covariate \code{h_gstar/h_gN}.
 #   \item \code{tmle_g_iptw} - Covariate-based more non-parametric TMLE using covariate gN/gstar.
-#'  \item \code{iptw} - Efficient IPTW based on weights h_gstar/h_gN.
+#'  \item \code{h_iptw} - Efficient IPTW based on weights h_gstar/h_gN.
 #   \item \code{g_iptw} - More non-parametric IPTW based on weights gN/gstar.
-#'  \item \code{gcomp} - Parametric G-computation-based substitution estimator.
+#'  \item \code{gcomp} - Parametric G-computation substitution estimator.
 #' }
 #' @seealso \code{\link{tmlenet-package}} for the general overview of the package,
 #'  \code{\link{def.sW}} for defining the summary measures, \code{\link{eval.summaries}} for
@@ -688,28 +694,10 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  for examples of network datasets.
 #' @example tests/examples/1_tmlenet_example.R
 #' @export
-
-#----------------------------------------------------------------------------------
-# Input checks:
-#todo 80 (tmlenet, inputs) +0: 3) check that all vars in reg forms have been defined by sW or sA
-#todo 8 (tmlenet) +0: check all names exist in data (Anode, Wnodes, Ynode, etc...)
-#todo 11 (tmlenet) +0: Wnodes & Anode are no longer needed if sW, sA are provided, give a warning that Wnodes, Anodes will be ignored?
-#----------------------------------------------------------------------------------
-#todo 52 (tmlenet) +0: Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
-  # When sW / sA are just lists of character vectors need to capture the calling env and call Define_sVar constructor:
-    # user.env <- parent.frame()
-    # user.env_l <- list(user.env = user.env)
-    # sW <- do.call(Define_sVar$new, c(sW, list(type = "sW"), user.env_l))
-    # sW.gstar <- do.call(Define_sVar$new, c(sW.gstar, list(type = "sW.gstar"), user.env_l))
-    # sA <- do.call(Define_sVar$new, c(sA, list(type = "sA"), user.env_l))  
-#todo 53 (tmlenet) +0: If no sVars were defined (default), use netW (Wnode[[0:Kmax]]) and netA for sVars (Anode[[0:Kmax]])
-#todo 54 (tmlenet) +0: Check all sVar names are unique
-#---------------------------------------------------------------------------------
 tmlenet <- function(data, Kmax, sW, sA,
                     # estimators = c("tmle", "iptw", "gcomp"),
                     Wnodes = NULL, # no longer needed to be specified (WILL BE REMOVED)
                     Anode, AnodeDET = NULL, Ynode, YnodeDET = NULL, 
-                    # nFnode = "nF",
                     IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL,
                     f_gstar1, f_gstar2 = NULL,
                     Qform = NULL, hform = NULL, hform.gstar = NULL,
@@ -733,7 +721,6 @@ tmlenet <- function(data, Kmax, sW, sA,
   #----------------------------------------------------------------------------------
   # ADDITIONAL ARGUMENTS (Removed from input args of tmlenet())
   #----------------------------------------------------------------------------------
-  # iidW_flag <- FALSE # NO LONGER USED. ALL EVALUATION IS ASSUMED non-IID
   iid_data_flag <- FALSE  # set to true if no network is provided (usual iid TMLE)
   Q.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction") # NOT USED
   g.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction") # NOT USED
@@ -753,7 +740,7 @@ tmlenet <- function(data, Kmax, sW, sA,
   #----------------------------------------------------------------------------------
   # DETERMINING INTERNAL / EXTERNAL ESTIMATOR NAMES THAT WILL BE EVALUATED
   #----------------------------------------------------------------------------------
-  # if TRUE, only evalute the intercept-based TMLE (TMLE_B), if FALSE, evaluate only the covariate-based TMLE (TMLE_A)
+  # if TRUE, only evaluate the intercept-based TMLE (TMLE_B), if FALSE, evaluate only the covariate-based TMLE (TMLE_A)
   runTMLE <- optPars$runTMLE[1]
   if (is.null(runTMLE) || (runTMLE[1] %in% "tmle.intercept")) {
     onlyTMLE_B <- TRUE
@@ -843,8 +830,6 @@ tmlenet <- function(data, Kmax, sW, sA,
 
   #----------------------------------------------------------------------------------
   # Optional regressions specs:
-  # todo 58 (tmlenet, Q.sVars, g.sVars) +0: Check that outvars & predvars in Q.sVars & g.sVars actually exist in sW, sA
-  # Currently, if sW,sA doesn't exist it will not be included, without any warning/message.
   #----------------------------------------------------------------------------------
   Q.sVars <- process_regform(as.formula(Qform), sW.map = c(sW$sVar.names.map, sA$sVar.names.map), sA.map = node_l$Ynode)
   h.sVars <- process_regform(as.formula(hform), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
@@ -866,7 +851,7 @@ tmlenet <- function(data, Kmax, sW, sA,
   #-----------------------------------------------------------
   # Defining and fitting regression for Y ~ sW + sA:
   # todo 45 (m.Q.init) +0: In the future add option to fit separate m.Q.init models for each nF value
-  # todo 45 (m.Q.init) +0: Move inside get_all_ests?
+  # todo 45 (m.Q.init) +0: Move fitting of Q inside get_all_ests?
   #-----------------------------------------------------------
   Qreg <- RegressionClass$new(outvar = node_l$Ynode,
                               predvars = Q.sVars$predvars,
@@ -908,22 +893,9 @@ tmlenet <- function(data, Kmax, sW, sA,
 
                   # Cap the prop weights scaled at max_npwt (for =50 -> translates to max 10% of total weight for n=500 and 5% for n=1000):
                   max_npwt = max_npwt # NOT IMPLEMENTED  
-
-                  # m.g0N = m.g0N, # removed fitting of g0
-                  # g.sVars = g.sVars,
                   # h_logit_sep_k = h_logit_sep_k, # NOT IMPLEMENTED
                   # h_user = h_user, # NOT IMPLEMENTED
                   # h_user_fcn = h_user_fcn, # NOT IMPLEMENTED
-                  # Kmax = Kmax, # REMOVE, already saved in DatNet
-                  # iidW_flag = iidW_flag, #REMOVE (NOT USED)
-                  # node_l = node_l, #REMOVE, already saved in DatNet
-                  # NetInd_k = netind_cl$NetInd, #REMOVE, already saved in DatNet
-                  # family = family, #REMOVE, already saved in DatNet regs
-                  # gform = gform.depr, #REMOVE, no longer used
-                  # hform = hform.depr, #REMOVE, no longer used
-                  # f.g0_args = f.g0_args, #REMOVE, no longer used
-                  # n_MCsims = nQ.MCsims,         # REMOVE, keeping for now for compatibility
-                  # n_samp_g0gstar = ng.MCsims  # REMOVE, keeping for now for compatibility
                   )
 
   est_obj_g1 <- append(est_obj,

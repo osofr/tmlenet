@@ -3,26 +3,58 @@
 \docType{class}
 \name{DatNet.sWsA}
 \alias{DatNet.sWsA}
-\title{Class for managing combined summary measures sW & sA from DatNet class.}
-\format{An R6 class object.}
+\title{R6 class for storing and managing the combined summary measures \code{sW} & \code{sA} from DatNet classes.}
+\format{An \code{\link{R6Class}} generator object}
 \usage{
 DatNet.sWsA
 }
 \description{
-Class for managing combined summary measures sW & sA from DatNet class.
+This class inherits from \code{DatNet} and extends its methods to handle a single matrix dataset of
+ all summary measures \code{(sA,sW)}
+ The class \code{DatNet.sWsA} is the only way to access data in the entire package.
+ Contains methods for combining, subsetting, discretizing & binirizing summary measures \code{(sW,sA)}.
+ The pointers to this class get passed on to \code{SummariesModel} functions: \code{$fit()},
+ \code{$predict()} and \code{$predictAeqa()}.
 }
 \details{
-Following fields are created during initialization
 \itemize{
-\item{nodes} ...
-\item{datnetW} ...
-\item{datnetA} ...
-\item{YnodeVals} ...
-\item{det.Y} ...
-\item{Kmax} ...
+\item{\code{datnetW}} - .
+\item{\code{datnetA}} - .
+\item{\code{YnodeVals}} - .
+\item{\code{det.Y}} - .
+\item{\code{p}} - .
 }
-Methods for combining, subsetting, discretizing & binirizing of summary measures in sW & sA. Inherits from DatNet class.
-The combined dataset of all (sW, sA) summary measures returned by DatNet is stored as a matrix under self$mat.sVar
 }
-\keyword{datasets}
+\section{Methods}{
+
+\describe{
+  \item{\code{new(datnetW, datnetA, YnodeVals, det.Y, ...)}}{...}
+  \item{\code{addYnode(YnodeVals, det.Y)}}{...}
+  \item{\code{evalsubst(subsetexpr, subsetvars)}}{...}
+  \item{\code{get.dat.sWsA(rowsubset = TRUE, covars)}}{...}
+  \item{\code{get.outvar(rowsubset = TRUE, var)}}{...}
+  \item{\code{copy.sVar.types()}}{...}
+  \item{\code{bin.nms.sVar(name.sVar, nbins)}}{...}
+  \item{\code{pooled.bin.nm.sVar(name.sVar)}}{...}
+  \item{\code{detect.sVar.intrvls(name.sVar, nbins, bin_bymass, bin_bydhist, max_nperbin)}}{...}
+  \item{\code{discretize.sVar(name.sVar, intervals)}}{...}
+  \item{\code{binirize.sVar(name.sVar, intervals, nbins, bin.nms)}}{...}
+  \item{\code{get.sVar.bw(name.sVar, intervals)}}{...}
+  \item{\code{get.sVar.bwdiff(name.sVar, intervals)}}{...}
+  \item{\code{make.dat.sWsA(p = 1, f.g_name = NULL, f.g_args = NULL, sA.object = NULL)}}{...}
+}
+}
+
+\section{Active Bindings}{
+
+\describe{
+   \item{\code{dat.sWsA}}{...}
+   \item{\code{names.sWsA}}{...}
+   \item{\code{nobs}}{...}
+   \item{\code{noNA.Ynodevals}}{...}
+   \item{\code{nodes}}{...}
+}
+}
+\keyword{R6}
+\keyword{class}
 

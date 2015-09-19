@@ -10,44 +10,78 @@ RegressionClass
 }
 \description{
 This R6 class defines fields and methods for defining all the parameters that control the non-parametric
- modelling and estimation of multivariate joint conditional probability model P(sA|sW) for summary measures (sA,sW).
- Note that sA can be multivariate and any component of sA[j] can be either binary, categorical or continuous.
- The joint probability for P(sA|sA) = P(sA[1],...,sA[k]|sA) is first factorized as
- P(sA[1]|sA) * P(sA[2]|sA, sA[1]) * ... * P(sA[k]|sA, sA[1],...,sA[k-1]),
- where each of these conditional probability models is defined by a new instance of a SummariesModel class
- (and the corresponding instance of a RegressionClass class).
- If sA[j] is binary, the conditional probability for P(sA[j]|sW,sA[1],...,sA[j-1]) is evaluated via logistic regression model.
- When sA[j] is categorical or continuous, its estimation will be controlled with a new instance of
- the ContinSummaryModel class (and the accompanying instance of a RegressionClass class), which first partitions the range of
- continuous/categorical sA[j] into K bins and corresponding K bin indicators (B_1,...,B_K) and then instantiates K new
- SummariesModel classes (with their corresponding RegressionClass classes), where each of these K classes now defines a
- single logistic regression model with binary bin indicator outcome B_j and predictors (sW, sA[1],...,sA[k-1]).
- Thus, the first instance of RegressionClass and SummariesModel classes will automatically
+ modelling and estimation of multivariate joint conditional probability model \code{P(sA|sW)} for summary measures \code{(sA,sW)}.
+ Note that sA can be multivariate and any component of \code{sA[j]} can be either binary, categorical or continuous.
+ The joint probability for \code{P(sA|sA)} = \code{P(sA[1],...,sA[k]|sA)} is first factorized as
+ \code{P(sA[1]|sA) * P(sA[2]|sA, sA[1]) * ... * P(sA[k]|sA, sA[1],...,sA[k-1])},
+ where each of these conditional probability models is defined by a new instance of a \code{\link{SummariesModel}} class
+ (and the corresponding instance of a \code{RegressionClass} class).
+ If \code{sA[j]} is binary, the conditional probability for \code{P(sA[j]|sW,sA[1],...,sA[j-1])} is evaluated via logistic regression model.
+ When \code{sA[j]} is categorical or continuous, its estimation will be controlled with a new instance of
+ the \code{\link{ContinSummaryModel}} class (and the accompanying instance of a \code{RegressionClass} class), which first partitions the range of
+ continuous/categorical \code{sA[j]} into \code{K} bins and corresponding \code{K} bin indicators (\code{B_1,...,B_K}) and then instantiates \code{K} new
+ \code{SummariesModel} classes (with their corresponding \code{RegressionClass} classes), where each of these \code{K} classes now defines a
+ single logistic regression model with binary bin indicator outcome \code{B_j} and predictors (\code{sW, sA[1],...,sA[k-1]}).
+ Thus, the first instance of \code{RegressionClass} and \code{SummariesModel} classes will automatically
  spawn recursive calls to new instances of these classes until the entire tree of binary logistic regressions that defines
- the joint probability P(sA|sW) is build.
+ the joint probability \code{P(sA|sW)} is build.
 }
 \details{
 \itemize{
-\item{NetInd_k} - Matrix of friend indices (network IDs) of \code{dim = (nobs x Kmax)}.
-\item{nF} - Vector of integers, where \code{nF[i]} is the integer number of friends (0 to \code{Kmax}) for observation \code{i}.
-\item{nobs} - Number of observations
-\item{Kmax} - Maximum number of friends for any observation.
+\item{\code{outvar.class}} - Character vector indicating a class of each outcome var: \code{bin} / \code{cont} / \code{cat}.
+\item{\code{outvar}} - Character vector of regression outcome variable names.
+\item{\code{predvars}} - Either a pool of all character predictors (\code{sW}) or regression-specific predictor names.
+\item{{reg_hazard}} - Logical, if TRUE, the joint probability model P(outvar | predvars) is factorized as
+ \\prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard).
+\item{\code{subset}} - Subset expression (later evaluated to logical vector in the envir of the data).
+\item{\code{ReplMisVal0}} - Logical, if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0).
+\item{\code{nbins}} - Integer number of bins used for a continuous outvar, the intervals are defined inside
+ \code{ContinSummaryModel$new()} and then saved in this field.
+\item{\code{bin_nms}} - Character vector of column names for bin indicators.
+\item{\code{useglm}} - Logical, if TRUE then fit the logistic regression model using \code{\link{glm.fit}},
+ if FALSE use \code{\link{speedglm.wfit}}..
+\item{\code{parfit}} - Logical, if TRUE then use parallel \code{\link{foreach}} loop to fit and predict binary logistic
+ regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
+\item{\code{bin_bymass}} - Logical, for continuous outvar, create bin cutoffs based on equal mass distribution.
+\item{\code{bin_bydhist}} - Logical, if TRUE, use dhist approach for bin definitions.  See Denby and Mallows "Variations on the
+ Histogram" (2009)) for more..
+\item{\code{max_nperbin}} - Integer, maximum number of observations allowed per one bin.
+\item{\code{pool_cont}} - Logical, pool binned continuous outvar observations across bins and only fit only regression model
+ across all bins (adding bin_ID as an extra covaraite)..
+\item{\code{outvars_to_pool}} - Character vector of names of the binned continuous outvars, should match \code{bin_nms}.
+\item{\code{intrvls.width}} - Named numeric vector of bin-widths (\code{bw_j : j=1,...,M}) for each each bin in \code{self$intrvls}.
+   When \code{sA} is not continuous, \code{intrvls.width} IS SET TO 1. When sA is continuous and this variable \code{intrvls.width}
+   is not here, the intervals are determined inside \code{ContinSummaryModel$new()} and are assigned to this variable as a list,
+   with \code{names(intrvls.width) <- reg$bin_nms}. Can be queried by \code{BinOutModel$predictAeqa()} as: \code{intrvls.width[outvar]}.
+\item{\code{intrvls}} - Numeric vector of cutoffs defining the bins or a named list of numeric intervals for \code{length(self$outvar) > 1}.
 }
 }
 \section{Methods}{
 
 \describe{
-  \item{\code{new(nobs, Kmax = 1)}}{Uses \code{nobs} and \code{Kmax} to instantiate an object of R6 class and pre-allocate memory
-         for the future network ID matrix.}
-  \item{\code{makeNetInd.fromIDs(Net_str, IDs_str = NULL, sep = ' ')}}{Build the matrix of network IDs (\code{NetInd_k}) from IDs string vector,
-         all friends of one observation \code{i} are located in a string Net_str[i], with two distinct friend IDs of \code{i}
-         separated by character \code{sep}. If \code{IDs_str} is NULL it is assumed that the friends in Net_str are
-         actual row numbers in \code{1:nobs}, otherwise IDs from Net_str will be used for looking up the observation row numbers in \code{IDs_str}.}
-  \item{\code{make.nF(NetInd_k = self$NetInd_k, nobs = self$nobs, Kmax = self$Kmax)}}{This method calculates the integer number of
-        friends for each row of the network ID matrix (\code{self$NetInd_k}). The result is assigned to a field \code{self$nF} and
-        is returned invisibly.}
-  \item{\code{mat.nF(nFnode)}}{\code{nFnode} - the character name for the number of friends variable that is assigned as a column
-  name to a single column matrix in \code{self$nF}.}
+  \item{\code{new(outvar.class = gvars$sVartypes$bin,
+                  outvar, predvars, subset, intrvls,
+                  ReplMisVal0 = TRUE,
+                  useglm = getopt("useglm"),
+                  parfit = getopt("parfit"),
+                  nbins = getopt("nbins"),
+                  bin_bymass = getopt("bin.method")%in%"equal.mass",
+                  bin_bydhist = getopt("bin.method")%in%"dhist",
+                  max_nperbin = getopt("maxNperBin"),
+                  pool_cont = getopt("poolContinVar")}}{Uses the arguments to instantiate an object of R6 class and define the future regression model.}
+  \item{\code{ChangeManyToOneRegresssion(k_i, reg)}}{ Take a clone of a parent \code{RegressionClass} (\code{reg}) for \code{length(self$outvar)} regressions
+   and set self to a single univariate \code{k_i} regression for outcome \code{self$outvar[[k_i]]}.}
+  \item{\code{ChangeOneToManyRegresssions(regs_list)}}{ Take the clone of a parent \code{RegressionClass} for univariate (continuous outvar) regression
+    and set self to \code{length(regs_list)} bin indicator outcome regressions.}
+  \item{\code{resetS3class()}}{...}
+}
+}
+
+\section{Active Bindings}{
+
+\describe{
+  \item{\code{S3class}}{...}
+  \item{\code{get.reg}}{...}
 }
 }
 \keyword{R6}
