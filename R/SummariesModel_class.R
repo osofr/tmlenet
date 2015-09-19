@@ -452,6 +452,46 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 	)
 )
 
+
+# -------------------------------------------------------------------------------------------
+# same code in ContinSummaryModel$new and CategorSummaryModel$new replaced with outside function:
+# Define subset evaluation for new bins:
+# -------------------------------------------------------------------------------------------
+def_regs_subset <- function(self) {  
+  bin_regs <- self$reg$clone() # instead of defining new RegressionClass now cloning parent reg object and then ADDING new SETTINGS
+  bin_regs$reg_hazard <- TRUE # don't add degenerate bins as predictors in each binary regression
+  if (!self$reg$pool_cont) {
+    add.oldsubset <- TRUE
+    new.subsets <- lapply(self$reg$bin_nms,
+                              function(var) {
+                                res <- var
+                                if (add.oldsubset) res <- c(res, self$reg$subset)
+                                res
+                              })
+
+    new.sAclass <- as.list(rep_len(gvars$sVartypes$bin, self$reg$nbins))
+    names(new.sAclass) <- self$reg$bin_nms
+    bin_regs$ChangeOneToManyRegresssions(regs_list = list(outvar.class = new.sAclass,
+                                                          outvar = self$reg$bin_nms,
+                                                          predvars = self$reg$predvars,
+                                                          subset = new.subsets))
+  # Same but when pooling across bin indicators:
+  } else {
+    bin_regs$outvar.class <- gvars$sVartypes$bin
+    bin_regs$outvar <- self$outvar
+    bin_regs$outvars_to_pool <- self$reg$bin_nms
+    if (gvars$verbose)  {
+      print("pooled bin_regs$outvar: "); print(bin_regs$outvar)
+      print("bin_regs$outvars_to_pool: "); print(bin_regs$outvars_to_pool)
+      print("bin_regs$subset: "); print(bin_regs$subset)
+    }
+  }
+  bin_regs$resetS3class()  
+  return(bin_regs)
+}
+
+# -------------------------------------------------------------------------------------------
+
 ## ---------------------------------------------------------------------
 #' R6 class for fitting and predicting joint probability for a univariate continuous summary measure sA[j]
 #'
@@ -534,49 +574,13 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       self$intrvls.width[self$intrvls.width <= gvars$tolerr] <- 1
       self$reg$intrvls.width <- self$intrvls.width
       names(self$reg$intrvls.width) <- names(self$intrvls.width) <- self$reg$bin_nms
-      # INSTEAD OF DEFINING NEW RegressionClass now cloning parent reg object and then ADDING new SETTINGS:
-      bin_regs <- self$reg$clone()
-      bin_regs$reg_hazard <- TRUE # to not add previous degenerate bin indicators as predictor covariates for each bin regression
+
       if (gvars$verbose)  {
         print("ContinSummaryModel sA: "%+%self$outvar)
         print("ContinSummaryModel reg$nbins: " %+% self$reg$nbins)
       }
 
-
-
-# -------------------------------------------------------------------------------------------
-# same as in CategorSummaryModel$new... replace with outside function:
-      # Define subset evaluation for new bins:
-      if (!self$reg$pool_cont) {
-        add.oldsubset <- TRUE
-        new.subsets <- lapply(self$reg$bin_nms,
-                                  function(var) {
-                                    res <- var
-                                    if (add.oldsubset) res <- c(res, self$reg$subset)
-                                    res
-                                  })
-
-        new.sAclass <- as.list(rep_len(gvars$sVartypes$bin, self$reg$nbins))
-        names(new.sAclass) <- self$reg$bin_nms
-        bin_regs$ChangeOneToManyRegresssions(regs_list = list(outvar.class = new.sAclass,
-                                                              outvar = self$reg$bin_nms,
-                                                              predvars = self$reg$predvars,
-                                                              subset = new.subsets))
-      } else {
-        bin_regs$outvar.class <- gvars$sVartypes$bin
-        bin_regs$outvar <- self$outvar
-        bin_regs$outvars_to_pool <- self$reg$bin_nms
-
-        if (gvars$verbose)  {
-          print("pooled bin_regs$outvar: "); print(bin_regs$outvar)
-          print("bin_regs$outvars_to_pool: "); print(bin_regs$outvars_to_pool)
-          print("bin_regs$subset: "); print(bin_regs$subset)
-        }
-      }
-      bin_regs$resetS3class()
-# -------------------------------------------------------------------------------------------
-
-
+      bin_regs <- def_regs_subset(self = self)
       super$initialize(reg = bin_regs, ...)
     },
 
@@ -702,9 +706,7 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       }
       self$nbins <- self$reg$nbins <- length(self$levels)
       self$reg$bin_nms <- DatNet.sWsA.g0$bin.nms.sVar(reg$outvar, self$reg$nbins)
-      # INSTEAD OF DEFINING NEW RegressionClass now cloning parent reg object and then ADDING new SETTINGS:
-      bin_regs <- self$reg$clone()
-      bin_regs$reg_hazard <- TRUE # to not add previous degenerate bin indicators as predictor covariates for each bin regression
+
       if (gvars$verbose)  {
         print("CategorSummaryModel sA: "%+%self$outvar)
         print("CategorSummaryModel levels: "); print(self$levels)
@@ -712,39 +714,7 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
         print("CategorSummaryModel reg$nbins: " %+% self$reg$nbins)
         print("CategorSummaryModel reg$bin_nms: "); print(self$reg$bin_nms)
       }
-
-# -------------------------------------------------------------------------------------------
-# same as in ContinSummaryModel$new... replace with outside function:
-      # Define subset evaluation for new bins:
-      if (!self$reg$pool_cont) {
-        add.oldsubset <- TRUE
-        new.subsets <- lapply(self$reg$bin_nms,
-                                  function(var) {
-                                    res <- var
-                                    if (add.oldsubset) res <- c(res, self$reg$subset)
-                                    res
-                                  })
-
-        new.sAclass <- as.list(rep_len(gvars$sVartypes$bin, self$reg$nbins))
-        names(new.sAclass) <- self$reg$bin_nms
-        bin_regs$ChangeOneToManyRegresssions(regs_list = list(outvar.class = new.sAclass,
-                                                              outvar = self$reg$bin_nms,
-                                                              predvars = self$reg$predvars,
-                                                              subset = new.subsets))
-      # Same but when pooling across bin indicators:
-      } else {
-        bin_regs$outvar.class <- gvars$sVartypes$bin
-        bin_regs$outvar <- self$outvar
-        bin_regs$outvars_to_pool <- self$reg$bin_nms
-        if (gvars$verbose)  {
-          print("pooled bin_regs$outvar: "); print(bin_regs$outvar)
-          print("bin_regs$outvars_to_pool: "); print(bin_regs$outvars_to_pool)
-          print("bin_regs$subset: "); print(bin_regs$subset)
-        }
-      }
-      bin_regs$resetS3class()
-# -------------------------------------------------------------------------------------------
-
+      bin_regs <- def_regs_subset(self = self)
       super$initialize(reg = bin_regs, ...)
     },
     # Transforms data for categorical outcome to bin indicators sA[j] -> BinsA[1], ..., BinsA[M] and calls $super$fit on that transformed data
