@@ -10,22 +10,31 @@ BugReports: https://github.com/osofr/tmlenet/issues
 Depends:
     R (>= 3.2.0)
 Imports:
-    data.table,
     assertthat,
+    data.table,
+    foreach,
+    Matrix,
+    R6,
+    Rcpp,
+    reshape2,
     simcausal,
-    R6
+    speedglm,
+    stats,
+    stringr
+LinkingTo: Rcpp
 Suggests:
-    SuperLearner,
-    snowfall,
     bigmemory,
     biganalytics,
+    doParallel,
+    ggplot2,
+    Hmisc,
+    igraph,
+    knitr,
     locfit,
     ltmle,
+    plyr,
     RUnit,
-    knitr,
-    igraph,
-    ggplot2,
-    Hmisc
-VignetteBuilder: knitr
+    snowfall,
+    SuperLearner
 License: GPL-2
 LazyData: true

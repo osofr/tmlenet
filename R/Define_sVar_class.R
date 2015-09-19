@@ -3,17 +3,16 @@
 # Class for defining, parsing and evaluating the summary measures.
 # Expressions sVar.exprs are evaluated in the environment of a given data.frame.
 #----------------------------------------------------------------------------------
-
-# TO FINISH SUMMARY MEASUREs parser need to:
-  # I) sVar output class (d.f. or mat):
-    # The only reason for d.f. is for subset eval., which can be re-written to work with matrices...
-    # Alternatively, consider using dplyr::as_data_frame() or dplyr::data_frame() for faster conversion to d.f.s
-    # Will require converting each ncol>1 matrix result of sVar[j] into a list of separate columns...
-
   # II) sVar naming:
-  # #todo 34 (sVar_evaluator, sVar.name) +0: Instead of throwing an error for un-named vector results (e.g., def.sW(A)), would be nice to extract the first is.name of the expression and use that as a name.
-  # #todo 7 (sVar_evaluator, sVar.name) +0: Check that the resulting column names in sVar are all unique!
-  # Create an option $keep.sVar.nms; When TRUE do not change the output column names for sVar mat with ncol > 1. Create an option to overwrite sVar mat colname(s) with user-provided names
+  #todo 34 (sVar_evaluator, sVar.name) +0: Instead of throwing an error for un-named vector results (e.g., def.sW(A)), 
+    # would be nice to extract the first is.name of the expression and use that as a name.
+  #todo 7 (sVar_evaluator, sVar.name) +0: Check that the resulting column names in sVar are all unique!
+  # Create an option $keep.sVar.nms; When TRUE do not change the output column names for sVar mat with ncol > 1. 
+  # Create an option to overwrite sVar mat colname(s) with user-provided names
+  #todo 28 (sVar_evaluator) +0: Consider returning sVar.res_l instead of mat.sVar, also see if there are faster alternatives to cbind
+    # (i.e., pre-allocating sVar.mat); perform benchmarks to see if there is any noticable benefit
+  #todo 42 ('+.Define_sVar') +0: Allow adding character vector summary measures for sVar2, s.a., 
+  # def.sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
 
 # Useful function for testing if a name is a valid R object name:
 isValidAndUnreservedName <- function(string) {
@@ -24,21 +23,24 @@ isValidAndUnreservedName <- function(string) {
 #' Define Summary Measures sA and sW
 #'
 #' Define and store \code{tmlenet} function arguments \code{sW} and \code{sA},
-#' which are arbitrary summary measures based on treatmet \code{Anode} and baseline covariates in \code{Wnodes} constructed from the input \code{data}.
-#' Each summary measure \code{sVar} is specified as a named R expression or a named character argument. Separate calls to \code{def.sW/def.sA} functions
-#' can be aggregated into a single collection with '+' function, e.g., \code{def.sW(W1=W1)+def.sW(W2=W2)}.
-#' Additional named arguments that can be passed to \code{def.sW/def.sA} are:
-#' \itemize{
-#' \item \code{noname = TRUE} - Do not use the summary measure name provided by the user when assigning the names to the summary measure columns (variables); and
-#' \item \code{replaceNAw0 = TRUE} - Automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
-#' } 
+#'  which are arbitrary summary measures based on treatmet \code{Anode} and baseline covariates in \code{Wnodes} 
+#'  constructed from the input \code{data}.
+#'  Each summary measure \code{sVar} is specified as a named R expression or a named character argument. 
+#'  Separate calls to \code{def.sW/def.sA} functions can be aggregated into a single collection with '+' function, 
+#'  e.g., \code{def.sW(W1=W1)+def.sW(W2=W2)}.
+#'  Additional named arguments that can be passed to \code{def.sW/def.sA} are:
+#'  \itemize{
+#'  \item \code{noname = TRUE} - to not use the summary measure name provided by the user when assigning
+#'    the names to the summary measure columns (variables); and
+#'  \item \code{replaceNAw0 = TRUE} - To automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
+#' }
 #' @section Details: 
-#' (TO BE COMPLETED)
-#' The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} function, using the environment of the input data, enclosed by the user calling environment.
+#' The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} function, 
+#' using the environment of the input data, enclosed by the user calling environment.
 #' @param ... Named R expressions or character strings that specify the formula for creating the summary measures.
 #' @return R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
 #' @seealso \code{\link{tmlenet}}
-#' @example tests/defsWsA_examples.R
+#' @example tests/examples/2_defsWsA_examples.R
 #' @export
 def.sW <- function(...) Define_sVar$new(..., type = "sW", user.env = parent.frame())
 #' @rdname def.sW
@@ -47,10 +49,11 @@ def.sA <- function(...) Define_sVar$new(..., type = "sA", user.env = parent.fram
 
 is.Define_sVar <- function(obj) "Define_sVar" %in% class(obj)
 
-# #todo 42 ('+.Define_sVar') +0: Allow adding character vector summary measures for sVar2, s.a., def.sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
 # S3 method '+' for adding two Define_sVar objects
 # Summary measure lists in both get added as c(,) into the summary measures in sVar1 object
 #' @rdname def.sW
+#' @param sVar1 An object returned by a call to \code{def.sW} or \code{def.sA} functions.
+#' @param sVar2 An object returned by a call to \code{def.sW} or \code{def.sA} functions.
 #' @export
 `+.Define_sVar` <- function(sVar1, sVar2) {
   assert_that(is.Define_sVar(sVar1))
@@ -116,7 +119,7 @@ parse.sVar.out <- function(sVar.idx, self) {
     }
   } else if (is.call(sVar.expr)){
     sVar.expr_call <- sVar.expr
-    warning(sVar.expr_call %+% ": sVar formula is already a parsed call")
+    message(sVar.expr_call %+% ": sVar formula is already a parsed call")
   } else {
     stop("sVar formula class: " %+% class(sVar.expr) %+% ". Currently can't process sVar formulas that are not strings or calls.")
   }
@@ -129,7 +132,8 @@ parse.sVar.out <- function(sVar.idx, self) {
   if (is.matrix(evaled_expr)) {
     if (no.sVar.name) sVar.name <- colnames(evaled_expr)
     if (!no.sVar.name && ncol(evaled_expr) > 1) sVar.name <- sVar.name %+% "." %+% (1 : ncol(evaled_expr))
-    if (no.sVar.name || ncol(evaled_expr) > 1) message(sVar.expr %+% ": the result matrix is assigned the following column name(s): " %+% paste(sVar.name, collapse = ","))
+    # if (no.sVar.name || ncol(evaled_expr) > 1) message(sVar.expr %+% ": 
+      # the result matrix is assigned the following column name(s): " %+% paste(sVar.name, collapse = ","))
   } else {
     if (no.sVar.name) stop(sVar.expr %+% ": summary measures not defined with Var[[...]] must be named.")
     evaled_expr <- as.matrix(evaled_expr)
@@ -138,38 +142,58 @@ parse.sVar.out <- function(sVar.idx, self) {
   return(evaled_expr)
 }
 
+
 ## ---------------------------------------------------------------------
-#' @title Class for defining and evaluating user-specified summary measures (sVar.exprs)
+#' R6 class for storing, parsing and evaluating user-specified summary measures (in \code{sVar.exprs})
+#'
+#' This R6 class can parse and evaluate (given the input data) the summary measures defined with functions 
+#'  \code{\link{def.sW}} and \code{\link{def.sA}}. 
+#'  The summary measure expressions (stored in \code{sVar.exprs}) are evaluated in the environment of the input data.frame.
+#'
 #' @docType class
-#' @format An R6 class object.
-#' @name Define_sVar
-#' @details Following fields are created during initialization
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords R6 class
+#' @details
 #' \itemize{
-#' \item{nodes} ...
-#' \item{subset_regs} ...
-#' \item{sA_nms} ...
-#' \item{sW_nms} ...
-#' \item{Kmax} ...
+#' \item{data.df} - Input data frame that will be used for evaluating the summary measure expressions.
+#' \item{Kmax} - Maximum number of friends for any observation.
+#' \item{netind_cl} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
+#' \item{ReplMisVal0} - A logical vector that captures args \code{replaceNAw0=TRUE/FALSE} in functions \code{def.sW}, \code{def.sA}.
+#'  If \code{TRUE} for a particular summary measure in \code{sVar.exprs} then all missing network \code{VarNode} 
+#'  values (when \code{nF[i] < Kmax}) will get replaced with \code{tmlenet:::gvars$misXreplace} (default is 0).
+#' \item{sVar.misXreplace} - Maximum number of friends for any observation.
+#' \item{sVar.noname} - Vector, for each \code{TRUE}, \code{sVar.expr[[idx]]} ignores user-supplied name and generates names automatically.
+#' \item{sVar.exprs} - Deparsed summary measure expressions expressions (character vector).
+#' \item{sVar.expr.names} - User-provided names for each summary measure in \code{sVar.expr}.
+#' \item{sVar.names.map} - Map of the summary measure names given by the user to its actual column names
+#'  (one name can represent a multivariate summary measure).
+#' \item{type} - Type of the summary measure, sW or sA, determined by the calling functions \code{def.sW} or \code{def.sA}.
+#' \item{user.env} - Captured user-environment from which \code{def.sW} or \code{def.sA} was called.
 #' }
-#' Evaluates and and stores arbitrary summary measure expressions. 
-#' The expressions (sVar.exprs) are evaluated in the environment of the input data.frame.
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(..., type, user.env)}}{...}
+#'   \item{\code{get.mat.sVar(data.df, netind_cl, addnFnode = NULL)}}{...}
+#'   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special 
+#'   variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
+#' }
 #' @importFrom assertthat assert_that
-# @export
+#' @export
 Define_sVar <- R6Class("Define_sVar",
   class = TRUE,
   portable = TRUE,
   public = list(
-    user.env = emptyenv(),        # User environment used as enclos arg to eval(sVar, enclos=)
     data.df = NULL,               # data.frame that is used for evaluation of sVar expressions (passed to get.mat.sVar)
+    Kmax = NULL,
+    netind_cl = NULL,
     ReplMisVal0 = FALSE,          # Replace missing network VarNode values (when nF[i] < Kmax) with gvars$misXreplace (0)?
     sVar.misXreplace = NULL,      # Replacement values for missing sVar (length(sVar.exprs)), either gvars$misXreplace or gvars$misval
     sVar.noname = FALSE,          # Vector, for each TRUE sVar.expr[[idx]] ignores user-supplied name and generates names automatically
-    netind_cl = NULL,
-    Kmax = NULL,
-    type = NA,                    # sW or sA
     sVar.exprs = character(),     # deparsed sVar expressions (char vector)
     sVar.expr.names = character(),# user-provided name of each sVar.expr
     sVar.names.map = list(),
+    type = NA,                    # sW or sA
+    user.env = emptyenv(),        # User environment used as enclos arg to eval(sVar, enclos=)
     # mat.sVar = matrix(),        # no longer storing the sVar evaluation result
 
     node_fun = list(
@@ -240,38 +264,27 @@ Define_sVar <- R6Class("Define_sVar",
 
       # for later S3 dispatch?
       if (!is.na(type)) class(self) <- c(class(self), type)
-
-      message("Final summary measure expression(s): "); print(self$sVar.exprs)
+      message("Defined the following summary measure(s): "); print(self$sVar.exprs)
       invisible(self)
     },
 
     get.mat.sVar = function(data.df, netind_cl, addnFnode = NULL) {
       assert_that(is.data.frame(data.df))
       self$data.df <- data.df
-
       if (missing(netind_cl) && is.null(self$netind_cl)) stop("must specify netind_cl arg at least once")
       if (!missing(netind_cl)) self$netind_cl <- netind_cl
       self$Kmax <- self$netind_cl$Kmax
-
       # call lapply on parse.sVar.out for each sVar in sVar.expr.names -> sVar.res_l
       sVar.res_l <- lapply(seq_along(self$sVar.exprs), parse.sVar.out, self = self)
-      # print("sVar.res_l: "); print(sVar.res_l)
-      
       names(sVar.res_l) <- self$sVar.expr.names
+
       if (!is.null(addnFnode)) sVar.res_l <- c(sVar.res_l, list(nF = netind_cl$mat.nF(addnFnode)))
+
       # SAVE THE MAP BETWEEEN EXPRESSION NAMES AND CORRESPONDING COLUMN NAMES:
       self$sVar.names.map <- lapply(sVar.res_l, colnames)
-
-      # print("sVar.res_l: "); print(sVar.res_l)
-      # print("data.frame(sVar.res_l): "); print(data.frame(sVar.res_l))
-      # print("dplyr::as_data_frame(sVar.res_l): "); print(dplyr::as_data_frame(sVar.res_l))
-      # print("sVar.res_l: "); print(sVar.res_l)
-
-      #todo 28 (sVar_evaluator) +0: Consider returning sVar.res_l instead of mat.sVar, also see if there are faster alternatives to cbind (i.e., pre-allocating sVar.mat); perform benchmarks to see if there is any noticable benefit
       mat.sVar <- do.call("cbind", sVar.res_l)
+      self$data.df <- NULL # erase pointer to data after evaluation is done
       return(mat.sVar)
-      # self$mat.sVar <- do.call("cbind", sVar.res_l)
-      # invisible(self)
     },
 
     # List of variable names from data.df with special var name (ANCHOR_ALLVARNMS_VECTOR_0):

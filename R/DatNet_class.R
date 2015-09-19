@@ -1,4 +1,14 @@
 #-----------------------------------------------------------------------------
+# TO DO: 
+#-----------------------------------------------------------------------------
+# self$nodes is really unnecessary, all we need to keep are the names of nFnode, Ynode, Anode (for gstar only)
+# Defining "equal.mass" bins based on sA under g0 for estimating h_g0 and based on sA under gstar for estimating h_gstar 
+  # results in an error, since bins defined under gstar might not include the entire range of sA under g0. 
+  # Need a way to fix this so that the intervals are automatically expanded 
+  # E.g., add one very very large positive and one very very abs(large) neg value to each interval?)
+
+
+#-----------------------------------------------------------------------------
 # MAJOR CHANGES TO DatNet.sWsA CLASS STRUCTURE (06/18/2015):
 #-----------------------------------------------------------------------------
 # * gen_sWsA_dat() renamed to make.dat.sWsA() and moved inside DatNet.sWsA class;
@@ -10,14 +20,6 @@
 # * Both copies of DatNet.sWsA are storing datnetA/datnetW by reference - same copy;
 # * MOST IMPORTANTLY we can now get rid of the MC sim loop for evaling psi_n. Just use already sampled DatNet.gstar dataset and evaluate psi_n only once.
 # * NOTE: Changing datnetA/datnetW in one copy of DatNet.sWsA will result them being changed in the other copy of DatNet.sWsA as well.
-
-#-----------------------------------------------------------------------------
-# TO DO: 
-#-----------------------------------------------------------------------------
-# Defining "equal.len" bins based on sA under g0 for estimating h_g0 and based on sA under gstar for estimating h_gstar 
-  # results in an error, since bins defined under gstar might not include the entire range of sA under g0. 
-  # Need a way to fix this so that the intervals are automatically expanded 
-  # E.g., add one very very large positive and one very very abs(large) neg value to each interval?)
 
 #-----------------------------------------------------------------------------
 # - DatNet.sWsA$binirize: Current implementation will often create fewer new cats than unique(sVar) for categorical sVar.
@@ -52,7 +54,12 @@
 is.integerish <- function (x) is.integer(x) || (is.numeric(x) && all(x == as.integer(x)))
 
 #' @importFrom simcausal NetIndClass
+#' @importFrom stats as.formula glm na.exclude rbinom 
+# @importFrom stats reshape rnorm runif setNames terms.formula
+# @importFrom utils head str
+# @importFrom graphics legend par plot
 NULL
+
 
 ## ---------------------------------------------------------------------
 # DETECTING VECTOR TYPES
@@ -119,22 +126,26 @@ define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
 
   if (bin_bymass) {
     intvec <- quantile(x = x, probs = normalize(intvec)) # interval type 2: bin x by mass (quantiles of 0-1 intvec as probs)
+    intvec[1] <- intvec[1] - 0.01
+    intvec[length(intvec)] <- intvec[length(intvec)] + 0.01
   } else if (bin_bydhist) {
     intvec <- dhist(x, plot = FALSE, nbins=nbins)$xbr
-    intvec[length(intvec)] <- intvec[length(intvec)]+1
+    intvec[1] <- intvec[1] - 0.01
+    intvec[length(intvec)] <- intvec[length(intvec)] + 0.01
   }
 
   # adding -Inf & +Inf as leftmost & rightmost cutoff points to make sure all future data points end up in one of the intervals:
   # intvec <- c(-Inf, min(intvec)-0.01, intvec)
-  intvec <- c(min(intvec) - 0.1, intvec)
-
+  # intvec <- c(min(intvec) - 0.1, intvec)
+  intvec <- c(min(intvec)-1000L, intvec, max(intvec)+1000L)
+  # intvec <- c(min(intvec) - 9999999L, min(intvec) - 0.1, intvec, max(intvec) + 0.1, max(intvec) + 9999999L)
   return(intvec) # return(list(intbylen = intvec, intbymass = intvecq))
 }
 
 # Turn any x into ordinal (1, 2, 3, ..., nbins) for a given interval cutoffs (length(intervals)=nbins+1)
 make.ordinal <- function(x, intervals) findInterval(x = x, vec = intervals, rightmost.closed = TRUE)
 
-# Make dummy indicators for continuous x (sA[j])
+# Make dummy indicators for ordinal x (sA[j])
 make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
   # Approach: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
   n <- length(x.ordinal)
@@ -185,7 +196,6 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
 #' @details Following fields are created during initialization
 #' \itemize{
 #' \item{Kmax} ...
-#' \item{nodes} ...
 #' \item{netind_cl} ...
 #' \item{subset_regs} ...
 #' \item{sA_nms} ...
@@ -200,30 +210,25 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
 #' Also contains method for detecting /setting sVar variable type (binary, categor, contin).
 #' For continous sVar this class provides methods for detecting / setting bin intervals, normalization, disretization and construction of bin indicators.
 #' @importFrom assertthat assert_that is.count is.flag
-# @export
+#' @export
 DatNet <- R6Class(classname = "DatNet",
   portable = TRUE,
   class = TRUE,
   public = list(
     Kmax = integer(),          # max n of Friends in the network
-    nodes = list(),            # names of the nodes in the data (Anode, Wnodes, nFnode, etc..)
-    netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
-    VarNodes = NULL,           # Variable names (Wnodes or Anode)
+    nFnode = "nF",
     addnFnode = FALSE,         # Flag to add Fnode to predictors mat / df output
+    netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
     ord.sVar = NULL,           # Ordinal (cat) transform for continous sVar
     active.bin.sVar = NULL,    # name of active binarized cont sVar, changes as fit/predict is called (bin indicators are temp. stored in mat.bin.sVar)
-
     Odata = NULL,              # data.frame used for creating the summary measures in mat.sVar, saved each time make.sVar called
-
     # dat.bin.sVar = NULL,     # (MOVED TO AN ACT BIND) points to self$mat.bin.sVar
     mat.bin.sVar = NULL,       # temp storage mat for bin indicators on currently binarized continous sVar (from self$active.bin.sVar)
-    mat.netVar = NULL,         # NOT DONE mat of network VarNode vals (+ VarNode itself) for each node in VarNodes
+    # mat.netVar = NULL,         # NOT DONE mat of network VarNode vals (+ VarNode itself) for each node in VarNodes
     # dat.netVar = NULL,       # (MOVED TO ACT BIND) df of network node values (+ node column itself) for all nodes in VarNodes
     mat.sVar = NULL,           # Matrix storing all evaluated sVars, with named columns
     # dat.sVar = NULL,         # (MOVED TO ACT BIND) Matrix of summary meaure values for each summary measure expression in sVar
-
     sVar.object = NULL,        # Define_sVar object that contains / evaluates sVar expressions    
-    
     type.sVar = NULL,          # named list with sVar types: list(names.sVar[i] = "binary"/"categor"/"contin"), can be overridden
     norm.c.sVars = FALSE,      # flag = TRUE if want to normalize continous covariates
 
@@ -231,24 +236,20 @@ DatNet <- R6Class(classname = "DatNet",
     # nobs = NA_integer_,      # n of samples in the OBSERVED (original) data
     nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
 
-    initialize = function(netind_cl, nodes, VarNodes, addnFnode = FALSE, ...) {
-
-      assert_that(!is.null(VarNodes)); assert_that(is.list(VarNodes)||is.character(VarNodes))
-      self$VarNodes <- VarNodes 
+    initialize = function(netind_cl, nodes, nFnode, addnFnode = FALSE, ...) {
       assert_that(is.flag(addnFnode))
-      
       self$netind_cl <- netind_cl
       self$Kmax <- netind_cl$Kmax
-      self$nodes <- nodes
+      if (!missing(nFnode)) self$nFnode <- nFnode
       self$addnFnode <- addnFnode
-
+      if (!missing(nodes)) self$nodes <- nodes
       invisible(self)
     },
 
     # **********************
     # Define summary measures sVar
     # **********************
-    # type.sVar acts as a flag: only detect types when !is.n, addnFnode = TRUE
+    # type.sVar acts as a flag: only detect types when !is.null, addnFnode = TRUE
     make.sVar = function(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE) {
       assert_that(is.data.frame(Odata))
       self$nOdata <- nrow(Odata)
@@ -259,7 +260,7 @@ DatNet <- R6Class(classname = "DatNet",
       }
 
       self$sVar.object <- sVar.object
-      if (self$addnFnode) { nFnode <- self$nodes$nFnode } else { nFnode <- NULL }
+      if (self$addnFnode) { nFnode <- self$nFnode } else { nFnode <- NULL }
       self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl, addnFnode = nFnode)
 
       # MAKE def_types_sVar an active binding? calling self$def_types_sVar <- type.sVar assigns, calling self$def_types_sVar defines.
@@ -315,25 +316,26 @@ DatNet <- R6Class(classname = "DatNet",
     # #todo 18 (DatNet, DatNet.sWsA) +0: (OPTIONAL) ENABLE ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO DatNet
     # #todo 25 (DatNet, add_det) +0: Need to save det node flags as a separate mat, can't add them to sVar since all sVars 
     # will be automatically added to A ~ predictors
-    add_deterministic = function(Odata, userDETcol) {
-      determ.g_user <- as.vector(Odata[,userDETcol]) # get deterministic As for the entire network of each unit (set by user)
-      # determ.gvals_user <- Odata[,AnodeDET] # add values to be assigned to deterministic nodes (already have: netA)
-      determ_cols_user <- .f.allCovars(k = self$Kmax, NetInd_k = self$netind_cl$NetInd_k, Var = determ.g_user,
-                                        VarNm = "determ.g_true", misval = gvars$misval)
-      # determ_cols <- (determ_cols_user | determ_cols_Friend)
-      determ_cols <- determ_cols_user
-      # THIS IS A VERY BAD WAY TO DO THAT, REMOVING
-      # self$mat.sVar <- cbind(determ_cols, self$mat.sVar)
-      determ_cols_type <- as.list(rep.int(gvars$sVartypes$bin, ncol(determ_cols)))
-      names(determ_cols_type) <- colnames(determ_cols)
-      self$type.sVar <- c(determ_cols_type, self$type.sVar)
-      invisible(self)
-    },
-    # Replaces all misval values in mat.netVar / mat.sVar with gvars$misXreplace
-    fixmiss_netVar = function() {
-      self$mat.netVar[gvars$misfun(self$mat.netVar)] <- gvars$misXreplace
-      invisible(self)
-    },
+    # add_deterministic = function(Odata, userDETcol) {
+    #   determ.g_user <- as.vector(Odata[,userDETcol]) # get deterministic As for the entire network of each unit (set by user)
+    #   # determ.gvals_user <- Odata[,AnodeDET] # add values to be assigned to deterministic nodes (already have: netA)
+    #   determ_cols_user <- .f.allCovars(k = self$Kmax, NetInd_k = self$netind_cl$NetInd_k, Var = determ.g_user,
+    #                                     VarNm = "determ.g_true", misval = gvars$misval)
+    #   # determ_cols <- (determ_cols_user | determ_cols_Friend)
+    #   determ_cols <- determ_cols_user
+    #   # THIS IS A VERY BAD WAY TO DO THAT, REMOVING
+    #   # self$mat.sVar <- cbind(determ_cols, self$mat.sVar)
+    #   determ_cols_type <- as.list(rep.int(gvars$sVartypes$bin, ncol(determ_cols)))
+    #   names(determ_cols_type) <- colnames(determ_cols)
+    #   self$type.sVar <- c(determ_cols_type, self$type.sVar)
+    #   invisible(self)
+    # },
+
+    # # Replaces all misval values in mat.netVar / mat.sVar with gvars$misXreplace
+    # fixmiss_netVar = function() {
+    #   self$mat.netVar[gvars$misfun(self$mat.netVar)] <- gvars$misXreplace
+    #   invisible(self)
+    # },
     fixmiss_sVar = function() {
       self$mat.sVar[gvars$misfun(self$mat.sVar)] <- gvars$misXreplace
       invisible(self)
@@ -352,25 +354,32 @@ DatNet <- R6Class(classname = "DatNet",
   ),
 
   active = list(
-    names.netVar = function() { colnames(self$dat.netVar) },
+    # names.netVar = function() { colnames(self$dat.netVar) },
     names.sVar = function() { colnames(self$dat.sVar) },
     names.c.sVar = function() { names(self$type.sVar[self$type.sVar %in% gvars$sVartypes$cont]) }, # names of cont sVars
     ncols.netVar = function() { length(self$names.netVar) },
     ncols.sVar = function() { length(self$names.sVar) },
 
-    dat.netVar = function() { self$mat.netVar },
+    # dat.netVar = function() { self$mat.netVar },
     dat.sVar = function() { self$mat.sVar },
     dat.bin.sVar = function() { self$mat.bin.sVar },
 
-    emptydat.netVar = function() {self$mat.netVar <- NULL },     # wipe out mat.netVar
-    emptydat.sVar = function() { self$mat.sVar <- NULL },        # wipe out mat.sVar
-    emptydat.bin.sVar = function() { self$mat.bin.sVar <- NULL } # wipe out binirized mat.sVar
+    # emptydat.netVar = function() {self$mat.netVar <- NULL },    # wipe out mat.netVar
+    emptydat.sVar = function() { self$mat.sVar <- NULL },         # wipe out mat.sVar
+    emptydat.bin.sVar = function() { self$mat.bin.sVar <- NULL }, # wipe out binirized mat.sVar
+    nodes = function(nodes) {
+      if (missing(nodes)) {
+        return(private$.nodes)
+      } else {
+        assert_that(is.list(nodes))
+        private$.nodes <- nodes
+      }
+    }
   ),
   private = list(
-    placeholder = list()
+    .nodes = list()           # names of the nodes in the data (Anode, Ynode, nFnode, etc..)
   )
 )
-
 
 ## ---------------------------------------------------------------------
 # Class for managing and generating all the summary datasets sWsA used in fitting \bar{h}^* or \bar{h}_0
@@ -384,6 +393,7 @@ DatNet <- R6Class(classname = "DatNet",
 #' @name DatNet.sWsA
 #' @details Following fields are created during initialization
 #' \itemize{
+#' \item{nodes} ...
 #' \item{datnetW} ...
 #' \item{datnetA} ...
 #' \item{YnodeVals} ...
@@ -393,7 +403,7 @@ DatNet <- R6Class(classname = "DatNet",
 #' Methods for combining, subsetting, discretizing & binirizing of summary measures in sW & sA. Inherits from DatNet class. 
 #' The combined dataset of all (sW, sA) summary measures returned by DatNet is stored as a matrix under self$mat.sVar
 #' @importFrom assertthat assert_that is.count is.flag
-# @export
+#' @export
 DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
   inherit = DatNet,
   portable = TRUE,
@@ -414,24 +424,25 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     initialize = function(datnetW, datnetA, YnodeVals, det.Y, ...) {
       assert_that("DatNet" %in% class(datnetW))
       assert_that("DatNet" %in% class(datnetA))
-
       self$datnetW <- datnetW
       self$datnetA <- datnetA
-      self$Kmax <- datnetW$Kmax
-      self$nodes <- datnetW$nodes
       self$netind_cl <- datnetW$netind_cl
+      self$Kmax <- self$netind_cl$Kmax
+      # re-assign nodes object if it already exists in datnetW
+      if (length(datnetW$nodes) > 0) self$nodes <- datnetW$nodes
+      # self$nodes <- datnetW$nodes
+      if (!missing(YnodeVals)) self$addYnode(YnodeVals = YnodeVals, det.Y = det.Y)
+      invisible(self)
+    },
 
-      if (!missing(YnodeVals)) {
+    addYnode = function(YnodeVals, det.Y) {
         if (missing(det.Y)) det.Y <- rep.int(FALSE, length(YnodeVals))
         self$noNA.Ynodevals <- YnodeVals  # Adding actual observed Y as protected (without NAs)
         self$YnodeVals <- YnodeVals
         self$YnodeVals[det.Y] <- NA       # Adding public YnodeVals & setting det.Y values to NA
         self$det.Y <- det.Y
-      }
-
-      invisible(self)
     },
-
+ 
     evalsubst = function(subsetexpr, subsetvars) { # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):      
       # Could also do evaluation in a special env with a custom subsetting fun '[' that will dynamically find the correct dataset that contains 
       # sVar.name (dat.sVar or dat.bin.sVar) and will return sVar vector
@@ -454,18 +465,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           return(subsetexpr)
         } else {
           # ******************************************************
-          # THIS IS A BOTTLENECK
+          # THIS WAS A BOTTLENECK
           # for 500K w/ 1000 bins: 4-5sec
           # ******************************************************
-          # makedfevalsubs_time <- system.time(
-            # REPLACING WITH env that is made of data.frames instead of matrices
+          # REPLACING WITH env that is made of data.frames instead of matrices
             eval.env <- c(data.frame(self$dat.sWsA), data.frame(self$dat.bin.sVar), as.list(gvars))
-          # )
-          # print("makedfevalsubs_time: "); print(makedfevalsubs_time)
-          # evalsubs_time <- system.time(
             res <- try(eval(subsetexpr, envir = eval.env, enclos = baseenv())) # to evaluate vars not found in data in baseenv()
-          # )
-          # print("evalsubs_time: "); print(evalsubs_time)
           return(res)
         }
       }
@@ -489,6 +494,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     },
 
     get.outvar = function(rowsubset = TRUE, var) {
+      if (length(self$nodes) < 1) stop("DatNet.sWsA$nodes list is empty!")
       if (var %in% self$names.sWsA) {
         self$dat.sWsA[rowsubset, var]
       } else if (var %in% colnames(self$dat.bin.sVar)) {
@@ -498,8 +504,8 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       } else {
         # print("var: "); print(var)
         # print("self$YnodeVals: "); print(head(self$YnodeVals))
-        # stop("outcome variable not found")
-        NULL
+        stop("requested variable " %+% var %+% " does not exist in DatNet.sWsA!")
+        # NULL
       }
     },
 
@@ -537,7 +543,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       self$mat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
       invisible(self$mat.bin.sVar)
     },
-
     # return the bin widths vector for the discretized continuous sVar (self$ord.sVar):
     get.sVar.bw = function(name.sVar, intervals) {
       if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")
@@ -547,7 +552,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       ord.sVar_bw <- intrvls.width[self$ord.sVar]
       return(ord.sVar_bw)
     },
-
    # return the bin widths vector for the discretized continuous sVar (self$ord.sVar):
     get.sVar.bwdiff = function(name.sVar, intervals) {
       if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")
@@ -570,35 +574,27 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       assert_that(is.count(p))
       self$p <- p
       nobs <- datnetW$nOdata
-
       # Copy variable detected types (bin, cat or contin) from the observed data classes (datnetW, datnetA) to self:
       self$copy.sVar.types()
-
       if (is.null(f.g_name)) {  # set df.sWsA to observed data (sW,sA) if g.fun is.null
-
         df.sWsA <- cbind(datnetW$dat.sVar, datnetA$dat.sVar) # assigning summary measures as data.frames:
-
       } else {  # need to sample A under f.g_name (gstar or known g0), possibly re-evaluate sW from O.datnetW
-
+        if (is.null(self$nodes$Anode)) stop("Anode was not appropriately specified and is null; can't replace observed Anode with that sampled under g_star")
         Odata <- datnetW$Odata
-        # Should we save new datnetA.gstar as self$datnetA (removing a pointer to O.datnetA)? Not for now.
-        datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes, VarNodes = self$nodes$Anode)
+        # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping a old pointer to O.datnetA)
+        datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes)
+        # datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes, VarNodes = self$nodes$Anode)
         df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
         colnames(df.sWsA) <- self$names.sWsA
-
         for (i in seq_len(p)) {
           # *** f.g_name can only depend on covariates in datnetW$dat.sVar ***
-          # A.gstar <- f.gen.A.star(k = self$Kmax, df_AllW = datnetW$dat.sVar, fcn_name = f.g_name, f_args = f.g_args)
           # if Anode is continuous, just call f.gen.probA.star:
           A.gstar <- f.gen.A.star.cont(k = self$Kmax, df_AllW = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_name, f_args = f.g_args)
-
           Odata[, self$nodes$Anode] <- A.gstar # replace A under g0 in Odata with A^* under g.star:
           datnetA.gstar$make.sVar(Odata = Odata, sVar.object = sA.object) # create new summary measures sA (under g.star)
-
           # Assigning the summary measures to one output data matrix:
           df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetA.gstar$dat.sVar)[, ]
         }
-
       }
       self$mat.sVar <- df.sWsA
       invisible(self)
@@ -611,10 +607,21 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     noNA.Ynodevals = function(noNA.Yvals) {
       if (missing(noNA.Yvals)) return(private$protected.YnodeVals)
       else private$protected.YnodeVals <- noNA.Yvals
-    }
+    },
+    nodes = function(nodes) {
+      if (missing(nodes)) {
+        return(private$.nodes)
+      } else {
+        assert_that(is.list(nodes))
+        if (length(self$nodes)>0) message("warning: overwriting non-empty self$nodes in DatNet.sWsA")
+        private$.nodes <- nodes
+        # propagate new nodes to parent objects:
+        if (length(self$datnetW$nodes) < 1) self$datnetW$nodes <- nodes
+        if (length(self$datnetA$nodes) < 1) self$datnetA$nodes <- nodes
+      }
+    }    
   ),
   private = list(
-    protected.YnodeVals = NULL, # Actual observed values of the binary outcome (Ynode), along with deterministic vals
-    placeholder = list()
+    protected.YnodeVals = NULL  # Actual observed values of the binary outcome (Ynode), along with deterministic vals
   )
 )

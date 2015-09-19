@@ -1,3 +1,91 @@
+#----------------------------------------------------------------------------------
+# From tmlenet():
+#----------------------------------------------------------------------------------
+  #----------------------------------------------------------------------------------
+  # *** RETIRING g_iptw ESTIMATOR ***
+  # Defining and fitting regression for A ~ sW:
+  #----------------------------------------------------------------------------------
+  # Anode.type <- DatNet.ObsP0$get.sVar.type(node_l$Anode)
+  # if (verbose) print("Anode.type: " %+% Anode.type)
+  # if (!(Anode.type %in% gvars$sVartypes$bin)) {
+  #   message("Anode is not binary, full g_iptw cannot be estimated")
+    # m.g0N <- NULL
+  # } else {
+  #   greg <- RegressionClass$new(outvar = node_l$Anode,
+  #                               predvars = g.sVars$predvars,
+  #                               subset = !determ.g)
+  #   m.g0N <- BinOutModel$new(glm = FALSE, reg = greg)$fit(data = DatNet.ObsP0)
+  #   if (verbose) {
+  #     print("coef(m.g0N): "); print(coef(m.g0N))
+  #   }
+  # }
+  #----------------------------------------------------------------------------------
+  # DEPRECATED... MOVED TO all regs being defined via sW, sA summary measures...
+  # Create net_d for fitting m.Q.init, m.g0N and m.h_g0, m.h_gstar
+  #----------------------------------------------------------------------------------
+  # When Qform.depr is provided, use the formula based fit for Q.init instead of Qreg (sW+sA) fit
+  # if (!is.null(Qform.depr)) {
+  #   net_d <- cbind(DatNet.ObsP0$dat.sWsA, subset(data, select = node_l$Ynode))
+  #   net_d[gvars$misfun(net_d)] <- gvars$misXreplace
+  #   m.Q.init.depr <- f_est(net_d[!determ.Q,], Qform.depr, family = family)
+  #   QY.init.depr <- data[, node_l$Ynode] # setting deterministic node values
+  #   QY.init.depr[!determ.Q] <- predict(m.Q.init.depr, newdata = net_d[!determ.Q,], type = "response") # predict p(Y) for non determ nodes    
+  #   if (is.null(gform.depr)) {
+  #     gform.depr <- node_l$Anode %+% " ~ " %+% paste0(DatNet.ObsP0$datnetW$names.sVar, collapse="+") # default to main terms in DatNet.ObsP0$datnetW
+  #   }
+  #   m.g0N.depr <- f_est(net_d[!determ.g,], gform.depr, family = family) # Set A = 0 when determ.g == 1
+  #   d_sel <- cbind(d_sel, QY.init = QY.init.depr) # (DEPRECATED, TO BE REMOVED)
+  #   # if (verbose) {
+  #     print("head(net_d)"); print(head(net_d, 5))      
+  #     print("new coef(m.Q.init): "); print(coef(m.Q.init))
+  #     print("old coef(m.Q.init.depr): "); print(coef(m.Q.init.depr))
+  #     print("coef(m.g0N.depr)"); print(coef(m.g0N.depr))
+  #     print("head(d_sel) old: "); print(head(d_sel))
+  #     message("Running tmlenet with... ");
+  #     message("Qform.depr: " %+% Qform.depr)
+  #     message("gform.depr: " %+% gform.depr)
+  #     message("hform.depr: " %+% hform.depr)
+  #   # }
+  # }
+  # dfcheck <- data.frame(QY.init = QY.init, QY.init.depr = QY.init.depr, diff = QY.init - QY.init.depr)
+  # head(dfcheck, 50)
+  # browser()
+  # stop()  
+  #----------------------------------------------------------------------------------
+  # DEPRECATED: Run TMLE univariate fluctuations for each g.star and/or ATE:
+  #----------------------------------------------------------------------------------
+  # if (!is.null(Qform.depr)) {
+  #   est_obj_g1$m.g0N <- m.g0N.depr
+  #   est_obj_g1$m.Q.init <- m.Q.init.depr
+  #   tmle_g1_out.depr <- get_all_ests.old(data = d_sel, est_obj = est_obj_g1)
+  #   tmle_g2_out.depr <- NULL
+  #   if (!is.null(f_gstar2)) {
+  #     est_obj_g2$m.g0N <- m.g0N.depr
+  #     est_obj_g2$m.Q.init <- m.Q.init.depr
+  #     tmle_g2_out.depr <- get_all_ests.old(data = d_sel, est_obj = est_obj_g2)
+  #   }
+  # }
+
+#-----------------------------------------------------------------------------
+# Formula based glm model fit 
+#-----------------------------------------------------------------------------
+f_est <- function(d, form, family) {
+  ctrl <- glm.control(trace = FALSE, maxit = 1000)
+    SuppressGivenWarnings({
+              m <- glm(as.formula(form),
+                  data = d,
+                  family = family,
+                  control = ctrl)
+              },
+              GetWarningsToSuppress())
+    return(m)
+}
+
+
+#----------------------------------------------------------------------------------
+# General S3 summary functions:
+#----------------------------------------------------------------------------------
+
 # Get summary measures for one or two tmlenet objects 
 #(SEs, p-values, CIs)
 # If two objects, include effect measures (additive effect, relative risk, odds ratio)

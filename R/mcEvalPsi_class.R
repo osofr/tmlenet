@@ -1,51 +1,48 @@
+#---------------------------------------------------------------------------------
+# unified estimator naming used throughout the package:
+# c("TMLE", "h_IPTW", "MLE")
+#---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------
 # G-Comp & TMLEs: Use Monte-Carlo to estimate psi under stochastic g^* 
 #---------------------------------------------------------------------------------
-get.MCS_ests <- function(datNetObs,  DatNet.gstar, MC_fit_params, m.h.fit) {
-  onlyTMLE_B <- MC_fit_params$onlyTMLE_B
+get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
+  estnames <- MC_fit_params$estnames
+  m.Q.init <- MC_fit_params$m.Q.init
+  m.Q.star <- MC_fit_params$m.Q.star
+
   # nQ.MCsims <- MC_fit_params$nQ.MCsims
   # max_npwt <- MC_fit_params$max_npwt
   # max.err_eps <- MC_fit_params$max.err_eps
-  # f.gstar <- MC_fit_params$f.gstar
-  # f.g0 <- MC_fit_params$f.g0
-  m.Q.init <- MC_fit_params$m.Q.init
-  m.Q.starA <- MC_fit_params$m.Q.starA
-  m.Q.starB <- MC_fit_params$m.Q.starB
-  # m.Q.star_giptw <- MC_fit_params$m.Q.star_giptw
-  # m.g0N  <- MC_fit_params$m.g0N
 
   message("================================================================")
   message("running Monte Carlo evaluation of the substitution estimators...")
   message("================================================================")
-  evaluator <- mcEvalPsi$new(datNetObs = datNetObs, DatNet.gstar = DatNet.gstar, onlyTMLE_B = onlyTMLE_B)
+  evaluator <- mcEvalPsi$new(DatNet.ObsP0 = DatNet.ObsP0, DatNet.gstar = DatNet.gstar)
   nOdata <- evaluator$nOdata
 
   genMC.reps <- function(nrep)  {
-    # resamp_d <- .f.gen.sample(NetInd_k, n) # Get a random sample of all A and W (DISABLED)
     GCOMP <- evaluator$get.gcomp(m.Q.init) # QY.init (G-Comp estimator) - est probY based on model for Q_Y
-
-    TMLE_A <- 0 # TMLE A (adjusted by coefficient epsilon on h_bar ratio)
-    TMLE_gIPTW <- 0 # gIPTW  TMLE
-    # if (!onlyTMLE_B) {
-    #   TMLE_A <- evaluator$get.tmleA(m.Q.starA = m.Q.starA, m.h.fit = m.h.fit) # TMLE A (adjusted by coefficient epsilon on h_bar ratio)
-    #   TMLE_gIPTW <- 0 # gIPTW  TMLE
-    # }
-
-    TMLE_B <- evaluator$get.tmleB(m.Q.starB = m.Q.starB) # TMLE B (adjusted by intercept epsilon where h_bar were used as weights)
-    fiWs_list <- evaluator$get.fiW(m.Q.starA = m.Q.starA, m.Q.starB = m.Q.starB) # Get fi_W - hold W fixed to observed values
+    if ("TMLE_A" %in% estnames) {
+      TMLE <- evaluator$get.tmleA(m.Q.starA = m.Q.star, m.h.fit = m.h.fit) # TMLE A (adjusted by coefficient epsilon on h_bar ratio)
+    } else if ("TMLE_B" %in% estnames) {
+      TMLE <- evaluator$get.tmleB(m.Q.starB = m.Q.star) # TMLE B (adjusted by intercept epsilon where h_bar were used as weights)
+    } else {
+      TMLE <- NA
+    }
+    fiWs_list <- evaluator$get.fiW() # Get fi_W - hold W fixed to observed values
 
     # Put all estimators together and add names (defined in out_nms outside of this function):
-    mean_psis_all <- c(tmle_A = mean(TMLE_A), tmle_B = mean(TMLE_B), tmle_g_iptw = mean(TMLE_gIPTW), mle = mean(GCOMP),
-                      fiWs_list$fiW_Qinit,
-                      fiWs_list$fiW_QstarA,
-                      fiWs_list$fiW_QstarB)
-
-    # Naming estimators (same names throughout the entire package):
-    names(mean_psis_all) <- c("tmle_A", "tmle_B", "tmle_g_iptw", "mle",
-                            paste("fWi_init_", c(1:nOdata), sep = ""),
-                            paste("fWi_star_A_", c(1:nOdata), sep = ""),
-                            paste("fWi_star_B_", c(1:nOdata), sep = ""))
+    mean_psis_all <- c(TMLE = mean(TMLE), MLE = mean(GCOMP), fiWs_list$fiW_Qinit)
+    names(mean_psis_all) <- c("TMLE", "MLE", paste("fWi_init_", c(1:nOdata), sep = ""))
+    # mean_psis_all <- c(tmle_A = mean(TMLE_A), tmle_B = mean(TMLE_B), tmle_g_iptw = mean(TMLE_gIPTW), mle = mean(GCOMP),
+    #                   fiWs_list$fiW_Qinit,
+    #                   fiWs_list$fiW_QstarA,
+    #                   fiWs_list$fiW_QstarB)
+    # names(mean_psis_all) <- c("tmle_A", "tmle_B", "tmle_g_iptw", "mle",
+    #                         paste("fWi_init_", c(1:nOdata), sep = ""),
+    #                         paste("fWi_star_A_", c(1:nOdata), sep = ""),
+    #                         paste("fWi_star_B_", c(1:nOdata), sep = ""))
 
     return(mean_psis_all)
   }
@@ -82,14 +79,16 @@ get.MCS_ests <- function(datNetObs,  DatNet.gstar, MC_fit_params, m.h.fit) {
   return(psi_est_mean)
 }
 
+## ---------------------------------------------------------------------
 # Class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention gstar
   # For given data, take Q[Y|cY]=m.Q.init and calcualte est. of psi under gstar using Monte-Carlo integration:
   # * W_i can be iid or not (W's are never resampled);
   # * Draw from the distributions of W and \bar{g}^*
   # * Recalculate Y^c under \bar{g}^*;
   # * Repeat nrep times and average.
-#' @import data.table
 
+# data.table is used on fiW_Qinit for performing unit-level mean and var evaluation (n-length result)
+#' @import data.table
 ## ---------------------------------------------------------------------
 #' @title Class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention gstar.
 #' @docType class
@@ -97,11 +96,9 @@ get.MCS_ests <- function(datNetObs,  DatNet.gstar, MC_fit_params, m.h.fit) {
 #' @name mcEvalPsi
 #' @details Following fields are created during initialization
 #' \itemize{
-#' \item{nodes} ...
 #' \item{subset_regs} ...
 #' \item{sA_nms} ...
 #' \item{sW_nms} ...
-#' \item{Kmax} ...
 #' }
 #' Class for evaluating and storing arbitrary summary measures sVar.
 #' @importFrom assertthat assert_that is.count is.flag
@@ -110,56 +107,34 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
   portable = TRUE,
   class = TRUE,
   public = list(
-    Kmax = integer(),          # max n of Friends in the network
-    nodes = list(),            # names of the nodes in the data (Anode, Wnodes, nFnode, etc..)
-    netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
-
-    datNetObs = NULL,
+    DatNet.ObsP0 = NULL,
     DatNet.gstar = NULL,
-
-    onlyTMLE_B = NULL,
     m.Q.init = NULL,
     m.Q.starA = NULL,
     m.Q.starB = NULL,
     QY.init = NULL,
     QY.starA = NULL,
     QY.starB = NULL,
-
     nOdata = NA_integer_,      # no. of samples in the OBSERVED (original) data
     p = NA_integer_,           # no. of times n-size sA were resampled under gstar
 
-    initialize = function(datNetObs, DatNet.gstar, onlyTMLE_B, ...) {
-      self$datNetObs <- datNetObs
-      self$nOdata <- datNetObs$nobs
-      self$Kmax <- datNetObs$Kmax
-      self$nodes <- datNetObs$nodes
-      self$netind_cl <- datNetObs$netind_cl
+    initialize = function(DatNet.ObsP0, DatNet.gstar, ...) {
+      self$DatNet.ObsP0 <- DatNet.ObsP0
+      self$nOdata <- DatNet.ObsP0$nobs
       self$DatNet.gstar <- DatNet.gstar
       self$p <- DatNet.gstar$p
-
-      # Additional params:
-      self$onlyTMLE_B <- onlyTMLE_B
-      # nQ.MCsims <- MC_fit_params$nQ.MCsims
-      # max_npwt <- MC_fit_params$max_npwt
-      # max.err_eps <- MC_fit_params$max.err_eps
-
-      # f.gstar <- MC_fit_params$f.gstar
-      # f.g0 <- MC_fit_params$f.g0
-      # m.g0N  <- MC_fit_params$m.g0N
       invisible(self)
     },
 
     # MLE - Predict E[Yg_star] (QY.init) for each i, based on the initial model fit for E[Y|C^Y] (m.Q.init)
     # output is a vector of length n*p
     get.gcomp = function(m.Q.init) {
-      # QY <- predict(m.Q.init, newdata = samp_data, type="response")
-      # QY[determ.Q] <- samp_data[determ.Q, Ynode]  # will be incorrect if W's are resampled
       self$m.Q.init <- m.Q.init
-      datNetObs <- self$datNetObs
+      DatNet.ObsP0 <- self$DatNet.ObsP0
       DatNet.gstar <- self$DatNet.gstar
       # print("getting predictions for gcomp...")
       QY.init <- m.Q.init$predict(newdata = DatNet.gstar)$getprobA1
-      QY.init[datNetObs$det.Y] <- datNetObs$noNA.Ynodevals[datNetObs$det.Y]
+      QY.init[DatNet.ObsP0$det.Y] <- DatNet.ObsP0$noNA.Ynodevals[DatNet.ObsP0$det.Y]
       self$QY.init <- QY.init
       invisible(QY.init)
     },
@@ -168,8 +143,8 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
     # output is a vector of length n*p
     get.tmleA = function(m.Q.starA, m.h.fit) {
       if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first") # QY.init <- self$get.gcomp(self$m.Q.init)
-      predh.res <- pred.hbars(newdatnet = self$DatNet.gstar, m.h.fit = m.h.fit)
-      h_iptw <- predh.res$dat_hest$h_gstar_gN
+      h_iptw <- predict.hbars(newdatnet = self$DatNet.gstar, m.h.fit = m.h.fit)
+      # h_iptw <- predh.res$dat_hest$h_gstar_gN
       if (!is.na(coef(m.Q.starA))) {
         self$m.Q.starA <- m.Q.starA
         off <- qlogis(self$QY.init)
@@ -198,9 +173,9 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
 
     # get an estimate of fiW (hold ALL W's fixed at once) - a component of TMLE Var
     # Creates a vector of size n*p, where each of n obs is then averaged p times.
-    get.fiW = function(m.Q.starA, m.Q.starB) {
+    get.fiW = function() {
+    # get.fiW = function(m.Q.starA, m.Q.starB) {
       if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first") # QY.init <- self$get.gcomp(self$m.Q.init)
-
       # *******fi_W based on Q,N.init model ******
       ID <- rep.int(c(1 : self$nOdata), self$p)
       # taking average over p samples for each of n obs
@@ -208,10 +183,10 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       fiW_Qinit.mean <- fiW_Qinit[, lapply(.SD, mean, na.rm=TRUE), by="ID", .SDcols=c("fiW") ][["fiW"]]
       fiW_Qinit.var <- fiW_Qinit[, lapply(.SD, var, na.rm=TRUE), by="ID", .SDcols=c("fiW") ][["fiW"]]
 
-      # *******fi_W based on Q.N.star models (A & B) ******
-      fiW_QstarA <- rep_len(0, self$nOdata)
-      fiW_QstarB <- rep_len(0, self$nOdata)
-
+      # *******DISABLED*******
+      # fi_W based on Q.N.star models (A & B TMLEs)
+      # fiW_QstarA <- rep_len(0, self$nOdata)
+      # fiW_QstarB <- rep_len(0, self$nOdata)
       # if (!self$onlyTMLE_B) {
       #   fiW_QstarA <- self$get.tmleA(m.Q.starA) # or: fiW_QstarA <- self$QY.starA
       # } else {
@@ -219,9 +194,8 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       # }
       # fiW_QstarB <- self$get.tmleB(m.Q.starB) # or: fiW_QstarB <- self$QY.starB
 
-      # #todo 60 (MCeval, get.fiW) +0: Consider doing ONE type of fi_W at a time to simplify (based on one m.Q.init, m.Q.starA, m.Q.starB that is passed as arg)
+      return(list(fiW_Qinit = fiW_Qinit.mean, fiW_Qinit.var = fiW_Qinit.var))
       # return(list(fiW_Qinit = fiW_Qinit.mean, fiW_Qinit.var = fiW_Qinit.var, fiW_QstarA = fiW_QstarA, fiW_QstarB = fiW_QstarB))
-      return(list(fiW_Qinit = fiW_Qinit.mean, fiW_QstarA = fiW_QstarA, fiW_QstarB = fiW_QstarB))
     }
 
     # NOT IMPLEMENTED
@@ -243,8 +217,7 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
   ),
 
   active = list(
-    dat.sVar = function() { self$mat.sVar },
-    emptydat.sVar = function() { self$mat.sVar <- NULL }       # wipe out mat.sVar
+    plchld = function() {}
   ),
   private = list(
     placeholder = list()

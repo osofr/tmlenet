@@ -1,23 +1,38 @@
+#----------------------------------------------------------------------------------
+# Estimate IC-based Variance (as. Var) and CIs (based on f_W and fY)
+# New fast method for as var calculation (matrix vs)
+#----------------------------------------------------------------------------------
+# use estimates of fWi (hold all W's fixed at once),
+# loop over all intersecting friends networks
+# calculate R_ij*(fW_i*fW_j) - see page 33 Network paper vdL
+#----------------------------------------------------------------------------------
+# unified estimator naming used throughout the package:
+# c("TMLE", "h_IPTW", "MLE")
+#----------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+# THIS FUNCTION IS NOT USED, ONLY HERE FOR TESTING SPARSE CONNECTIVITY MATRIX CONVERSION / CREATION
 get_sparse_Fiintersectmtx <- function() {
   # ------------------------------------------------------------------------------
   # Simulate some network data
   # ------------------------------------------------------------------------------
-  # n <- 20000
-  # # n <- 10000
-  # # n <- 1000
-  # # fvec_i <- abs(rnorm(n))
-  # fvec_i <- rnorm(n)
-  # # fvec_i <- rep_len(1,n)
-  # # NetInd_k <- matrix(NA, nrow=n, ncol=3)
-  # # NetInd_k[1,] <- c(2,3,NA)
-  # # NetInd_k[4,] <- c(2,NA,NA)
-  # # nF <- rep.int(0,n)
-  # # nF[1] <- 2; nF[4] <- 1
-  # # Kmax <- 150
-  # Kmax <- 200
-  # # Kmax <- 15
-  # NetInd_k <- t(replicate(n, sample(1:n, Kmax, replace = FALSE)))
-  # nF <- rep.int(Kmax, n)
+  n <- 20000
+  # n <- 10000
+  # n <- 1000
+  # fvec_i <- abs(rnorm(n))
+  fvec_i <- rnorm(n)
+  # fvec_i <- rep_len(1,n)
+  # NetInd_k <- matrix(NA, nrow=n, ncol=3)
+  # NetInd_k[1,] <- c(2,3,NA)
+  # NetInd_k[4,] <- c(2,NA,NA)
+  # nF <- rep.int(0,n)
+  # nF[1] <- 2; nF[4] <- 1
+  # Kmax <- 150
+  Kmax <- 200
+  # Kmax <- 15
+  NetInd_k <- t(replicate(n, sample(1:n, Kmax, replace = FALSE)))
+  nF <- rep.int(Kmax, n)
   # ------------------------------------------------------------------------------
 
   # ------------------------------------------------------------------------------
@@ -66,7 +81,7 @@ get_sparse_Fiintersectmtx <- function() {
 # The second letter in the name of these non-virtual classes indicates general, symmetric, or triangular.
 # The lsparseMatrix class is a virtual class of sparse matrices with TRUE/FALSE or NA entries. Only the positions of the elements that are TRUE are stored.
 
-# copied from simcausal, then modified to work as sparse pattern matrix:
+# Copied from simcausal, then modified to work as sparse pattern matrix:
 # return pattern sparse matrix, no @x is recorded (ngMatrix):
 NetInd.to.sparseAdjMat <- function(NetInd_k, nF, add_diag = FALSE) {
   nobs <- nrow(NetInd_k)
@@ -81,6 +96,7 @@ NetInd.to.sparseAdjMat <- function(NetInd_k, nF, add_diag = FALSE) {
 }
 
 # For correlated i,j (s.t. i<j), add a term f_vec[i]*f_vec[j] to the cumulative sum
+# Helper function to calculate cross product sum of correlated f_Wi (see p.33 of vdL)
 sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
   # sparseAdjMat:
     # nnzero: number of non-zero elements
@@ -111,17 +127,6 @@ sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
   return(Dstar_crossprod)
 }
 
-
-#----------------------------------------------------------------------------------
-# Estimate IC-based Variance (as. Var) and CIs (based on f_W and fY)
-#----------------------------------------------------------------------------------
-# use estimates of fWi (hold all W's fixed at once),
-# loop over all intersecting friends networks
-# calculate R_ij*(fW_i*fW_j) - see page 33 Network paper vdL
-#----------------------------------------------------------------------------------
-# Helper function to calculate cross product sum of correlated f_Wi (see p.33 of vdL)
-# New fast method for as var calculation (matrix vs)
-
 # Sum the cross prod vector over connectivity mtx (prod will only appear if (i,j) entry is 1):
 est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
   n <- length(fvec_i)
@@ -132,48 +137,57 @@ est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
   return(Dstar)
 }
 
-est_sigmas <- function(n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat, onlyTMLE_B) {
+est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat) {
+# est_sigmas <- function(n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat, onlyTMLE_B) {
   fWi <- fWi_mat[, "fWi_Qinit"]
-  QY.init <- QY_mat[, "QY.init"] # QY.star <- QY_mat[, "QY.star_A"]
+  QY.init <- QY_mat[, "QY.init"] 
   h_wts <- wts_mat[, "h_wts"]
-  # g_wts <- wts_mat[,"g_wts"]
-  var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
-  var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
+  var_tmle <- 0
+
   # NetInd as sparse adjacency matrix (new version returns pattern sparse mat ngCMatrix):
   sparse_mat <- NetInd.to.sparseAdjMat(NetInd_k, nF = nF, add_diag = TRUE)
   # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
   connectmtx_1stO <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
 
+  # TMLE inference based on the iid IC:
+  iidIC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  var_tmle <- est.sigma_sparse(iidIC_tmle, connectmtx_1stO)
+  # Simple estimator of the iid asymptotic IC-based variance (no adjustment made when two observations i!=j are dependent):
+  var_iid.tmle <- mean((iidIC_tmle)^2)
+  # IPTW h (based on the mixture density clever covariate (h)):
+  iidIC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_IPTW",])
+  var_iptw_h <- est.sigma_sparse(iidIC_iptw_h, connectmtx_1stO)
+
+  var.ests <- c(abs(var_tmle), abs(var_iptw_h), NA)
+  as.var_mat <- matrix(0, nrow = length(var.ests), ncol = 1)
+  as.var_mat[,1] <- var.ests
+  rownames(as.var_mat) <- estnames
+  colnames(as.var_mat) <- "Var"
+
+  # QY.star <- QY_mat[, "QY.star"]
+  # g_wts <- wts_mat[,"g_wts"]  
+  # var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
+  # var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
   # # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
   # if (!onlyTMLE_B) {
-  #   # iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + fWi_A
   #   iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
   #   var_tmle_A <- est.sigma_sparse(iidIC_tmle_A, connectmtx_1stO)
   # }
-
-  # TMLE B (weighted model update): Inference based on the iid IC:
-  # iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + fWi_B
-  iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
-  var_tmle_B <- est.sigma_sparse(iidIC_tmle_B, connectmtx_1stO)
-  # simple iid estimator of the asymptotic variance (no adjustment made when two observations i!=j are dependent):
-  var_iid.tmle_B <- mean((iidIC_tmle_B)^2)
-
+  # # TMLE B (weighted model update): Inference based on the iid IC:
+  # iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
+  # var_tmle_B <- est.sigma_sparse(iidIC_tmle_B, connectmtx_1stO)
+  # # simple iid estimator of the asymptotic variance (no adjustment made when two observations i!=j are dependent):
+  # var_iid.tmle_B <- mean((iidIC_tmle_B)^2)
   # TMLE based on iptw clever covariate (more non-parametric):
   # if (!onlyTMLE_B) {
   #   iidIC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
   #   var_tmleiptw_1stO <- est.sigma_sparse(iidIC_tmleiptw, connectmtx_1stO)
   # }
-
-  # IPTW h (based on the mixture density clever covariate (h)):
-  iidIC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_iptw",])
-  var_iptw_h <- est.sigma_sparse(iidIC_iptw_h, connectmtx_1stO)
-
   # # IPTW g:
   # if (!onlyTMLE_B) {
   #   iidIC_iptw_g <- g_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"g_iptw",])
   #   var_iptw_1stO <- est.sigma_sparse(iidIC_iptw_g, connectmtx_1stO)
   # }
-
   # Inference based on the EIC, with factorization into orthogonal components sigma2_DY and sigma2_W_N
   # sigma2_DY_i are independent (since they are conditioned on W,A)
   # sigma2_W_N_i are dependent => need to take double sum of their crossprod among dependent units
@@ -212,15 +226,8 @@ est_sigmas <- function(n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi
   #   # # --------
   # }
 
-  var.ests <- c(abs(var_tmle_B), abs(var_iptw_h), NA)
   # var.ests <- c(abs(var_tmle_A), abs(var_tmle_B), abs(var_tmleiptw_1stO), abs(var_iptw_h), abs(var_iptw_1stO), 0)
-  estnames <- c("tmle_B", "h_iptw", "mle")
-  # estnames <- c(      "tmle_A",     "tmle_B",       "tmle_g_iptw",        "h_iptw",         "g_iptw", "mle")
-  as.var_mat <- matrix(0, nrow = length(var.ests), ncol = 1)
-  as.var_mat[,1] <- var.ests
-  rownames(as.var_mat) <- estnames
-  colnames(as.var_mat) <- "var"
-
+  # estnames <- c( "TMLE_A", "TMLE_B", "TMLE_g_IPTW", "h_IPTW", "g_IPTW", "MLE")
   # other.vars = c(
   #               var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
   #               var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
@@ -231,24 +238,14 @@ est_sigmas <- function(n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi
 
   return(list(as.var_mat = as.var_mat))
   # return(list(as.var_mat = as.var_mat, other.vars = other.vars))
-                # other.vars = list(
-                #   var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
-                #   var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
-                #   var_iptw_2ndO = abs(var_iptw_2ndO), # adjusting for 2nd order dependence of i,j
-                #   var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
-                #   var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
-                # )
 }
 
 # create output object with param ests of EY_gstar, vars and CIs for given gstar (or ATE if two tmle obj are passed)
-make_EYg_obj <- function(alpha, onlyTMLE_B, datNetObs, tmle_g_out, tmle_g2_out=NULL) {
-  # print("tmle_g_out$ests_mat[, tmle_A]"); print(tmle_g_out$ests_mat[rownames(tmle_g_out$ests_mat)%in%"tmle_A",])
-  nobs <- datNetObs$nobs
-  NetInd_k <- datNetObs$netind_cl$NetInd_k
-  nF <- datNetObs$netind_cl$nF
-
+make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out, tmle_g2_out=NULL) {
+  nobs <- DatNet.ObsP0$nobs
+  NetInd_k <- DatNet.ObsP0$netind_cl$NetInd_k
+  nF <- DatNet.ObsP0$netind_cl$nF
   ests_mat <- tmle_g_out$ests_mat
-
   QY_mat <- tmle_g_out$QY_mat
   fWi_mat <- tmle_g_out$fWi_mat
   wts_mat <- tmle_g_out$wts_mat
@@ -257,32 +254,41 @@ make_EYg_obj <- function(alpha, onlyTMLE_B, datNetObs, tmle_g_out, tmle_g2_out=N
     fWi_mat <- tmle_g_out$fWi_mat - tmle_g2_out$fWi_mat
     wts_mat <- tmle_g_out$wts_mat - tmle_g2_out$wts_mat
   }
+
   # get the iid IC-based asymptotic variance estimates:
   getVar_time <- system.time(
-    as.vars_obj <- est_sigmas(n = nobs, NetInd_k = NetInd_k, nF = nF, obsYvals = datNetObs$noNA.Ynodevals,
-                            ests_mat = ests_mat, QY_mat = QY_mat, wts_mat = wts_mat, fWi_mat = fWi_mat,
-                            onlyTMLE_B = onlyTMLE_B)
+    as.vars_obj <- est_sigmas(estnames = estnames, n = nobs, NetInd_k = NetInd_k, nF = nF, 
+                              obsYvals = DatNet.ObsP0$noNA.Ynodevals,
+                              ests_mat = ests_mat, QY_mat = QY_mat, 
+                              wts_mat = wts_mat, fWi_mat = fWi_mat)
   )
-
-  print("time to estimate Vars: "); print(getVar_time)
-
- get_CI <- function(xrow, n) {
+  if (gvars$verbose) {
+    print("time to estimate Vars: "); print(getVar_time)  
+  }
+  
+  get_CI <- function(xrow, n) {
     f_est_CI <- function(n, psi, sigma2_N) { # get CI
       z_alpha <- qnorm(1-alpha/2)
       CI_est <- c(psi - z_alpha*sqrt(sigma2_N) / sqrt(n), psi + z_alpha*sqrt(sigma2_N) / sqrt(n))
       return(CI_est)
     }
     psi <- xrow["estimate"];
-    sigma2_N <- xrow["var"];
+    sigma2_N <- xrow["Var"];
     return(f_est_CI(n = n, psi = psi, sigma2_N = sigma2_N))
   }
 
   CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$as.var_mat), 1, get_CI, n = nobs))
   colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
 
-  rownames(ests_mat)[1] <- "tmle"
-  rownames(as.vars_obj$as.var_mat)[1] <- "tmle"
-  rownames(CIs_mat)[1] <- "tmle"
+  # ------------------------------------------------------------------------------------------
+  # RENAME ESTIMATORS FOR THE FINAL OUTPUT:
+  # ------------------------------------------------------------------------------------------
+  # print("ests_mat: "); print(ests_mat)
+  # print("ests_vars: "); print(as.vars_obj$as.var_mat)
+  # print("ests_CIs: "); print(CIs_mat)
+  rownames(ests_mat) <- estoutnames
+  rownames(as.vars_obj$as.var_mat) <- estoutnames
+  rownames(CIs_mat) <- estoutnames
 
   EY_g.star <- list(estimates = ests_mat,
                     vars = (as.vars_obj$as.var_mat / nobs),

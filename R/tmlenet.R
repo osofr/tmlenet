@@ -1,20 +1,16 @@
 # @title tmlenet-package
 # @docType package
-#' @import R6
-# NULL
-# data.table
 # @author Oleg Sofrygin, Mark J. van der Laan
 # @description ...TO BE COMPLETED...
 # @name tmlenet-package
-
+#' @useDynLib tmlenet
+#' @import R6
+#' @importFrom Rcpp sourceCpp
 
 #######################################################################
 ######### BETA VERSION - NOT FOR DISTRIBUTION #########################
 #######################################################################
 
-#------------------------------------
-# v0.2 Adding R6 classes for estimation of the clever covariate (weights) h_gstar / h_gN; new syntax for specifying arbitrary (continuous) summary measures (sA, sW)
-# 07/11/15
 # NETWORK TMLE
 # authors: Oleg Sofrygin <sofrygin@berkeley.edu> and Mark van der Laan <laan@berkeley.edu>
 
@@ -25,16 +21,15 @@
     # - replaceNAw0
     # - automatic names
     # - summary functions (rowMeans() in tmlenet, but mean() in simcausal)
-  # *) (11/05/14) Make as. var estimates to be at least \sum{(D^*^2)(O_i)}, i.e. lower bounded by as. var in iid case,
+  # *) (11/05/14) Make as. var estimates to be at least \\sum{(D^*^2)(O_i)}, i.e. lower bounded by as. var in iid case,
   #     ... since there is no reason to expect that more information will be available for dependent units than there is for indep. units
   # *) Implement data-adaptive weight truncation wrt minimization of MSE (taking max of 5% weight of total as truth)
   # *) Implement pooling when estimating P(sA[j]|sW) for continous sA[j]
-  # *) Allow SL to fit Q_N, g_N and h (i.e P(A_j|A_{1},..,A_{j-1}, W_i\inF_j))
+  # *) Allow SL to fit Q_N, g_N and h (i.e P(A_j|A_{1},..,A_{j-1}, W_i\\inF_j))
 
 #-----------------------------------------------------------------------------
 # Class Membership Tests
 #-----------------------------------------------------------------------------
-
 is.DatNet.sWsA <- function(DatNet.sWsA) "DatNet.sWsA"%in%class(DatNet.sWsA)
 is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
 
@@ -46,9 +41,8 @@ is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
 # for fidx = 0 (var itself), ..., kmax. fidx can be a vector, in which case a 
 # character vector of network names is returned. If varnm is also a vector, a 
 # character vector for all possible combinations of (varnm x fidx) is returned.
-#-----------------------------------------------------------------------------
-
 # OUTPUT format: Varnm_net.j:
+#-----------------------------------------------------------------------------
 netvar <- function(varnm, fidx) {
   cstr <- function(varnm, fidx) {
     slen <- length(fidx)
@@ -73,7 +67,6 @@ netvar <- function(varnm, fidx) {
 #-----------------------------------------------------------------------------
 # General utilities / Global Vars
 #-----------------------------------------------------------------------------
-
 `%+%` <- function(a, b) paste0(a, b)
 
 # Bound g(A|W) probability within supplied bounds
@@ -92,7 +85,8 @@ SuppressGivenWarnings <- function(expr, warningsToIgnore) {
 }
 
 GetWarningsToSuppress <- function(update.step=FALSE) {
-  warnings.to.suppress <- c("glm.fit: fitted probabilities numerically 0 or 1 occurred", "prediction from a rank-deficient fit may be misleading")
+  warnings.to.suppress <- c("glm.fit: fitted probabilities numerically 0 or 1 occurred", 
+                            "prediction from a rank-deficient fit may be misleading")
   if (update.step) {
     warnings.to.suppress <- c(warnings.to.suppress, "glm.fit: algorithm did not converge")
   }
@@ -101,6 +95,26 @@ GetWarningsToSuppress <- function(update.step=FALSE) {
 
 CheckInputs <- function(data, inputparams) {    # Error checking for inputs
   # ....
+}
+
+# returns NULL if no factors exist, otherwise return the name of the factor variable(s)
+CheckExistFactors <- function(data) {
+  testvec <- unlist(lapply(data, is.factor))
+  if (any(testvec)) {
+    return(names(data)[which(testvec)])
+  } else {
+    return(NULL)
+  }
+}
+
+# throw exception if 1) varname doesn't exist; 2) more than one varname is matched
+CheckVarNameExists <- function(data, varname) {
+  idvar <- names(data) %in% varname
+  if (sum(idvar) < 1) stop("variable name " %+% varname %+% " not found in data input")
+  if (sum(idvar) > 1) stop("more than one column in the input data has been matched to name " 
+                            %+% varname %+% ". Consider renaming some of the columns: " %+% 
+                            paste0(names(data)[idvar], collapse=","))
+  return(invisible(NULL))
 }
 
 # THIS NEEDS MORE EVALUATION, DOESN'T SEEM TO WORK AS INTENDED DURING MC EVALUTION
@@ -122,13 +136,11 @@ scale_bound <- function(weights, max_npwt, n) {
   }
   return(weights)
 }
-
 # Return the left hand side variable of formula f as a character
 LhsVars <- function(f) {
   f <- as.formula(f)
   return(as.character(f[[2]]))
 }
-
 # Return the right hand side variables of formula f as a character vector
 RhsVars <- function(f) {
   f <- as.formula(f)
@@ -138,81 +150,81 @@ RhsVars <- function(f) {
 #---------------------------------------------------------------------------------
 # Estimate h_bar under g_0 and g* given observed data and vector of c^Y's data is an DatNet.sWsA object
 # #todo 22 (get_all_ests) +0: rename get_all_ests into fit.param.fluct
-# #todo 23 (get_all_ests) +0: move MC estimation (and h estimation?) outside get_all_ests
 #---------------------------------------------------------------------------------
+get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
+  #---------------------------------------------------------------------------------
+  # unified estimator naming used throughout the package:
+  # c("TMLE", "h_IPTW", "MLE")
+  #---------------------------------------------------------------------------------
+  # DatNet.ObsP0$det.Y             # TRUE/FALSE for deterministic Y's
+  # DatNet.ObsP0$noNA.Ynodevals    # actual observed Y's
+  # m.Q.init$getoutvarnm           # reg outvar name (Ynode)
+  # DatNet.ObsP0$YnodeVals         # visible Y's with NA for det.Y
+  # m.Q.init$getoutvarval          # Yvals used in prediction (with det.Y obs set to NA)
+  # m.Q.init$getprobA1             # predictions (for non-DET Y)
+  # m.Q.init$getsubset             # valid subset (!det.Y)
+  # m.Q.init$reg                   # regression class (Qreg)
 
-get_all_ests <- function(datNetObs, est_params_list) {
-  # datNetObs$det.Y             # TRUE/FALSE for deterministic Y's
-  # datNetObs$noNA.Ynodevals    # actual observed Y's
-  # m.Q.init$getoutvarnm        # reg outvar name (Ynode)
-  # datNetObs$YnodeVals         # visible Y's with NA for det.Y
-  # m.Q.init$getoutvarval       # Yvals used in prediction (with det.Y obs set to NA)
-  # m.Q.init$getprobA1          # predictions (for non-DET Y)
-  # m.Q.init$getsubset          # valid subset (!det.Y)
-  # m.Q.init$reg                # regression class (Qreg)
-  nodes <- datNetObs$nodes
-  Y <- datNetObs$noNA.Ynodevals # actual observed Y's
-  determ.Q <- datNetObs$det.Y
+  nodes <- DatNet.ObsP0$nodes
+  Y <- DatNet.ObsP0$noNA.Ynodevals # actual observed Y's
+  determ.Q <- DatNet.ObsP0$det.Y
   m.Q.init <- est_params_list$m.Q.init
-  QY.init <- datNetObs$noNA.Ynodevals # getting all node vals, inc. deterministic
-  QY.init[!datNetObs$det.Y] <- m.Q.init$getprobA1[!datNetObs$det.Y] # getting predictions P(Y=1) for non-DET Y
+  QY.init <- DatNet.ObsP0$noNA.Ynodevals # getting all node vals, inc. deterministic
+  QY.init[!DatNet.ObsP0$det.Y] <- m.Q.init$getprobA1[!DatNet.ObsP0$det.Y] # getting predictions P(Y=1) for non-DET Y
   off <- qlogis(QY.init)  # offset
-  #---------------------------------------------------------------------------------
-  # ESTIMATORS:
-  #---------------------------------------------------------------------------------
 
   #************************************************
   # h^*/h_N clever covariate:
   #************************************************
-  fit.hbars_t <- system.time(fit.hbars.res <- fit.hbars(datNetObs = datNetObs, est_params_list = est_params_list)) # fit the clever covariat
-  datNetObs <- fit.hbars.res$datNetObs
+  fit.hbars_t <- system.time(fit.hbars.res <- fit.hbars(DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_params_list)) # fit the clever covariate
+
   DatNet.gstar <- fit.hbars.res$DatNet.gstar
   m.h.fit <- fit.hbars.res$m.h.fit
-  dat_hest <- fit.hbars.res$dat_hest
-  # h_gstar <- fit.hbars.res$dat_hest$h_gstar; h_gN <- fit.hbars.res$dat_hest$h_gN
-  h_wts <- fit.hbars.res$dat_hest$h_gstar_gN
-
-  print("time to fit new fit.hbars.res:"); print(fit.hbars_t)
-  # print("new h est:"); print(dim(dat_hest)); print(head(dat_hest))
+  h_wts <- fit.hbars.res$h_gstar_h_gN
 
   #************************************************
   # IPTW_h estimator:
   #************************************************  
-  Y_IPTW_h <- Y
-  Y_IPTW_h[!determ.Q] <- Y[!determ.Q] * h_wts[!determ.Q]
+  h_IPTW <- Y
+  h_IPTW[!determ.Q] <- Y[!determ.Q] * h_wts[!determ.Q]
+  h_IPTW <- mean(h_IPTW)
 
   #************************************************
-  # (DISABLED) TMLE A: estimate the TMLE update via univariate ML (epsilon is coefficient for h^*/h) - ONLY FOR NON-DETERMINISTIC SUBSET
-  # #todo 19 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.starA
-  #************************************************
-  #  ctrl <- glm.control(trace = FALSE, maxit = 1000)
-  #  SuppressGivenWarnings(m.Q.starA <- glm(Y ~ -1 + h_wts + offset(off), data = data.frame(Y = Y, off = off, h_wts = h_wts),
-  #                                						subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
-	# QY.star_A <- Y
-	# if (!is.na(coef(m.Q.starA))) QY.star_A <- plogis(off + coef(m.Q.starA) * h_wts)
+  # TMLEs
+  #************************************************  
+  if ("TMLE_A" %in% estnames) {
+    #************************************************
+    # TMLE A: estimate the TMLE update via univariate ML (epsilon is coefficient for h^*/h) - ONLY FOR NON-DETERMINISTIC SUBSET
+    # #todo 19 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.star
+    #************************************************
+    ctrl <- glm.control(trace = FALSE, maxit = 1000)
+    SuppressGivenWarnings(m.Q.star <- glm(Y ~ -1 + h_wts + offset(off), data = data.frame(Y = Y, off = off, h_wts = h_wts),
+                                              subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
+    QY.star <- Y
+    if (!is.na(coef(m.Q.star))) QY.star <- plogis(off + coef(m.Q.star) * h_wts)
 
-  #************************************************
-  # TMLE B: estimate the TMLE update via weighted univariate ML (espsilon is intercept)
-  # #todo 20 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.starB
-  #************************************************
-  ctrl <- glm.control(trace = FALSE, maxit = 1000)
-  SuppressGivenWarnings(m.Q.starB <- glm(Y ~ offset(off), data = data.frame(Y = Y, off = off), weights = h_wts,
-                                            subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
-  QY.star_B <- Y
-  if (!is.na(coef(m.Q.starB))) QY.star_B <- plogis(off + coef(m.Q.starB))
+  } else if ("TMLE_B" %in% estnames) {
+    #************************************************
+    # TMLE B: estimate the TMLE update via weighted univariate ML (espsilon is intercept)
+    # #todo 20 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.star
+    #************************************************
+    ctrl <- glm.control(trace = FALSE, maxit = 1000)
+    SuppressGivenWarnings(m.Q.star <- glm(Y ~ offset(off), data = data.frame(Y = Y, off = off), weights = h_wts,
+                                              subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
+    QY.star <- Y
+    if (!is.na(coef(m.Q.star))) QY.star <- plogis(off + coef(m.Q.star))
+  }
 
   #************************************************
   # (DISABLED) g_IPTW estimator (based on full likelihood factorization, prod(g^*)/prod(g_N):
   #************************************************
-	# 02/16/13: IPTW estimator (Y_i * prod_{j \in Fi} [g*(A_j|c^A)/g0_N(A_j|c^A)])
+	# 02/16/13: IPTW estimator (Y_i * prod_{j \\in Fi} [g*(A_j|c^A)/g0_N(A_j|c^A)])
 	# g_wts <- iptw_est(k = est_params_list$Kmax, data = data, node_l = nodes, m.gN = est_params_list$m.g0N,
   #                      f.gstar = est_params_list$f.gstar, f.g_args = est_params_list$f.g_args, family = "binomial",
   #                      NetInd_k = est_params_list$NetInd_k, lbound = est_params_list$lbound, max_npwt = est_params_list$max_npwt,
   #                      f.g0 = est_params_list$f.g0, f.g0_args = est_params_list$f.g0_args)
-  #  Y_IPTW_g <- Y
-  #  Y_IPTW_g[!determ.Q] <- Y[!determ.Q] * g_wts[!determ.Q]
-  Y_IPTW_g <- rep(0, length(Y))
-
+  # Y_IPTW_g <- Y
+  # Y_IPTW_g[!determ.Q] <- Y[!determ.Q] * g_wts[!determ.Q]
   #************************************************
   # (DISABLED) g_IPTW-based clever covariate TMLE (based on FULL likelihood factorization), covariate based fluctuation
   # #todo 21 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.star_giptw
@@ -220,68 +232,58 @@ get_all_ests <- function(datNetObs, est_params_list) {
 	# SuppressGivenWarnings(m.Q.star_giptw <- glm(Y ~ -1 + g_wts + offset(off),
   #                                						data = data.frame(Y = Y, off = off, g_wts = g_wts),
   #                                						subset = !determ.Q, family = "quasibinomial", control = ctrl),
-  #                                						GetWarningsToSuppress(TRUE))  
-  parsubmodel_fits <- rbind(coef(m.Q.starB))
-  # parsubmodel_fits <- rbind(coef(m.Q.starA), coef(m.Q.starB))
-  # parsubmodel_fits <- rbind(coef(m.Q.starA), coef(m.Q.starB), coef(m.Q.star_giptw))
-  rownames(parsubmodel_fits) <- c("alpha (intercept)")
-  # rownames(parsubmodel_fits) <- c("epsilon (covariate)", "alpha (intercept)") 
-  # rownames(parsubmodel_fits) <- c("epsilon (covariate)", "alpha (intercept)", "iptw epsilon (covariate)")
-  print("new parsubmodel_fits: "); print(parsubmodel_fits)
+  #                                						GetWarningsToSuppress(TRUE))
 
   #************************************************
   # Run Monte-Carlo (MC) evaluation for all plug-in estimators (TMLE & Gcomp), under stochastic intervention g^*:
 	#************************************************
-  MC_fit_params <- append(est_params_list,
-                      list(
-                          # m.Q.starA = m.Q.starA,
-                          m.Q.starB = m.Q.starB,
-                          # m.Q.star_giptw = m.Q.star_giptw,
-                          dat_hest = dat_hest
-                          ))
+  MC_fit_params <- append(est_params_list, list(m.Q.star = m.Q.star))
 
-  syst1 <- system.time(MCS_res <- get.MCS_ests(datNetObs = datNetObs, DatNet.gstar = DatNet.gstar, 
-                                                MC_fit_params = MC_fit_params, m.h.fit = m.h.fit))
-  print("time to run MCS: "); print(syst1);
+  syst1 <- system.time(MCS_res <- get.MCS_ests(DatNet.ObsP0 = DatNet.ObsP0, 
+                                                DatNet.gstar = DatNet.gstar, 
+                                                MC_fit_params = MC_fit_params, 
+                                                m.h.fit = m.h.fit))
 
-  ests <- c(
-            # tmle_A = MCS_res[["tmle_A"]], # (DISABLED) 
-            tmle_B = MCS_res[["tmle_B"]],
-            # tmle_g_iptw = MCS_res[["tmle_g_iptw"]], # (DISABLED) 
-            h_iptw = mean(Y_IPTW_h),    # IPTW estimator based on h - clever covariate
-            # g_iptw = mean(Y_IPTW_g),  # (DISABLED) IPTW estimator based on full g factorization (prod(g))
-            mle = MCS_res[["mle"]])
+  ests <- c(TMLE = MCS_res[["TMLE"]],
+            h_IPTW = h_IPTW, # IPTW estimator based on h - clever covariate:
+            MLE = MCS_res[["MLE"]])
 
   ests_mat <- matrix(0L, nrow = length(ests), ncol = 1)
   ests_mat[, 1] <- ests
   rownames(ests_mat) <- names(ests); colnames(ests_mat) <- "estimate"
 
-  wts_mat <- matrix(0L, nrow = datNetObs$nobs, ncol = 2)
-  colnames(wts_mat) <- c("h_wts", "g_wts")
+  wts_mat <- matrix(0L, nrow = DatNet.ObsP0$nobs, ncol = 1)
+  colnames(wts_mat) <- c("h_wts")
   wts_mat[, "h_wts"] <- h_wts
-  # wts_mat[, "g_wts"] <- g_wts
 
   # Components of asymptotic variance for tmle_net (E_g^*[\bar{Q}_0(A^s,W^s|W^s)]-\psi_0):
   # SUBSTRACT overall estimate of psi_0 from fW_i i-specific components
-  fWi_mat <- matrix(0L, nrow = datNetObs$nobs, ncol = 3)
-  colnames(fWi_mat) <- c("fWi_Qinit", "fWi_Qstar_A", "fWi_Qstar_B")
+  fWi_mat <- matrix(0L, nrow = DatNet.ObsP0$nobs, ncol = 1)
+  colnames(fWi_mat) <- c("fWi_Qinit")
   fWi_mat[,"fWi_Qinit"] <- MCS_res[agrep("fWi_init_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
-  # fWi_mat[,"fWi_Qstar_A"] <- MCS_res[agrep("fWi_star_A_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
-  fWi_mat[,"fWi_Qstar_B"] <- MCS_res[agrep("fWi_star_B_", names(MCS_res), max.distance=list(insertions=0, substitutions=0))]
 
-  QY_mat <- matrix(0L, nrow = datNetObs$nobs, ncol = 3)
-  colnames(QY_mat) <- c("QY.init", "QY.star_A", "QY.star_B")
-  QY_mat[,] <- cbind(QY.init, 0, QY.star_B)
-  # QY_mat[,] <- cbind(QY.init, QY.star_A, QY.star_B)
+  QY_mat <- matrix(0L, nrow = DatNet.ObsP0$nobs, ncol = 2)
+  colnames(QY_mat) <- c("QY.init", "QY.star")
+  QY_mat[,] <- cbind(QY.init, QY.star)
 
-  print(
-        c(
-        # fWi_init_A = mean(fWi_mat[,"fWi_Qinit"] - ests["tmle_A"]), 
-        fWi_init_B = mean(fWi_mat[,"fWi_Qinit"] - ests["tmle_B"]),
-        # fWi_star_A = mean(fWi_mat[,"fWi_Qstar_A"] - ests["tmle_A"]),
-        fWi_star_B = mean(fWi_mat[,"fWi_Qstar_B"] - ests["tmle_B"])
-        ));
-  print("new MC.ests mat: "); print(ests_mat)
+
+  if (gvars$verbose)  {
+    print("time spent fitting new fit.hbars.res:"); print(fit.hbars_t)
+    if ("TMLE_A" %in% estnames) {
+      parsubmodel_fits <- rbind(coef(m.Q.star))
+      rownames(parsubmodel_fits) <- c("epsilon (clever covariate coefficient)")
+    } else if ("TMLE_B" %in% estnames) {
+      parsubmodel_fits <- rbind(coef(m.Q.star))
+      rownames(parsubmodel_fits) <- c("alpha (intercept)")
+    }
+    print("new parsubmodel_fits: "); print(parsubmodel_fits)
+    print("time to run Monte Carlo target param evaluation: "); print(syst1);
+    print(
+          c(
+          fWi_init = mean(fWi_mat[,"fWi_Qinit"] - ests["TMLE"])
+          ));
+    print("new MC.ests mat: "); print(ests_mat)
+  }
 
   return(list( ests_mat = ests_mat,
                wts_mat = wts_mat,
@@ -292,6 +294,10 @@ get_all_ests <- function(datNetObs, est_params_list) {
               ))
 }
 
+
+#---------------------------------------------------------------------------------
+# (NEW INTERFACE FOR SPECIFYING regressions for hform & Qform)
+#---------------------------------------------------------------------------------
 get_vars_fromlist <- function(varname, sVar.map) {
   if (varname %in% names(sVar.map)) {
     as.vector(sVar.map[[varname]])
@@ -299,14 +305,11 @@ get_vars_fromlist <- function(varname, sVar.map) {
     varname
   }
 }
-
-# (NEW INTERFACE FOR SPECIFYING hform, Qform, gform)
 # Parse the formulas for summary measure names and create a map to actual covariate names in sA & sW
-process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
+process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL) {
   if (length(regform)==0L) {
     return(list(outvars =  as.vector(unlist(sA.map)), predvars = as.vector(unlist(sW.map))))
   } else {
-
     # Getting predictors (sW names):
     regformterms <- terms(regform)
     sW.names <- attributes(regformterms)$term.labels 
@@ -325,147 +328,398 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL) {
   }
 }
 
+#' Evaluate Summary Measures sA and sW
+#'
+#' Take input data, create a network and evaluate the summary measures previously defined by calling functions \code{def.sW} and \code{def.sA}.
+#'  This function is called internally by \code{tmlenet}. 
+#'  The resulting output R6 class object \code{DatNet.ObsP0} returned by this function can also be manually supplied to \code{tmlenet} function to 
+#'  to expedite the estimation time. 
+#'  When \code{DatNet.ObsP0} is provided to \code{tmlenet} function, there is no need to specifying the same input arguments to \code{tmlenet}.
+#' @param data Same as \code{link{tmlenet}} input argument.
+#' @param Kmax Same as \code{link{tmlenet}} input argument.
+#' @param sW Same as \code{link{tmlenet}} input argument.
+#' @param sA Same as \code{link{tmlenet}} input argument.
+#@param nFnode (Optional) Same as \code{link{tmlenet}} input argument.
+#' @param IDnode (Optional) Same as \code{link{tmlenet}} input argument.
+#' @param NETIDnode (Optional) Same as \code{link{tmlenet}} input argument.
+#' @param sep (Optional) Same as \code{link{tmlenet}} input argument.
+#' @param NETIDmat (Optional) Same as \code{link{tmlenet}} input argument.
+#' @param verbose (Optional) Same as \code{link{tmlenet}} input argument.
+#' @return A list with: R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
+#' @seealso \code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.
+#' @example tests/examples/2_defsWsA_examples.R
+#' @export
+#todo 80 (eval.summaries, inputs) +0: add data checks: 1) test Anode is binary or contin; 2) no missing data among A,W,Y
+eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
+                            verbose = getOption("tmlenet.verbose")) {
+  iid_data_flag <- FALSE  # set to true if no network is provided (will run iid TMLE)
+  nFnode = "nF"
+  #----------------------------------------------------------------------------------
+  # SOME INPUT CHECKS
+  #----------------------------------------------------------------------------------  
+  assert_that(is.data.frame(data))
+  assert_that(is.integerish(Kmax))
+  Kmax <- as.integer(Kmax)
+  assert_that(is.Define_sVar(sW))
+  assert_that(is.Define_sVar(sA))
+  nobs <- nrow(data)
+
+  # Check no factors exist in the input data:
+  check1 <- CheckExistFactors(data)
+  if (!is.null(check1)) stop("found factor column(s) in the input data, consider removing or recoding such column(s) as strings: " 
+                            %+% paste0(check1, collapse=','))
+
+  if (is.null(NETIDnode) && is.null(NETIDmat)) {
+    message("No network (friends) specified by NETIDnode or NETIDmat args, assuming the input data is i.i.d.")
+    nFnode <- NULL
+    iid_data_flag <- TRUE
+    if (missing(Kmax)) Kmax <- 1 # need to allow Kmax = 0
+  }
+
+  #----------------------------------------------------------------------------------
+  # Create an object with model estimates, data & network information that is passed on to estimation algorithm(s)
+  #----------------------------------------------------------------------------------
+  netind_cl <- NetIndClass$new(nobs = nobs, Kmax = Kmax)
+  if (!is.null(NETIDnode)) {
+    assert_that(is.character(NETIDnode))
+    Net_str <- as.character(data[, NETIDnode])
+    if (!is.null(IDnode)) {
+      assert_that(is.character(IDnode))
+      IDs_str <- as.character(data[, IDnode])
+    } else {
+      IDs_str <- NULL
+    }
+    netind_cl$makeNetInd.fromIDs(Net_str = Net_str, IDs_str = IDs_str, sep = sep)
+  } else if (!is.null(NETIDmat)) {
+    assert_that(is.matrix(NETIDmat))
+    netind_cl$NetInd <- NETIDmat
+    netind_cl$make.nF()
+  }
+
+  if (verbose) {
+    message("evaluated the network ID matrix: "); print(head(netind_cl$NetInd))
+    message("evaluated and added to summary measures the number of friends for each observation (nF): "); print(head(netind_cl$nF))
+  }
+
+  #----------------------------------------------------------------------------------
+  # Test parsing and evaluating the summary measures (in class Define_sVar):
+  #----------------------------------------------------------------------------------
+  # Testing the evaluation of summary measures:
+  sWmat <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = nFnode)
+  sAmat <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
+  if (verbose) {
+    print("sWmat: "); print(head(sWmat))
+    print("sWmat map"); print(sW$sVar.names.map)    
+    print("sAmat: "); print(head(sAmat))
+    print("sAmat map"); print(sA$sVar.names.map)
+  }
+
+  #---------------------------------------------------------------------------------
+  # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
+  #---------------------------------------------------------------------------------
+  datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode, addnFnode = TRUE)
+  datnetW$make.sVar(Odata = data, sVar.object = sW)
+  datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
+  datnetA <- DatNet$new(netind_cl = netind_cl)
+  datnetA$make.sVar(Odata = data, sVar.object = sA)
+  DatNet.ObsP0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+  return(list(sWmat = sWmat, sAmat = sAmat, NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
+}
+
 #---------------------------------------------------------------------------------
 # MAIN TMLENET FUNCTION
 #---------------------------------------------------------------------------------
 # 4 layers of model spec's:
 # 1) spec only Anode & Wnodes => assumes sW = W[[0:Kmax]] & sA = A[[0:Kmax]]
-# 2) spec sW & sA => assumes hform = "sA ~ sW", gform = "A ~ sW", Qform = "Y ~ sW + sA"
-# 3) spec sW & sA and spec either of hform, gform & Qform => assumes hform.gstar = hform
+# 2) spec sW & sA => assumes hform = "sA ~ sW", Qform = "Y ~ sW + sA"
+# 3) spec sW & sA and spec either of hform & Qform => assumes hform.gstar = hform
 # 4) 3 + spec separate hform.gstar (outcome have to be the same sA for both hform & hform.gstar)
 # *) Note: sA & sW can be character vectors consisting of R expressions
 #------------------------------------
 #' Estimate Average Network Effects Under Arbitrary (Stochastic) Interventions
 #'
-#' Estimate the average network effect among dependent units with known network structure (in the presence of interference and/or spillover) 
-#' with a variety of estimation procedures: \emph{TMLE} (Targeted Minimum Loss-Based Estimation), \emph{IPTW} (Inverse Probability Weighted) and \emph{MLE} (parametric G-computation formula).
+#' Estimate the average network effect among dependent units with known network structure (in the presence of
+#'  interference and/or spillover)
+#'  with a variety of estimation procedures: \emph{TMLE} (Targeted Minimum Loss-Based Estimation), \emph{IPTW}
+#'  (Inverse Probability Weighted) and \emph{MLE} (parametric G-computation formula).
 # Arguments:
-#' @param data Input observed data as a \code{data.frame}, with named columns for baseline covariates (W), assigned treatment (A), the outcome (Y) and network of friends (F)
-#' @param estimators (NOT IMPLEMENTED) Character vector with estimator names.
+#' @param data Input observed data as a \code{data.frame}, with named columns for baseline covariates (W),
+#'  assigned treatment (A), the outcome (Y) and network of friends (F)
+# @param estimators (NOT IMPLEMENTED) Character vector with estimator names.
 #' @param Kmax Absolute maximum number of friends (connected units) for any observation in the input \code{data}
-#' @param Wnodes Vector of baseline covariate names (column names in \code{data})
-#' @param Anode Treatment variable name (column name in \code{data}), can be either binary, categorical or continous
+#' @param Wnodes (Optional) Vector of baseline covariate names (column names in \code{data})
+#' @param Anode Treatment variable name (column name in \code{data}), can be either binary, categorical or continuous
+#' @param AnodeDET (Optional) Column name for indicators of deterministic values of A, coded as (TRUE/FALSE) or (1/0),
+#'  the observations with AnodeDET=TRUE/1 are assumed to have constant value for their Anode
 #' @param Ynode  Outcome variable name (column name in \code{data}), assumed normalized 0 to 1
-#' @param sW Summary measures constructed from variables in \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sW when it is left missing)
-#' @param sA Summary measures constructed from variables in \code{Anode} and \code{Wnodes}. This must be an object of class \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for default sA when its missing)
-#' @param IDnode (Optional) Subject identifier variable in the input data, if not supplied the network string in NETIDnode is assumed to be indexing the row numbers in the input \code{data}
-#' @param NETIDnode Network specification, a column name in data consisting of strings that identify the unit's friends by their IDs or their row numbers (two friends are separated by space, e.g., "1 2"; unit with no friends should have an empty "" string). See Details.
-#' @param NETIDs_mat Alternative method for specifying network, a matrix (\code{ncol=Kmax}, \code{nrow=nrow(data)}), where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row numbers in \code{data} if \code{IDnode=NULL}. See Details.
-#' @param f_gstar1 Function for specifying an intervention of interest that can be static, dynamic treatment regimen or stochastic intervention. See Details.
-#' @param f_gstar2 (Optional) Function for specifying another intervention of interest when estimating the treatment effects under two interventions
-#' @param AnodeDET (Optional) Column name for indicators of deterministic values of A, coded as (TRUE/FALSE) or (1/0), the observations with AnodeDET=TRUE/1 are assumed to have constant value for their Anode
-#' @param YnodeDET (Optional) Column name for indicators of deterministic values of Y, coded as (TRUE/FALSE) or (1/0), the observations with YnodeDET=TRUE/1 are assumed to have constant value for their Ynode
-#' @param nFnode (Optional) Name of the variable for the number of friends each unit has, this name can then be used inside the summary measures and regression formulas \code{sW}, \code{sA}, \code{Qform}, \code{hform}, \code{hform.gstar} and \code{gform}. See Details.
-#' @param Qform (Optional) Regression formula for outcome in Ynode, when NULL (default) Ynode is regressed on all variables defined in \code{sW} and \code{sA}. See Details.
-#' @param hform (Optional) Regression formula for estimating the conditional probability of P(sA | sW) under gN (observed treatment mechanism), when NULL (default) sA includes all variables in \code{sA} argument and sW includes all variables in \code{sW}. See Details.
-#' @param hform.gstar (Optional) Regression formula for estimating the conditional probability P(sA | sW) under gstar, when NULL (default) the same regression formula as in hform will be used. See Details.
-# @param gform  (Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all friends treatments, P(A_i, A_{F_i} | W). See Details.
+#' @param YnodeDET (Optional) Column name for indicators of deterministic values of Y, coded as (TRUE/FALSE) or (1/0),
+#'  the observations with YnodeDET=TRUE/1 are assumed to have constant value for their Ynode
+#' @param sW Summary measures constructed from baseline covariates alone. This must be an object of class
+#'  \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED:
+#'  See Details for default sW when it is left missing)
+#' @param sA Summary measures constructed from \code{Anode} and baseline covariates. This must be an object of class
+#'  \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for
+#'  default sA when its missing)
+#' @param IDnode (Optional) Subject identifier variable in the input data, if not supplied the network string in
+#'  NETIDnode is assumed to be indexing the row numbers in the input \code{data}
+#' @param NETIDnode Network specification, a column name in data consisting of strings that identify the unit's friends
+#'  by their IDs or their row numbers (two friends are separated by space, e.g., "1 2"; unit with no friends should have
+#'  an empty "" string). See Details.
+#' @param sep A character separating friend indices for the same observation in \code{NETIDnode}.
+#' @param NETIDmat Alternative method for network specification, ths must be a matrix (\code{ncol=Kmax},
+#'  \code{nrow=nrow(data)}), where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row
+#'  numbers in \code{data} if \code{IDnode=NULL}. See Details.
+#' @param f_gstar1 Function for specifying an intervention of interest that can be static, dynamic treatment regimen
+#'  or stochastic intervention. See Details.
+#' @param f_gstar2 (Optional) Function for specifying another intervention of interest when estimating the treatment
+#'  effects under two interventions
+# @param nFnode (Optional) Name of the variable for the number of friends each unit has, this name can then be used
+#  inside the summary measures and regression formulas \code{sW}, \code{sA}, \code{Qform}, \code{hform},
+#  \code{hform.gstar} and \code{gform}. See Details.
+#' @param Qform (Optional) Regression formula for outcome in Ynode, when NULL (default) Ynode is regressed on all
+#'  variables defined in \code{sW} and \code{sA}. See Details.
+#' @param hform (Optional) Regression formula for estimating the conditional probability of P(sA | sW) under gN
+#'  (observed treatment mechanism), when NULL (default) sA includes all variables in \code{sA} argument and sW includes
+#'  all variables in \code{sW}. See Details.
+#' @param hform.gstar (Optional) Regression formula for estimating the conditional probability P(sA | sW) under gstar,
+#'  when NULL (default) the same regression formula as in hform will be used. See Details.
+# @param gform  (Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all
+# friends treatments, P(A_i, A_{F_i} | W). See Details.
 # @param Qform.depr (DEPRECATED)
 # @param hform.depr (DEPRECATED)
 # @param gform.depr (DEPRECATED)
 # @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
 # @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
 #' @param verbose Set to \code{TRUE} to print all messages
-#' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{onlyTMLE_B}, \code{f_g0}, \code{h_g0_SummariesModel} and \code{h_gstar_SummariesModel}. See Details.
-#((NOT IMPLEMENTED)) @param AnodeDETfun function that evaluates to TRUE for observations with deterministically assigned A (alternative to AnodeDET)
-#((NOT IMPLEMENTED)) @param YnodeDETfun function that evaluates to TRUE for observations with deterministically assigned Y (alternative to YnodeDET)
+#' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as
+#'  \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{f_g0}, \code{h_g0_SummariesModel} and
+#'  \code{h_gstar_SummariesModel}. See Details.
+#((NOT IMPLEMENTED)) @param AnodeDETfun function that evaluates to TRUE for observations with deterministically 
+# assigned A (alternative to AnodeDET)
+#((NOT IMPLEMENTED)) @param YnodeDETfun function that evaluates to TRUE for observations with deterministically
+# assigned Y (alternative to YnodeDET)
 #((NOT IMPLEMENTED)) @param Q.SL.library SuperLearner libraries for outcome, Q (NOT IMPLEMENTED)
 #((NOT IMPLEMENTED)) @param g.SL.library SuperLearner libraries for treatment mechanism, g (NOT IMPLEMENTED)
 #((NOT IMPLEMENTED)) @param h_f.g0_args Additional arguments to be passed to f_g0
 #((NOT IMPLEMENTED)) @param h_user_fcn User supplied function to calculate the clever covariate, h
-#((NOT IMPLEMENTED)) @param h_logit_sep_k Flag for fitting a separate logistic regression for each strata of nFnode, used during estimation of the clever covariate, h
+#((NOT IMPLEMENTED)) @param h_logit_sep_k Flag for fitting a separate logistic regression for each strata of nFnode,
+# used during estimation of the clever covariate, h
 #' 
 #' @section Details:
 #' 
 #' (NOT IMPLEMENTED) When \code{sW} is missing, by default \code{sW} is constructed as follows. 
-#' For each \code{"W"} in \code{Wnodes}, add a vector \code{data[,"W"]} as well as all friends covariate values of \code{"W"} to \code{sW} by running \code{netW = def.sW(W[[0:Kmax]], noname = TRUE)}.
-#' For each \code{"W"} in \code{Wnode}, a vector of \code{"W"} values of the first friend of observations \code{i} = 1,...,\code{nrow(data)} will be created and named \code{"W_netF1"} 
-#' (i.e., variable "W_netF1" is constructed as def.sW(W_netF1 = W[[1]])).
-#' Similarly, the vector of "W" values of the jth friend for observations \code{i} = 1, ..., \code{nrow(data)} will be created and named "W_netFj", for j from 1 to \code{Kmax}, with all \code{W_netFj} then being added to \code{sW}.
+#'  For each \code{"W"} in \code{Wnodes}, add a vector \code{data[,"W"]} as well as all friends covariate values of
+#'  \code{"W"} to \code{sW} by running \code{netW = def.sW(W[[0:Kmax]], noname = TRUE)}.
+#'  For each \code{"W"} in \code{Wnode}, a vector of \code{"W"} values of the first friend of observations
+#'  \code{i} = 1,...,\code{nrow(data)} will be created and named \code{"W_netF1"} 
+#'  (i.e., variable "W_netF1" is constructed as def.sW(W_netF1 = W[[1]])).
+#'  Similarly, the vector of "W" values of the jth friend for observations \code{i} = 1, ..., \code{nrow(data)}
+#'  will be created and named "W_netFj", for j from 1 to \code{Kmax}, with all \code{W_netFj} then being added to
+#'  \code{sW}.
 #' 
-#' (NOT IMPLEMENTED) Similarly, when \code{sA} is missing, it is constructed by running \code{def.sW(netA = A[[0:Kmax]], noname = TRUE)} (assuming \code{"A"} is the value of \code{Anode} in \code{data}), 
-#' which combines the column \code{data[,"A"]} with all the friends treatment assignments of variable "A".
+#' (NOT IMPLEMENTED) Similarly, when \code{sA} is missing, it is constructed by running
+#'  \code{def.sW(netA = A[[0:Kmax]], noname = TRUE)} (assuming \code{"A"} is the value of \code{Anode} in \code{data}), 
+#'  which combines the column \code{data[,"A"]} with all the friends treatment assignments of variable "A".
 #' 
-#' Note that when observation \code{i} has only \code{j-1} friends, the i's value of \code{"W_netFj"} is automatically set to \code{NA}. 
-#' This can be an undersirable behavior in some circumstances, in which case one can automatically replace all such \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling function \code{def.sW},
-#' i.e., \code{def.sW(W_netF1 = W[[1]], replaceMisVal0 = TRUE)}.
+#' Note that when observation \code{i} has only \code{j-1} friends, the i's value of \code{"W_netFj"} is
+#'  automatically set to \code{NA}. 
+#'  This can be an undersirable behavior in some circumstances, in which case one can automatically replace all such
+#'  \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling function 
+#'  \code{def.sW}, i.e., \code{def.sW(W_netF1 = W[[1]], replaceMisVal0 = TRUE)}.
 #'
-#' When \code{NETIDnode} or \code{NETIDs_mat} are left unspecified, the input data is assumed independent, with no network structure. All inference will be performed based on the iid efficient influence curve for the target parameter (EY_gstar1).
-#' Note that the ordering of the friends in \code{NETIDnode} or \code{NETIDs_mat} is unimportant.
+#' When \code{NETIDnode} or \code{NETIDmat} are left unspecified, the input data is assumed independent, with no
+#'  network structure. All inference will be performed based on the iid efficient influence curve for the target
+#'  parameter (EY_gstar1). Note that the ordering of the friends in \code{NETIDnode} or \code{NETIDmat} is unimportant.
 #'
-#' The number of friends (\code{nFnode}) is calculate automatically. However, if the column \code{data[,nFnode]} already exists in the input data
-#' it will be compared to the automatically calculated values, with an error produced if the two variables do not exactly match.
+#' An additional special non-negative-integer-valued variable \code{nF} is automatically evaluated each time
+#'  \code{tmlenet} or \code{eval.summaries} functions are called. \code{nF} contains the total number of friends for
+#'  each observation and it is always added as an additional column to the matrix of the baseline-covariates-based
+#'  summary measures \code{sWmat}. The variable \code{nF} can be used in the same ways as any of the column names in
+#'  the input data frame \code{data}. In particular, the name \code{nF} can be used inside the summary measure
+#'  expressions (calls to functions \code{def.sW} and \code{def.sA}) and inside any of the regression formulas 
+#'  (\code{Qform}, \code{hform}, \code{hform.gstar}).
+#' 
+# However, if the column \code{data[,nFnode]}
+# already exists in the input data it will be compared to the automatically calculated values, with an error produced
+# if the two variables do not exactly match.
 #'
-#' The formalas in \code{Qform}, \code{hform} and \code{hform.gstar} can include any summary measures defined in sW and sA, 
-#' referenced by their individual variable names or by their aggregate summary measure names. 
-#' For example, \code{hform = "netA ~ netW"} is equivalent to \code{hform = "A + A_netF1 + A_netF2 ~ W + W_netF1 + W_netF2"} 
-#' for \code{sW,sA} summary measures defined by \code{def.sW(netW=W[[0:2]], noname=TRUE)} and \code{def.sA(netA=A[[0:2]], noname=TRUE)}.
+#' The formalas in \code{Qform}, \code{hform} and \code{hform.gstar} can include any summary measures defined in
+#'  sW and sA, referenced by their individual variable names or by their aggregate summary measure names. 
+#'  For example, \code{hform = "netA ~ netW"} is equivalent to
+#'  \code{hform = "A + A_netF1 + A_netF2 ~ W + W_netF1 + W_netF2"} for \code{sW,sA} summary measures defined by
+#'  \code{def.sW(netW=W[[0:2]], noname=TRUE)} and \code{def.sA(netA=A[[0:2]], noname=TRUE)}.
 #'
-#' The functions \code{f_gstar1} and \code{f_gstar2} can only depend on variables specified in the summary measures \code{sW}, 
-#' the functions have to return a vector of length \code{nrow(data)} that represent the counterfactual treatment assignments for observations in the input data.
+#' The functions \code{f_gstar1} and \code{f_gstar2} can only depend on variables specified in the summary measures
+#'  \code{sW}, the functions have to return a vector of length \code{nrow(data)} that represent the counterfactual
+#'  treatment assignments for observations in the input data.
 #'
 #' Additional optional parameters that can be passed inside a named list \code{optPars} include: 
-#' \itemize{
-#' \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs); 
-#' \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
-#' \item \code{n_MCsims} - Number of Monte-Carlo simulations to perform when evaluating P(sA | sW) under gstar and f_g0 (if specified) and while evaluating the target parameter estimator under gstar;
-#' \item \code{family} - Family specification for regression models, defaults to binomial. CURRENTLY ONLY BINOMIAL FAMILY IS IMPLEMENTED.
-# \item \code{onlyTMLE_B} - When \code{TRUE}, only one of the 3 TMLE estimators is evaluated, tmle_B, which is the intercept-based TMLE (no clever covariate, h_gN / h_gstar is used as weights in parametric model fluctuation).
-#' \item \code{f_g0} - A function for generating true treatment mechanism A, when it is known (for example in a randomized trial). Used only when estimating P(sA | sW) under g0 by sampling large vector of A (of length n*n_MCsims) from \code{f_g0};
+#'  \itemize{
+#'  \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs); 
+#'  \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
+#'  \item \code{n_MCsims} - Number of Monte-Carlo simulations to perform when evaluating P(sA | sW) under gstar and
+#'  f_g0 (if specified) and while evaluating the target parameter estimator under gstar;
+#'  \item \code{family} - Family specification for regression models, defaults to binomial. CURRENTLY ONLY BINOMIAL
+#'  FAMILY IS IMPLEMENTED.
+# \item \code{onlyTMLE_B} - When \code{TRUE}, only one of the 3 TMLE estimators is evaluated, tmle_B, which is the 
+# intercept-based TMLE (no clever covariate, h_gN / h_gstar is used as weights in parametric model fluctuation).
+#' \item \code{f_g0} - A function for generating true treatment mechanism A, when it is known (for example in a
+#'  randomized trial). Used only when estimating P(sA | sW) under g0 by sampling large vector of A
+#'  (of length n*n_MCsims) from \code{f_g0};
 #' }
 #'
 #' @section Specifying the Network of Friends:
 #' 
-#' The network of friends (connections) for observations in the input \code{data} can be specified in two alternative ways, 
-#' using either \code{NETIDnode} or \code{NETIDs_mat} input arguments.
+#' The network of friends (connections) for observations in the input \code{data} can be specified in two
+#'  alternative ways, using either \code{NETIDnode} or \code{NETIDmat} input arguments.
 #' 
-#' \code{NETIDnode} - The first (slower) method uses a vector of strings in \code{data[, NETIDnode]}, where each string \code{i} must contain 
-#' the space separated IDs or row numbers of all units in \code{data} thought to be connected to observation i (friends of unit i);
+#' \code{NETIDnode} - The first (slower) method uses a vector of strings in \code{data[, NETIDnode]}, where each
+#'  string \code{i} must contain the space separated IDs or row numbers of all units in \code{data} thought to be
+#'  connected to observation i (friends of unit i);
 #' 
-#' \code{NETIDs_mat} - An alternative (and faster) method is to pass a matrix with \code{Kmax} columns and nrow(data) rows,
-#' where each row \code{NETIDs_mat[i,]} is a vector of observation \code{i}'s friends' IDs or \code{i}'s friends' row numbers in \code{data} if \code{IDnode=NULL}.
-#' If observation \code{i} has fewer than \code{Kmax} friends, the remainder of \code{NETIDs_mat[i,]} must be filled with \code{NA}s. 
-#' Note that the ordering of friend indices is irrelevant.
+#' \code{NETIDmat} - An alternative (and faster) method is to pass a matrix with \code{Kmax} columns and nrow(data)
+#'  rows, where each row \code{NETIDmat[i,]} is a vector of observation \code{i}'s friends' IDs or \code{i}'s friends'
+#'  row numbers in \code{data} if \code{IDnode=NULL}. If observation \code{i} has fewer than \code{Kmax} friends, the
+#'  remainder of \code{NETIDmat[i,]} must be filled with \code{NA}s. Note that the ordering of friend indices is
+#'  irrelevant.
 #' 
-#' @return A named list of the target parameter estimates of the population mean under intervention \code{f_gstar1} (EY_gstar1), their asymptotic variance estimates and CI estimates at \code{alpha} level.
-#' If \code{f_gstar2} was also specified, the list will consists of the three sets of estimates,
-#' the first for the target parameter estimates under \code{f_gstar1} (EY_gstar1), the second for estimates under \code{f_gstar2} (EY_gstar2) and
-#' the third for the estimates of the additive treatment effect (EY_gstar1 - EY_gstar2) under intervention in \code{f_gstar1} vs. intervention in \code{f_gstar2}.
+#' @section Algorithm for estimating P(sA[j] | sW) for continuous one-dimenstional summary measure \code{sA[j]}:
+#' **********************************************************************
+#'
+#' *) Fit one density for P_{g_0}(sA | sW) implied by (A,W)~g_0(A|W)Q_0(W) 
+#'    and another density for P_{g_star}(sA^* | sW) that is implied by (A^*,W)~g_star(A|W)Q_0(W).
+#'
+#' *) Same algorithm is used for estimation of P_{g_0}(sA | sW) or P_{g_star}(sA^* | sW).
+#'
+#' *) These two densities form the basis of the IPTW estimator,
+#'    which is evaluated at the observed N data points o_i=(y_i, sa_i, sw_i), i=1,...,N.
+#'    The IPTW is then given by \\sum_i={1,...,N} {Y_i * P_{g_star}(sA^*=sa_i | sW=sw_i) / P_{g_0}(sA=sa_i | sW=sw_i)}
+#'
+#' *) For simplicity, we now suppose sA is univariate and we first describe an algorithm for fitting P_{g_0}(sA | sW):
+#'
+#' 1) Generate a dataset of N observed continuous summary measures (sa_i:i=1,...,N) from observed ((a_i,w_i):i=1,...,N). Let sa\\in{sa_i:i=1,...,M}.
+#'
+#' 2) Divide the range of sA values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point sa_i belongs to one interval in S, namely, 
+#'    for each possible value sa of sA there is k\\in{1,...,M}, such that, i_k < sa <= i_{k+1}.
+#'    Let the mapping B(sa)\\in{1,...,M} denote a unique interval in S for sa, such that, i_{B(sa)} < sa <= i_{B(sa)+1}.
+#'    Let bw_{B(sa)}:=i_{B(sa)+1}-i_{B(sa)} be the length of the interval (bandwidth) (i_{B(sa)},i_{B(sa)+1}).
+#'    Also define the binary indicators b_1,...,b_M, where b_j:=I(B(sa)=j), for all j <= B(sa) and b_j:=NA for all j>B(sa).
+#'    That is we set b_j to missing ones the indicator I(B(sa)=j) jumps from 0 to 1.
+#'    Now let sA denote the random variable for the observed summary measure for one unit
+#'    and denote by (B_1,...,B_M) the corresponding random indicators for sA defined as B_j := I(B(sA) = j) 
+#'    for all j <= B(sA) and B_j:=NA for all j>B(sA).
+#'
+#' 3) For each j=1,...,M, fit the logistic regression model for the conditional probability P(B_j = 1 | B_{j-1}=0, sW), i.e., 
+#'    at each j this is defined as the conditional probability of B_j jumping from 0 to 1 at bin j, given that B_{j-1}=0 and 
+#'    each of these logistic regression models is fit only among the observations that are still at risk of having B_j=1 with B_{j-1}=0.
+
+#' 4) Normalize the above conditional probability of B_j jumping from 0 to 1 by its corresponding interval length (bandwidth) bw_j to 
+#'    obtain the discrete conditional hazards h_j(sW):=P(B_j = 1 | (B_{j-1}=0, sW) / bw_j, for each j.
+#'    For the summary measure sA, the above conditional hazard h_j(sW) is equal to P(sA \\in (i_j,i_{j+1}) | sA>=i_j, sW), 
+#'    i.e., this is the probability that sA falls in the interval (i_j,i_{j+1}), conditional on sW and conditional on the fact that
+#'    sA does not belong to any intervals before j.
+#'
+#' 5) Finally, for any given data-point \code{(sa,sw)}, evaluate the discretized conditional density for P(sA=sa|sW=sw) by first 
+#'    evaluating the interval number k=B(sa)\\in{1,...,M} for \code{sa} and then computing \\prod{j=1,...,k-1}{1-h_j(sW))*h_k(sW)}
+#'    which is equivalent to the joint conditional probability that \code{sa} belongs to the interval (i_k,i_{k+1}) and does not belong
+#'    to any of the intervals 1 to k-1, conditional on sW. 
+#'
+#'    The evaluation above utilizes a discretization of the fact that any continuous density f of random variable X can be written as f_X(x)=S_X(x)*h_X(x), 
+#'    for a continuous density f of X where S_X(x):=P(X>x) is the survival function for X, h_X=P(X>x|X>=x) is the hazard function for X; as well as the fact that
+#'    the discretized survival function S_X(x) can be written as a of the hazards for s<x: S_X(x)=\\prod{s<x}h_X(x).
+#'
+#' @section Three methods for defining bin (interval) cuttoffs for a continuous one-dimenstional summary measure \code{sA[j]}:
+#' **********************************************************************
+#'
+#' There are 3 alternative methods to defining the bin cutoffs S=(i_1,...,i_M,i_{M+1}) for a continuous summary measure sA.
+#' The choice of which method is used along with other discretization parameters (e.g., total number of bins) is controlled via the tmlenet_options() function. 
+#' See \code{?tmlenet_options} argument \code{bin.method} for additional details.
+#'
+#' Approach 1 (\code{equal.len}): equal length, default.
+#'
+#' *********************
+#'
+#' The bins are defined by splitting the range of observed sA (sa_1,...,sa_n) into equal length intervals. 
+#' This is the dafault discretization method, set by passing an argument \code{bin.method="equal.len"} to \code{tmlenet_options} function prior to calling \code{tmlenet()}.
+#' The intervals will be defined by splitting the range of (sa_1,...,sa_N) into \code{nbins} number of equal length intervals, 
+#' where \code{nbins} is another argument of \code{tmlenet_options()} function.
+#' When \code{nbins=NA} (the default setting) the actual value of \code{nbins} is computed at run time by taking the integer value (floor) of \code{n/maxNperBin},
+#' for \code{n} - the total observed sample size and \code{maxNperBin=1000} - another argument of \code{tmlenet_options()} with the default value 1,000.
+#'
+#' Approach 2 (\code{equal.mass}): data-adaptive equal mass intervals.
+#'
+#' *********************
+#'
+#' The intervals are defined by splitting the range of \code{sA} into non-equal length data-adaptive intervals that ensures that each interval contains around 
+#' \code{maxNperBin} observations from (sa_j:j=1,...,N).
+#' This interval definition approach can be selected by passing an argument \code{bin.method="equal.mass"} to \code{tmlenet_options()} prior to calling \code{tmlenet()}.
+#' The method ensures that an approximately equal number of observations will belong to each interval, where that number of observations for each interval
+#' is controlled by setting \code{maxNperBin}. The default setting is \code{maxNperBin=1000} observations per interval.
+#'
+#' Approach 3 (\code{dhist}): combination of 1 & 2.
+#'
+#' *********************
+#'
+#' The data-adaptive approach dhist is a mix of Approaches 1 & 2. See Denby and Mallows "Variations on the Histogram" (2009)).
+#' This interval definition method is selected by passing an argument \code{bin.method="dhist"} to \code{tmlenet_options()}  prior to calling \code{tmlenet()}.
+#' 
+#' @return A named list of the target parameter estimates of the population mean under intervention \code{f_gstar1}
+#'  (EY_gstar1), their asymptotic variance estimates and CI estimates at \code{alpha} level.
+#'  If \code{f_gstar2} was also specified, the list will consists of the three sets of estimates,
+#'  the first for the target parameter estimates under \code{f_gstar1} (EY_gstar1), the second for estimates under
+#'  \code{f_gstar2} (EY_gstar2) and
+#'  the third for the estimates of the additive treatment effect (EY_gstar1 - EY_gstar2) under intervention in
+#'  \code{f_gstar1} vs. intervention in \code{f_gstar2}.
 #' 
 #' Currently available estimators are:
-#' \itemize{
-# \item \code{\link{tmle_A}} - Covariate-based efficient TMLE using covariate h_gstar/h_gN.
-#' \item \code{\link{tmle}} - Intercept-based efficient TMLE that uses weights h_gstar/h_gN.
-# \item \code{\link{tmle_g_iptw}} - Covariate-based more non-parametric TMLE using covariate gN/gstar.
-#' \item \code{\link{iptw}} - Efficient IPTW based on weights h_gstar/h_gN.
-# \item \code{\link{g_iptw}} - More non-parametric IPTW based on weights gN/gstar.
-#' \item \code{\link{gcomp}} - Parametric G-computation-based substitution estimator.
+#'  \itemize{
+#'  \item \code{tmle} - Either weighted regression intercept-based TMLE (\code{tmle.intercept} - the default)
+#'  with weights \code{h_gstar/h_gN} or 
+#'  covariate-based unweighted TMLE (\code{tmle.covariate}) that uses the covariate \code{h_gstar/h_gN}.
+#   \item \code{tmle_g_iptw} - Covariate-based more non-parametric TMLE using covariate gN/gstar.
+#'  \item \code{iptw} - Efficient IPTW based on weights h_gstar/h_gN.
+#   \item \code{g_iptw} - More non-parametric IPTW based on weights gN/gstar.
+#'  \item \code{gcomp} - Parametric G-computation-based substitution estimator.
 #' }
-#' @seealso \code{\link{def.sW}}
-#' @example tests/tmlenet_example.R
+#' @seealso \code{\link{tmlenet-package}} for the general overview of the package,
+#'  \code{\link{def.sW}} for defining the summary measures, \code{\link{eval.summaries}} for
+#'  validation of the summary measures,
+#'  and \code{\link{df_netKmax2}}/\code{\link{df_netKmax6}}/\code{\link{NetInd_mat_Kmax6}}
+#'  for examples of network datasets.
+#' @example tests/examples/1_tmlenet_example.R
 #' @export
 
-# todo 79 (tmlenet, inputs) +0: add max_nperbin & nbins to a list of optional params in optPars, same for speed.glm, pooled, etc..
-# todo 80 (tmlenet, inputs) +0: add data checks: 1) test Anode is binary or contin; 2) no missing data among A,W,Y
-# todo 81 (tmlenet, inputs) : get rid of onlyTMLE_B and add arg tmlenet(estimators = c("iptw", "tmle", "gcomp"))
+#----------------------------------------------------------------------------------
+# Input checks:
+#todo 80 (tmlenet, inputs) +0: 3) check that all vars in reg forms have been defined by sW or sA
+#todo 8 (tmlenet) +0: check all names exist in data (Anode, Wnodes, Ynode, etc...)
+#todo 11 (tmlenet) +0: Wnodes & Anode are no longer needed if sW, sA are provided, give a warning that Wnodes, Anodes will be ignored?
+#----------------------------------------------------------------------------------
+#todo 52 (tmlenet) +0: Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
+  # When sW / sA are just lists of character vectors need to capture the calling env and call Define_sVar constructor:
+    # user.env <- parent.frame()
+    # user.env_l <- list(user.env = user.env)
+    # sW <- do.call(Define_sVar$new, c(sW, list(type = "sW"), user.env_l))
+    # sW.gstar <- do.call(Define_sVar$new, c(sW.gstar, list(type = "sW.gstar"), user.env_l))
+    # sA <- do.call(Define_sVar$new, c(sA, list(type = "sA"), user.env_l))  
+#todo 53 (tmlenet) +0: If no sVars were defined (default), use netW (Wnode[[0:Kmax]]) and netA for sVars (Anode[[0:Kmax]])
+#todo 54 (tmlenet) +0: Check all sVar names are unique
 #---------------------------------------------------------------------------------
-tmlenet <- function(data,
-                    estimators = c("tmle", "iptw", "gcomp"),
-                    sW = NULL, sA = NULL,
-                    Kmax, Anode, AnodeDET = NULL, Wnodes, Ynode, YnodeDET = NULL, nFnode = "nF", IDnode = NULL,
-                    NETIDnode = NULL, sep = ' ', NETIDs_mat = NULL,
+tmlenet <- function(data, Kmax, sW, sA,
+                    # estimators = c("tmle", "iptw", "gcomp"),
+                    Wnodes = NULL, # no longer needed to be specified (WILL BE REMOVED)
+                    Anode, AnodeDET = NULL, Ynode, YnodeDET = NULL, 
+                    # nFnode = "nF",
+                    IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL,
                     f_gstar1, f_gstar2 = NULL,
                     Qform = NULL, hform = NULL, hform.gstar = NULL,
-                    # DEPRECATED:
-                    # gform = NULL,
-                    # Qform.depr = NULL, gform.depr = NULL, hform.depr = NULL,
                     verbose = getOption("tmlenet.verbose"),
                     optPars = list(
                       alpha = 0.05,
                       lbound = 0.005,
                       family = "binomial", # NOT IMPLEMENTED YET
                       n_MCsims = ceiling(sqrt(nrow(data))),
-                      # onlyTMLE_B = TRUE,
+                      runTMLE = c("tmle.intercept", "tmle.covariate"),
                       f_g0 = NULL,
                       h_g0_SummariesModel = NULL,
                       h_gstar_SummariesModel = NULL)
@@ -474,29 +728,53 @@ tmlenet <- function(data,
   oldverboseopt <- getOption("tmlenet.verbose")
   options(tmlenet.verbose = verbose)
   gvars$verbose <- verbose
+  message("Running tmlenet with the following settings: "); str(gvars$opts)
 
   #----------------------------------------------------------------------------------
   # ADDITIONAL ARGUMENTS (Removed from input args of tmlenet())
   #----------------------------------------------------------------------------------
-  onlyTMLE_B <- TRUE # if TRUE, only evalute the intercept TMLE (TMLE_B)
-  iidW_flag <- FALSE
+  # iidW_flag <- FALSE # NO LONGER USED. ALL EVALUATION IS ASSUMED non-IID
   iid_data_flag <- FALSE  # set to true if no network is provided (usual iid TMLE)
-  Q.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction")
-  g.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction")
-  max_npwt <- 50
-  h_logit_sep_k <- FALSE
+  Q.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction") # NOT USED
+  g.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction") # NOT USED
+  max_npwt <- 50 # NOT USED YET
+  h_logit_sep_k <- FALSE # NOT USED YET
   
-  # BEEN REMOVED FROM tmlenet input:
-  args_f_g1star = NULL
-  args_f_g2star = NULL 
-
+  args_f_g1star = NULL # NO LONGER USED, REMOVED FROM tmlenet input
+  args_f_g2star = NULL # NO LONGER USED, REMOVED FROM tmlenet input
+  
   alpha <- ifelse(is.null(optPars$alpha), 0.05, optPars$alpha)
   lbound <- ifelse(is.null(optPars$lbound), 0.005, optPars$lbound)
   family <- ifelse(is.null(optPars$family), "binomial", optPars$family)
   n_MCsims <- ifelse(is.null(optPars$n_MCsims), ceiling(sqrt(nrow(data))), optPars$n_MCsims)
-  onlyTMLE_B <- ifelse(is.null(optPars$onlyTMLE_B), TRUE, optPars$onlyTMLE_B)
   f_g0 <- NULL 
   if(!is.null(optPars$f_g0)) f_g0 <- optPars$f_g0
+
+  #----------------------------------------------------------------------------------
+  # DETERMINING INTERNAL / EXTERNAL ESTIMATOR NAMES THAT WILL BE EVALUATED
+  #----------------------------------------------------------------------------------
+  # if TRUE, only evalute the intercept-based TMLE (TMLE_B), if FALSE, evaluate only the covariate-based TMLE (TMLE_A)
+  runTMLE <- optPars$runTMLE[1]
+  if (is.null(runTMLE) || (runTMLE[1] %in% "tmle.intercept")) {
+    onlyTMLE_B <- TRUE
+  } else if (runTMLE %in% "tmle.covariate") {
+    onlyTMLE_B <- FALSE
+  } else {
+    stop("optPars[['runTMLE']] argument must be either 'tmle.intercept' or 'tmle.covariate'")
+  }
+  # onlyTMLE_B <- TRUE
+  assert_that(assertthat::is.flag(onlyTMLE_B))
+  estnames.internal <- c("TMLE_A", "TMLE_B", "h_IPTW", "MLE")
+  # estnames.internal <- c("TMLE_A", "TMLE_B", "TMLE_g_IPTW", "h_IPTW", "g_IPTW", "MLE")
+  names(estnames.internal) <- estnames.internal
+  estnames.out <- c("tmle", "h_iptw", "gcomp")
+  if (onlyTMLE_B) {
+    estnames.internal <- estnames.internal[-which(estnames.internal%in%"TMLE_A")]
+  } else {
+    estnames.internal <- estnames.internal[-which(estnames.internal%in%"TMLE_B")]
+  }
+  names(estnames.out) <- estnames.internal
+  estnames.internal <- as.list(estnames.internal)
 
   #----------------------------------------------------------------------------------
   # MONTE-CARLO SIMULATION PARAMETERS
@@ -516,114 +794,52 @@ tmlenet <- function(data,
   h_user <- !(is.null(h_user_fcn))
 
   #----------------------------------------------------------------------------------
-  # Input checks:
-  # #todo 8 (tmlenet) +0: check all names exist in data (Anode, Wnodes, Ynode, etc...)
-  # #todo 11 (tmlenet) +0: Wnodes & Anode are no longer needed if provided sW, sA, give a warning that Wnodes, Anodes will be ignored
+  # Perform some input checks
+  # Create an object with data & network information that is passed on to estimation algorithm(s)
+  # Build observed sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
   #----------------------------------------------------------------------------------
-  
-  if (is.null(NETIDnode) && is.null(NETIDs_mat)) {
-    message("No network (friends) specified by NETIDnode or NETIDs_mat args, assuming the input data is i.i.d.")
-    nFnode <- NULL
-    iid_data_flag <- TRUE
-    if (missing(Kmax)) Kmax <- 1 # need to allow Kmax = 0
-  }
-
-  assert_that(is.data.frame(data))
-  assert_that(is.integerish(Kmax))
-  Kmax <- as.integer(Kmax)
-  assert_that(is.Define_sVar(sW))
-  assert_that(is.Define_sVar(sA))
-  nobs <- nrow(data)
-  node_l <- list(IDnode = IDnode, Anode = Anode, Wnodes = Wnodes, Ynode = Ynode, nFnode = nFnode, NETIDnode = NETIDnode)
-
-  # Defining Deterministic Y and A node flags:
-  if (is.null(AnodeDET)) {determ.g <- rep_len(FALSE, nobs)} else {determ.g <- (data[, AnodeDET] == 1)}
-  if (is.null(YnodeDET)) {determ.Q <- rep_len(FALSE, nobs)} else {determ.Q <- (data[, YnodeDET] == 1)}
-
-  node_l_sel <- node_l
-  if (!is.null(nFnode) && (!(nFnode %in% names(data)))) {
-    node_l_sel$nFnode <- NULL
-  }
-  d_sel <- data.frame(subset(data, select = unlist(node_l_sel)), determ.g = determ.g, determ.Q = determ.Q)
+  DatNet.ObsP0 <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, IDnode = IDnode, NETIDnode = NETIDnode, 
+                                  sep = sep, NETIDmat = NETIDmat, verbose = FALSE)$DatNet.ObsP0
+  nobs <- DatNet.ObsP0$nobs
+  # variables that will only be available to eval.summaires:
+  # node_l <- list(IDnode = IDnode, NETIDnode = NETIDnode, nFnode = nFnode)
+  # new version of nodes:
+  node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anode = Anode, AnodeDET = AnodeDET,
+                  Wnodes = Wnodes, Ynode = Ynode, YnodeDET = YnodeDET)
+  DatNet.ObsP0$nodes <- node_l
 
   #----------------------------------------------------------------------------------
-  # Create an object with model estimates, data & network information that is passed on to estimation procedure
+  # Defining (and checking) Deterministic Y and A node flags:
   #----------------------------------------------------------------------------------
-  netind_cl <- NetIndClass$new(nobs = nobs, Kmax = Kmax)
-  if (!is.null(NETIDnode)) {
-    assert_that(is.character(NETIDnode))
-    Net_str <- as.character(data[, NETIDnode])
-    if (!is.null(IDnode)) {
-      assert_that(is.character(IDnode))
-      IDs_str <- as.character(data[, IDnode])
-    } else {
-      IDs_str <- NULL
-    }
-    netind_cl$makeNetInd.fromIDs(Net_str = Net_str, IDs_str = IDs_str, sep = sep)
-
-  } else if (!is.null(NETIDs_mat)) {
-    assert_that(is.matrix(NETIDs_mat))
-    netind_cl$NetInd <- NETIDs_mat
-    netind_cl$make.nF()
+  if (is.null(AnodeDET)) {
+    determ.g <- rep_len(FALSE, nobs)
+  } else {
+    CheckVarNameExists(data, AnodeDET)
+    determ.g <- (data[, AnodeDET] == 1)
   }
-
-  if (verbose) {
-    print("head(netind_cl$NetInd): "); print(head(netind_cl$NetInd))
-    print("netind_cl$nF"); print(head(netind_cl$nF))    
+  if (is.null(YnodeDET)) {
+    determ.Q <- rep_len(FALSE, nobs)
+  } else {
+    CheckVarNameExists(data, YnodeDET)
+    determ.Q <- (data[, YnodeDET] == 1)
   }
-
-  if (nFnode %in% names(data) && (!iid_data_flag)) {
-    if (verbose) message("performing nFnode consistency check: ")
-    if (!all(as.integer(netind_cl$nF) == as.integer(data[,nFnode]))) {
-      stop("column data[,nFnode] does not match automatically calculated values for nFnode.
-            Either remove this column from data or re-calculate it correctly.")
-    }
-    if (verbose) message("...passed...")
-  }
+  CheckVarNameExists(data, node_l$Anode)
+  CheckVarNameExists(data, node_l$Ynode)
 
   #----------------------------------------------------------------------------------
-  # Parse and evaluate the summary measures (in class Define_sVar):
-  # #todo 52 (tmlenet) +0: Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
-    # When sW / sA are just lists of character vectors need to capture the calling env and call Define_sVar constructor:
-      # user.env <- parent.frame()
-      # user.env_l <- list(user.env = user.env)
-      # sW <- do.call(Define_sVar$new, c(sW, list(type = "sW"), user.env_l))
-      # sW.gstar <- do.call(Define_sVar$new, c(sW.gstar, list(type = "sW.gstar"), user.env_l))
-      # sA <- do.call(Define_sVar$new, c(sA, list(type = "sA"), user.env_l))  
-  # #todo 53 (tmlenet) +0: If no sVars were defined (default), use netW (Wnode[[0:Kmax]]) and netA for sVars (Anode[[0:Kmax]])
-  # #todo 54 (tmlenet) +0: Check all sVar names are unique
+  # NOTE: YnodeVals = obsYvals, det.Y = determ.Q need to be added to DatNet.ObsP0 after returned its eval.summaries()
   #----------------------------------------------------------------------------------
-
-  # Testing the evaluation of summary measures:
-  testm.sW <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = node_l$nFnode)
-  testm.sA <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
-  if (verbose) {
-    print("testm.sW"); print(head(testm.sW))
-    print("testm.sW map"); print(sW$sVar.names.map)    
-    print("testm.sA"); print(head(testm.sA))
-    print("testm.sA map"); print(sA$sVar.names.map)
-  }
-
-  #---------------------------------------------------------------------------------
-  # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
-  #---------------------------------------------------------------------------------
-  datnetW <- DatNet$new(netind_cl = netind_cl, nodes = node_l, VarNodes = node_l$Wnodes, addnFnode = TRUE)
-  datnetW$make.sVar(Odata = data, sVar.object = sW)
-  # print("head(obsdat.sW) as dat.sVar"); print(head(datnetW$dat.sVar))
-  datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
-  # print("head(obsdat.sW) after fixmiss_sVar:"); print(head(datnetW$dat.sVar))
-  datnetA <- DatNet$new(netind_cl = netind_cl, nodes = node_l, VarNodes = node_l$Anode)
-  datnetA$make.sVar(Odata = data, sVar.object = sA)
+  obsYvals <- data[,node_l$Ynode]
+  DatNet.ObsP0$addYnode(YnodeVals = obsYvals, det.Y = determ.Q)
   # (OPTIONAL) ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO sA:
     # cancelled adding DET nodes to sVar since all sVar are automatically get added to A ~ predictors + DETnodes...
     # obsdat.sW <- O.datnetW$add_deterministic(Odata = data, userDETcol = "determ.g")$dat.sVar
-  obsYvals <- data[,node_l$Ynode]
-  datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA, YnodeVals = obsYvals, det.Y = determ.Q)$make.dat.sWsA()
-  # print("datNetObs"); print(datNetObs)
   # Testing NA for visible det.Y and true observed Y as protected:
   # determ.Q <- c(FALSE, FALSE, FALSE, rep(TRUE, length(determ.Q)-3))
   # length(determ.Q) == length(obsYvals)
-  # datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA, YnodeVals = obsYvals, det.Y = determ.Q)$make.dat.sWsA()
+  # DatNet.ObsP0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA, YnodeVals = obsYvals, det.Y = determ.Q)$make.dat.sWsA()
+  # print("DatNet.ObsP0: "); print(DatNet.ObsP0)
+  # print(head(cbind(DatNet.ObsP0$noNA.Ynodevals, DatNet.ObsP0$YnodeVals, data[,node_l$Ynode]), 100))
 
   #----------------------------------------------------------------------------------
   # Optional regressions specs:
@@ -637,7 +853,7 @@ tmlenet <- function(data,
   } else {
     h.gstar.sVars <- h.sVars
   }
-  # g.sVars <- process_regform(as.formula(gform), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+
   if (verbose) {
     print("Qform: " %+% Qform)
     print("Q.sVars"); print(str(Q.sVars))
@@ -645,86 +861,29 @@ tmlenet <- function(data,
     print("h.sVars"); print(str(h.sVars))
     print("hform.gstar: " %+% hform.gstar)
     print("h.gstar.sVars"); print(str(h.gstar.sVars))
-    # print("gform: " %+% gform)
-    # print("g.sVars: "); print(str(g.sVars))
   }
 
   #-----------------------------------------------------------
   # Defining and fitting regression for Y ~ sW + sA:
   # todo 45 (m.Q.init) +0: In the future add option to fit separate m.Q.init models for each nF value
-  # todo 64 (tmlenet) +0: Fit the model for g_0(A,W) - move this to get_all_ests() to avoid confusion
+  # todo 45 (m.Q.init) +0: Move inside get_all_ests?
   #-----------------------------------------------------------
   Qreg <- RegressionClass$new(outvar = node_l$Ynode,
                               predvars = Q.sVars$predvars,
                               subset = !determ.Q,
                               ReplMisVal0 = TRUE)
-
-  m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = datNetObs)$predict(newdata = datNetObs)
-  # print("m.Q.init: "); print(m.Q.init)
-  # datNetObs$YnodeVals       # visible Y's with NA for det.Y
-  # datNetObs$det.Y           # TRUE/FALSE for deterministic Y's
-  # datNetObs$noNA.Ynodevals  # actual observed Y's
-  # m.Q.init$getoutvarnm      # reg outvar name (Ynode)
-  # m.Q.init$getoutvarval     # obsYvals after setting det.Y obs to NA
-  # m.Q.init$getprobA1        # predictions (for non-DET Y)
-  # m.Q.init$getsubset        # valid subset (!det.Y)
-  # m.Q.init$reg              # regression class (Qreg)
-  # print("summary(m.Q.init): "); print(summary(m.Q.init))
+  m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)$predict(newdata = DatNet.ObsP0)
+  # DatNet.ObsP0$YnodeVals       # visible Y's with NA for det.Y
+  # DatNet.ObsP0$det.Y           # TRUE/FALSE for deterministic Y's
+  # DatNet.ObsP0$noNA.Ynodevals  # actual observed Y's
+  # m.Q.init$getoutvarnm         # reg outvar name (Ynode)
+  # m.Q.init$getoutvarval        # obsYvals after setting det.Y obs to NA
+  # m.Q.init$getprobA1           # predictions (for non-DET Y)
+  # m.Q.init$getsubset           # valid subset (!det.Y)
+  # m.Q.init$reg                 # regression class (Qreg)
   # Not needed here, using only for comparison:
-  # QY.init <- datNetObs$noNA.Ynodevals
-  # QY.init[!datNetObs$det.Y] <- m.Q.init$getprobA1[!datNetObs$det.Y] # getting predictions P(Y=1) for non-DET Y
-
-	#----------------------------------------------------------------------------------
-  # *** RETIRING g_iptw ESTIMATOR ***
-  # Defining and fitting regression for A ~ sW:
-	#----------------------------------------------------------------------------------
-  # Anode.type <- datNetObs$get.sVar.type(node_l$Anode)
-  # if (verbose) print("Anode.type: " %+% Anode.type)
-  # if (!(Anode.type %in% gvars$sVartypes$bin)) {
-  #   message("Anode is not binary, full g_iptw cannot be estimated")
-    m.g0N <- NULL
-  # } else {
-  #   greg <- RegressionClass$new(outvar = node_l$Anode,
-  #                               predvars = g.sVars$predvars,
-  #                               subset = !determ.g)
-  #   m.g0N <- BinOutModel$new(glm = FALSE, reg = greg)$fit(data = datNetObs)
-  #   if (verbose) {
-  #     print("coef(m.g0N): "); print(coef(m.g0N))
-  #   }
-  # }
-
-  #----------------------------------------------------------------------------------
-  # DEPRECATED... MOVED TO all regs being defined via sW, sA summary measures...
-  # Create net_d for fitting m.Q.init, m.g0N and m.h_g0, m.h_gstar
-  #----------------------------------------------------------------------------------
-  # When Qform.depr is provided, use the formula based fit for Q.init instead of Qreg (sW+sA) fit
-  # if (!is.null(Qform.depr)) {
-  #   net_d <- cbind(datNetObs$dat.sWsA, subset(data, select = node_l$Ynode))
-  #   net_d[gvars$misfun(net_d)] <- gvars$misXreplace
-  #   m.Q.init.depr <- f_est(net_d[!determ.Q,], Qform.depr, family = family)
-  #   QY.init.depr <- data[, node_l$Ynode] # setting deterministic node values
-  #   QY.init.depr[!determ.Q] <- predict(m.Q.init.depr, newdata = net_d[!determ.Q,], type = "response") # predict p(Y) for non determ nodes    
-  #   if (is.null(gform.depr)) {
-  #     gform.depr <- node_l$Anode %+% " ~ " %+% paste0(datNetObs$datnetW$names.sVar, collapse="+") # default to main terms in datNetObs$datnetW
-  #   }
-  #   m.g0N.depr <- f_est(net_d[!determ.g,], gform.depr, family = family) # Set A = 0 when determ.g == 1
-  #   d_sel <- cbind(d_sel, QY.init = QY.init.depr) # (DEPRECATED, TO BE REMOVED)
-  #   # if (verbose) {
-  #     print("head(net_d)"); print(head(net_d, 5))      
-  #     print("new coef(m.Q.init): "); print(coef(m.Q.init))
-  #     print("old coef(m.Q.init.depr): "); print(coef(m.Q.init.depr))
-  #     print("coef(m.g0N.depr)"); print(coef(m.g0N.depr))
-  #     print("head(d_sel) old: "); print(head(d_sel))
-  #     message("Running tmlenet with... ");
-  #     message("Qform.depr: " %+% Qform.depr)
-  #     message("gform.depr: " %+% gform.depr)
-  #     message("hform.depr: " %+% hform.depr)
-  #   # }
-  # }
-  # dfcheck <- data.frame(QY.init = QY.init, QY.init.depr = QY.init.depr, diff = QY.init - QY.init.depr)
-  # head(dfcheck, 50)
-  # browser()
-  # stop()  
+  # QY.init <- DatNet.ObsP0$noNA.Ynodevals
+  # QY.init[!DatNet.ObsP0$det.Y] <- m.Q.init$getprobA1[!DatNet.ObsP0$det.Y] # getting predictions P(Y=1) for non-DET Y
 
   #----------------------------------------------------------------------------------
   # Create an object with model estimates, data & network information that is passed on to estimation procedure
@@ -732,23 +891,26 @@ tmlenet <- function(data,
   # 1) define parameters for MC estimation of the substitution estimators
   # 2) define parameters for estimation of the efficient weights h(A^s|W^s)
   est_obj <- list(
-                  onlyTMLE_B = onlyTMLE_B, # to be removed, will be replaced with a vector of estimator names
+                  estnames = estnames.internal,
                   lbound = lbound[1],
                   max.err_eps = max.err_est,  # error tolerance for the mean/var M.C. estimate
-                  m.g0N = m.g0N, m.Q.init = m.Q.init, # moved these to BinOutModel objects
-                  f.g0 = f.g0, 
-                  sW = sW, sA = sA,
-                  Q.sVars = Q.sVars, 
-                  h.sVars = h.sVars, 
+                  m.Q.init = m.Q.init,
+                  f.g0 = f.g0,
+                  sW = sW,
+                  sA = sA,
+                  Q.sVars = Q.sVars,
+                  h.sVars = h.sVars,
                   h.gstar.sVars = h.gstar.sVars,
-                  # g.sVars = g.sVars,
-                  nQ.MCsims = nQ.MCsims, 
+                  nQ.MCsims = nQ.MCsims,
                   ng.MCsims = ng.MCsims,
                   h_g0_SummariesModel = optPars$h_g0_SummariesModel,
                   h_gstar_SummariesModel = optPars$h_gstar_SummariesModel,
+
                   # Cap the prop weights scaled at max_npwt (for =50 -> translates to max 10% of total weight for n=500 and 5% for n=1000):
                   max_npwt = max_npwt # NOT IMPLEMENTED  
 
+                  # m.g0N = m.g0N, # removed fitting of g0
+                  # g.sVars = g.sVars,
                   # h_logit_sep_k = h_logit_sep_k, # NOT IMPLEMENTED
                   # h_user = h_user, # NOT IMPLEMENTED
                   # h_user_fcn = h_user_fcn, # NOT IMPLEMENTED
@@ -762,13 +924,12 @@ tmlenet <- function(data,
                   # f.g0_args = f.g0_args, #REMOVE, no longer used
                   # n_MCsims = nQ.MCsims,         # REMOVE, keeping for now for compatibility
                   # n_samp_g0gstar = ng.MCsims  # REMOVE, keeping for now for compatibility
-
                   )
 
   est_obj_g1 <- append(est_obj,
                       list(
                         f.gstar = f_gstar1,
-                        f.g_args = args_f_g1star #REMOVE, no longer used
+                        f.g_args = args_f_g1star #REMOVE, args no longer used
                         )
                       )
 
@@ -776,55 +937,34 @@ tmlenet <- function(data,
     est_obj_g2 <- append(est_obj,
                       list(
                         f.gstar = f_gstar2,
-                        f.g_args = args_f_g2star #REMOVE, no longer used
+                        f.g_args = args_f_g2star #REMOVE, args no longer used
                         )
                       )
   }
 
   #----------------------------------------------------------------------------------
-	# DEPRECATED: Run TMLE univariate fluctuations for each g.star and/or ATE:
-	#----------------------------------------------------------------------------------
-  # if (!is.null(Qform.depr)) {
-  #   est_obj_g1$m.g0N <- m.g0N.depr
-  #   est_obj_g1$m.Q.init <- m.Q.init.depr
-  # 	tmle_g1_out.depr <- get_all_ests.old(data = d_sel, est_obj = est_obj_g1)
-  #   tmle_g2_out.depr <- NULL
-  #   if (!is.null(f_gstar2)) {
-  #     est_obj_g2$m.g0N <- m.g0N.depr
-  #     est_obj_g2$m.Q.init <- m.Q.init.depr
-  #     tmle_g2_out.depr <- get_all_ests.old(data = d_sel, est_obj = est_obj_g2)
-  #   }
-  # }
-
+  # Running MC evaluation for substitution TMLE ests
   #----------------------------------------------------------------------------------
-  # (NEW) Running MC evaluation for substitution TMLE ests
-  #----------------------------------------------------------------------------------
-  est_obj_g1$m.g0N <- m.g0N
-  est_obj_g1$m.Q.init <- m.Q.init
-  tmle_g1_out <- get_all_ests(datNetObs = datNetObs, est_params_list = est_obj_g1)
-
-  tmle_g2_out <- NULL
+  tmle_g1_out <- get_all_ests(estnames = estnames.internal, DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_obj_g1)
   if (!is.null(f_gstar2)) {
-    est_obj_g2$m.g0N <- m.g0N
-    est_obj_g2$m.Q.init <- m.Q.init
-    tmle_g2_out <- get_all_ests(datNetObs = datNetObs, est_params_list = est_obj_g2)
+    tmle_g2_out <- get_all_ests(estnames = estnames.internal, DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_obj_g2)
+  } else {
+    tmle_g2_out <- NULL
   }
 
   #----------------------------------------------------------------------------------
   # Create output list (estimates, as. variances, CIs)
   #----------------------------------------------------------------------------------
-  EY_gstar1 <- make_EYg_obj(alpha = alpha, onlyTMLE_B = onlyTMLE_B, datNetObs = datNetObs, tmle_g_out = tmle_g1_out)
-
+  EY_gstar1 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out)
   EY_gstar2 <- NULL
   ATE <- NULL	
   if (!is.null(f_gstar2)) {
-    EY_gstar2 <- make_EYg_obj(alpha = alpha, onlyTMLE_B = onlyTMLE_B, datNetObs = datNetObs, tmle_g_out=tmle_g2_out)
-    ATE <- make_EYg_obj(alpha = alpha, onlyTMLE_B = onlyTMLE_B, datNetObs = datNetObs, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
+    EY_gstar2 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out=tmle_g2_out)
+    ATE <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
 	}
 
 	tmlenet.res <- list(EY_gstar1 = EY_gstar1, EY_gstar2 = EY_gstar2, ATE = ATE)
 	class(tmlenet.res) <- c(class(tmlenet.res), "tmlenet")
-  # print("Estimates w/ MC eval:"); print(tmlenet.res$EY_gstar1$estimates)
 
   options(tmlenet.verbose = oldverboseopt)
   gvars$verbose <- oldverboseopt

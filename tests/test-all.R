@@ -6,16 +6,15 @@ if(require("RUnit", quietly=TRUE)) {
     pkg <- "tmlenet" # <-- Tested package name
 
     if(Sys.getenv("RCMDCHECK") == "FALSE") {
-    ## Path to unit tests for standalone running under Makefile (not R CMD check)
-    ## PKG/tests/../inst/unitTests
-    # path <- file.path(getwd(), "..", "inst", "unitTests")
+        ## Path to unit tests for standalone running under Makefile (not R CMD check)
+        ## PKG/tests/../inst/unitTests
+        # path <- file.path(getwd(), "..", "inst", "unitTests")
     } else {
-    ## Path to unit tests for R CMD check
-    ## PKG.Rcheck/tests/../PKG/unitTests
-    # path <- system.file(package=pkg, "RUnit")
-
-    # REPLACED WITH:
-    path <- file.path(getwd(), "RUnit")
+        ## Path to unit tests for R CMD check
+        ## PKG.Rcheck/tests/../PKG/unitTests
+        # path <- system.file(package=pkg, "RUnit")
+        # REPLACED WITH:
+        path <- file.path(getwd(), "RUnit")
     }
 
     cat("\nRunning unit tests\n")
@@ -32,13 +31,16 @@ if(require("RUnit", quietly=TRUE)) {
     ## --- Testing ---
 
     ## Define tests
-    test.suite <- defineTestSuite(name=paste(pkg, "unit testing"), 
+    test.suite <- defineTestSuite(name=paste(pkg, "unit testing"),
                                         # dirs="./RUnit",
                                         dirs=path,
-                                        testFileRegexp="runittests.R",
+                                        testFileRegexp="^RUnit_tests_+",
+                                        # testFileRegexp="runittests.R",
                                         testFuncRegexp = "^test.+",
-                                        rngKind = "Marsaglia-Multicarry",
-                                        rngNormalKind = "Kinderman-Ramage")
+                                        rngKind = "Mersenne-Twister",
+                                        # rngKind = "Marsaglia-Multicarry",
+                                        rngNormalKind = "Inversion")
+                                        # rngNormalKind = "Kinderman-Ramage")
     ## Run
     tests <- runTestSuite(test.suite)
 

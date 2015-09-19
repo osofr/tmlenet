@@ -4,41 +4,43 @@
 \alias{tmlenet_options}
 \title{Setting Options for \code{tmlenet}}
 \usage{
-tmlenet_options(useglm = FALSE, bin.method = c("equal.len", "equal.mass",
-  "dhist"), parfit = FALSE, nbins = NA, maxncats = 5, binByMass = FALSE,
-  binBydhist = FALSE, poolContinVar = FALSE, maxNperBin = 1000)
+tmlenet_options(useglm = FALSE, parfit = FALSE,
+  bin.method = c("equal.len", "equal.mass", "dhist"), nbins = NA,
+  maxncats = 20, poolContinVar = FALSE, maxNperBin = 1000)
 }
 \arguments{
-\item{useglm}{Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for \code{glm::glm.fit}.}
+\item{useglm}{Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for
+\code{glm::glm.fit}.}
 
-\item{bin.method}{The method for choosing bins when discretizing and fitting the conditional continuous summary exposure variable \code{sA}.
-The default method is \code{"equal.len"}, which partitions the range of \code{sA} into equal length \code{nbins} intervals.
-Method \code{"equal.mass"} results in a data-adaptive selection of the bins based on equal mass (equal number of observations),
-i.e., each bin is defined so that it contains an approximately the same number of observations across all bins.
-The maximum number of observations in each bin is controlled by parameter \code{maxNperBin}.
-Method \code{"dhist"} is a combination of the above two approaches.}
+\item{parfit}{Default is \code{FALSE}. Set to \code{TRUE} to use \code{foreach} package and its functions
+\code{\link{foreach}} and \code{dopar} to perform
+parallel logistic regression fits and predictions for discretized continuous outcomes. This functionality
+requires registering a parallel backend prior to running \code{tmlenet} function, e.g.,
+using \code{doParallel} R package and running \code{registerDoParallel(cores = ncores)} for integer
+\code{ncores} parallel jobs. For an example, see a test in "./tests/RUnit/RUnit_tests_04_netcont_sA_tests.R".}
 
-\item{parfit}{Set to \code{TRUE} to perform parallel glm fits for multivariate binary outcomes (default is \code{FALSE})}
+\item{bin.method}{The method for choosing bins when discretizing and fitting the conditional continuous summary
+exposure variable \code{sA}. The default method is \code{"equal.len"}, which partitions the range of \code{sA}
+into equal length \code{nbins} intervals. Method \code{"equal.mass"} results in a data-adaptive selection of the bins
+based on equal mass (equal number of observations), i.e., each bin is defined so that it contains an approximately
+the same number of observations across all bins. The maximum number of observations in each bin is controlled
+by parameter \code{maxNperBin}. Method \code{"dhist"} uses a mix of the above two approaches,
+see Denby and Mallows "Variations on the Histogram" (2009) for more detail.}
 
-\item{nbins}{Set the default number of bins when discretizing a continous outcome variable under setting \code{binByMass = FALSE}.
-If left as \code{NA} the total number of equal intervals (bins) is determined by the nearest integer of \code{nobs}/\code{maxNperBin},
-where \code{nobs} is the total number of observations in the input data.}
+\item{nbins}{Set the default number of bins when discretizing a continous outcome variable under setting
+\code{bin.method = "equal.len"}.
+If left as \code{NA} the total number of equal intervals (bins) is determined by the nearest integer of
+\code{nobs}/\code{maxNperBin}, where \code{nobs} is the total number of observations in the input data.}
 
 \item{maxncats}{Max number of unique categories a categorical variable \code{sA[j]} can have.
 If \code{sA[j]} has more it is automatically considered continuous.}
-
-\item{binByMass}{Define bin cutoffs for a continuous outcome using even mass distribution?
-Setting to \code{TRUE} allows for data-adaptive bin cutoff definitions,
-where each bin will be defined so that it contains an approximately the same number of observations across all bins.}
-
-\item{binBydhist}{\code{TRUE/FALSE}}
 
 \item{poolContinVar}{Set to \code{TRUE} for fitting a pooled regression which pools bin indicators across all bins.
 When fitting a model for binirized continuous outcome, set to \code{TRUE}
 for pooling bin indicators across several bins into one outcome regression?}
 
-\item{maxNperBin}{Max number of observations per 1 bin for a continuous outcome (applies directly when \code{binByMass=TRUE} and
-indirectly when \code{binByMass=FALSE}, but \code{nbins = NA}).}
+\item{maxNperBin}{Max number of observations per 1 bin for a continuous outcome (applies directly when
+\code{bin.method="equal.mass"} and indirectly when \code{bin.method="equal.len"}, but \code{nbins = NA}).}
 }
 \value{
 Invisibly returns a list with old option settings.
