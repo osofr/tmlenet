@@ -13,6 +13,8 @@ This class inherits from \code{DatNet} and extends its methods to handle a singl
  all summary measures \code{(sA,sW)}
  The class \code{DatNet.sWsA} is the only way to access data in the entire package.
  Contains methods for combining, subsetting, discretizing & binirizing summary measures \code{(sW,sA)}.
+ For continous sVar this class provides methods for detecting / setting bin intervals,
+ normalization, disretization and construction of bin indicators.
  The pointers to this class get passed on to \code{SummariesModel} functions: \code{$fit()},
  \code{$predict()} and \code{$predictAeqa()}.
 }
@@ -20,6 +22,9 @@ This class inherits from \code{DatNet} and extends its methods to handle a singl
 \itemize{
 \item{\code{datnetW}} - .
 \item{\code{datnetA}} - .
+\item{\code{active.bin.sVar}} - Currently discretized continous \code{sVar} column in data matrix \code{mat.sVar}.
+\item{\code{mat.bin.sVar}} - Matrix of the binary indicators for discretized continuous covariate \code{active.bin.sVar}.
+\item{\code{ord.sVar}} - Ordinal (categorical) transformation of a continous covariate \code{sVar}.
 \item{\code{YnodeVals}} - .
 \item{\code{det.Y}} - .
 \item{\code{p}} - .
@@ -37,8 +42,10 @@ This class inherits from \code{DatNet} and extends its methods to handle a singl
   \item{\code{bin.nms.sVar(name.sVar, nbins)}}{...}
   \item{\code{pooled.bin.nm.sVar(name.sVar)}}{...}
   \item{\code{detect.sVar.intrvls(name.sVar, nbins, bin_bymass, bin_bydhist, max_nperbin)}}{...}
+  \item{\code{detect.cat.sVar.levels(name.sVar)}}{...}
   \item{\code{discretize.sVar(name.sVar, intervals)}}{...}
   \item{\code{binirize.sVar(name.sVar, intervals, nbins, bin.nms)}}{...}
+  \item{\code{binirize.cat.sVar(name.sVar, levels)}}{...}
   \item{\code{get.sVar.bw(name.sVar, intervals)}}{...}
   \item{\code{get.sVar.bwdiff(name.sVar, intervals)}}{...}
   \item{\code{make.dat.sWsA(p = 1, f.g_name = NULL, f.g_args = NULL, sA.object = NULL)}}{...}
@@ -49,6 +56,8 @@ This class inherits from \code{DatNet} and extends its methods to handle a singl
 
 \describe{
    \item{\code{dat.sWsA}}{...}
+   \item{\code{dat.bin.sVar}}{...}
+   \item{\code{emptydat.bin.sVar}}{...}
    \item{\code{names.sWsA}}{...}
    \item{\code{nobs}}{...}
    \item{\code{noNA.Ynodevals}}{...}

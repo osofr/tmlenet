@@ -119,6 +119,26 @@ test.nullnodesbug <- function() {
   # ....................................
 }
 
+# making bin indicator matrix from ordinal sVar:
+test.makebins.fromord <- function() {
+  # testing bin indicator matrix for ordinal variable that's in range 1:nbins
+  ord_vec_1 <- sample(c(1:5), 200, replace=TRUE)
+  nbins <- length(unique(ord_vec_1))
+  # levels <- sort(unique(ord_vec_1))
+  bin.nms <- "B_"%+%(1:nbins)
+  bin_ord_vec_1 <- tmlenet:::make.bins_mtx_1(ord_vec_1, nbins = nbins, bin.nms = bin.nms)
+  out_mat_1 <- cbind(ord_vec_1 = ord_vec_1, bin_ord_vec_1)
+
+  # testing bin indicator matrix for ordinal variable that's not in standard range 1:nbins
+  ord_vec_2 <- sample(c(-2,1:5,8,9), 200, replace=TRUE)
+  nbins <- length(unique(ord_vec_2))
+  levels <- sort(unique(ord_vec_2))
+  bin.nms <- "B_"%+%levels
+  bin_ord_vec_2 <- tmlenet:::make.bins_mtx_1(ord_vec_2, nbins = nbins, bin.nms = bin.nms, levels = levels)
+  out_mat_2 <- cbind(ord_vec_2 = ord_vec_2, bin_ord_vec_2)
+}
+
+
 # helper function for generating some data
 get.testDat <- function(nsamp = 100000) {
   `%+%` <- function(a, b) paste0(a, b)

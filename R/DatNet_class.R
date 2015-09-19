@@ -123,19 +123,36 @@ define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
 # Turn any x into ordinal (1, 2, 3, ..., nbins) for a given interval cutoffs (length(intervals)=nbins+1)
 make.ordinal <- function(x, intervals) findInterval(x = x, vec = intervals, rightmost.closed = TRUE)
 
+# # Make dummy indicators for ordinal x (sA[j])
+# # Approach: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
+# make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
+#   n <- length(x.ordinal)
+#   cats <- 1 : nbins
+#   dummies_mat <- matrix(1L, nrow = n, ncol = length(cats))
+#   for(level in cats[-length(cats)]) {
+#     subset_Bj0 <- x.ordinal > level
+#     dummies_mat[subset_Bj0, level] <- 0L
+#     subset_Bjmiss <- x.ordinal < level
+#     dummies_mat[subset_Bjmiss, level] <- gvars$misval
+#   }
+#   dummies_mat[, cats[length(cats)]] <- gvars$misval
+#   colnames(dummies_mat) <- bin.nms
+#   dummies_mat
+# }
+
 # Make dummy indicators for ordinal x (sA[j])
-make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
-  # Approach: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
+# Approach: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
+make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms, levels = 1:nbins) {
   n <- length(x.ordinal)
-  cats <- 1 : nbins
-  dummies_mat <- matrix(1L, nrow = n, ncol = length(cats))
-  for(level in cats[-length(cats)]) {
-    subset_Bj0 <- x.ordinal > level
-    dummies_mat[subset_Bj0, level] <- 0L
-    subset_Bjmiss <- x.ordinal < level
-    dummies_mat[subset_Bjmiss, level] <- gvars$misval
+  new.cats <- 1:nbins
+  dummies_mat <- matrix(1L, nrow = n, ncol = length(new.cats))
+  for(cat in new.cats[-length(new.cats)]) {
+    subset_Bj0 <- x.ordinal > levels[cat]
+    dummies_mat[subset_Bj0, cat] <- 0L
+    subset_Bjmiss <- x.ordinal < levels[cat]
+    dummies_mat[subset_Bjmiss, cat] <- gvars$misval
   }
-  dummies_mat[, cats[length(cats)]] <- gvars$misval
+  dummies_mat[, new.cats[length(new.cats)]] <- gvars$misval
   colnames(dummies_mat) <- bin.nms
   dummies_mat
 }
@@ -147,9 +164,7 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
 #'  in the environment of the input data.frame (Odata). 
 #'  The evaluated summary measures from sVar.object are stored as a matrix (self$mat.sVar).
 #'  Contains methods for replacing missing values with default in gvars$misXreplace.
-#'  Also contains method for detecting /setting sVar variable type (binary, categor, contin).
-#'  For continous sVar this class provides methods for detecting / setting bin intervals, 
-#'  normalization, disretization and construction of bin indicators.
+#'  Also contains method for detecting / setting sVar variable type (binary, categor, contin).
 #'
 #' @docType class
 #' @format An \code{\link{R6Class}} generator object
@@ -160,10 +175,7 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
 #' \item{\code{addnFnode}} - Flag to add number of friends as an additional vector to the matrix of existing summary measures. 
 #' \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
 #' \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
-#' \item{\code{ord.sVar}} - Ordinal (categorical) transformation of a continous covariate \code{sVar}.
-#' \item{\code{active.bin.sVar}} - Currently discretized continous \code{sVar} column in data matrix \code{mat.sVar}.
 #' \item{\code{Odata}} - Pointer to the input (observed) data frame.
-#' \item{\code{mat.bin.sVar}} - Matrix of the binary indicators for discretized continuous covariate \code{active.bin.sVar}.
 #' \item{\code{mat.sVar}} - The evaluated matrix of summary measures for \code{sW} or \code{sA}.
 #' \item{\code{sVar.object}} - Instance of the \code{Define_sVar} class which contains the summary measure expressions for \code{sW} or \code{sA}.
 #' \item{\code{type.sVar}} - named list of length \code{ncol(mat.sVar)} with \code{sVar} variable types: "binary"/"categor"/"contin".
@@ -189,9 +201,7 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
 #'    \item{\code{names.c.sVar}}{...}
 #'    \item{\code{ncols.sVar}}{...}
 #'    \item{\code{dat.sVar}}{...}
-#'    \item{\code{dat.bin.sVar}}{...}
 #'    \item{\code{emptydat.sVar}}{...}
-#'    \item{\code{emptydat.bin.sVar}}{...}
 #'    \item{\code{nodes}}{...}
 #' }
 #' @importFrom assertthat assert_that is.count is.flag
@@ -204,11 +214,7 @@ DatNet <- R6Class(classname = "DatNet",
     nFnode = "nF",
     addnFnode = FALSE,         # Flag to add Fnode to predictors mat / df output
     netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
-    ord.sVar = NULL,           # Ordinal (cat) transform for continous sVar
-    active.bin.sVar = NULL,    # name of active binarized cont sVar, changes as fit/predict is called (bin indicators are temp. stored in mat.bin.sVar)
     Odata = NULL,              # data.frame used for creating the summary measures in mat.sVar, saved each time make.sVar called
-    # dat.bin.sVar = NULL,     # (MOVED TO AN ACT BIND) points to self$mat.bin.sVar
-    mat.bin.sVar = NULL,       # temp storage mat for bin indicators on currently binarized continous sVar (from self$active.bin.sVar)
     # mat.netVar = NULL,         # NOT DONE mat of network VarNode vals (+ VarNode itself) for each node in VarNodes
     # dat.netVar = NULL,       # (MOVED TO ACT BIND) df of network node values (+ node column itself) for all nodes in VarNodes
     mat.sVar = NULL,           # Matrix storing all evaluated sVars, with named columns
@@ -334,7 +340,6 @@ DatNet <- R6Class(classname = "DatNet",
     get.sVar = function(name.sVar) { self$dat.sVar[, name.sVar] },
     set.sVar.type = function(name.sVar, new.type) { self$type.sVar[[name.sVar]] <- new.type },
     get.sVar.type = function(name.sVar) { if (missing(name.sVar)) { self$type.sVar } else { self$type.sVar[[name.sVar]] } }
-
   ),
 
   active = list(
@@ -344,11 +349,16 @@ DatNet <- R6Class(classname = "DatNet",
     # ncols.netVar = function() { length(self$names.netVar) },
     ncols.sVar = function() { length(self$names.sVar) },
     # dat.netVar = function() { self$mat.netVar },
-    dat.sVar = function() { self$mat.sVar },
-    dat.bin.sVar = function() { self$mat.bin.sVar },
+    dat.sVar = function(dat.sVar) {
+      if (missing(dat.sVar)) {
+        return(self$mat.sVar)
+      } else {
+        assert_that(is.matrix(dat.sVar))
+        self$mat.sVar <- dat.sVar
+      }
+    },
     # emptydat.netVar = function() {self$mat.netVar <- NULL },    # wipe out mat.netVar
     emptydat.sVar = function() { self$mat.sVar <- NULL },         # wipe out mat.sVar
-    emptydat.bin.sVar = function() { self$mat.bin.sVar <- NULL }, # wipe out binirized mat.sVar
     nodes = function(nodes) {
       if (missing(nodes)) {
         return(private$.nodes)
@@ -370,6 +380,8 @@ DatNet <- R6Class(classname = "DatNet",
 #'  all summary measures \code{(sA,sW)}
 #'  The class \code{DatNet.sWsA} is the only way to access data in the entire package. 
 #'  Contains methods for combining, subsetting, discretizing & binirizing summary measures \code{(sW,sA)}.
+#'  For continous sVar this class provides methods for detecting / setting bin intervals, 
+#'  normalization, disretization and construction of bin indicators.
 #'  The pointers to this class get passed on to \code{SummariesModel} functions: \code{$fit()}, 
 #'  \code{$predict()} and \code{$predictAeqa()}.
 #'
@@ -380,6 +392,9 @@ DatNet <- R6Class(classname = "DatNet",
 #' \itemize{
 #' \item{\code{datnetW}} - .
 #' \item{\code{datnetA}} - .
+#' \item{\code{active.bin.sVar}} - Currently discretized continous \code{sVar} column in data matrix \code{mat.sVar}.
+#' \item{\code{mat.bin.sVar}} - Matrix of the binary indicators for discretized continuous covariate \code{active.bin.sVar}.
+#' \item{\code{ord.sVar}} - Ordinal (categorical) transformation of a continous covariate \code{sVar}.
 #' \item{\code{YnodeVals}} - .
 #' \item{\code{det.Y}} - .
 #' \item{\code{p}} - .
@@ -395,8 +410,10 @@ DatNet <- R6Class(classname = "DatNet",
 #'   \item{\code{bin.nms.sVar(name.sVar, nbins)}}{...}
 #'   \item{\code{pooled.bin.nm.sVar(name.sVar)}}{...}
 #'   \item{\code{detect.sVar.intrvls(name.sVar, nbins, bin_bymass, bin_bydhist, max_nperbin)}}{...}
+#'   \item{\code{detect.cat.sVar.levels(name.sVar)}}{...}
 #'   \item{\code{discretize.sVar(name.sVar, intervals)}}{...}
 #'   \item{\code{binirize.sVar(name.sVar, intervals, nbins, bin.nms)}}{...}
+#'   \item{\code{binirize.cat.sVar(name.sVar, levels)}}{...}
 #'   \item{\code{get.sVar.bw(name.sVar, intervals)}}{...}
 #'   \item{\code{get.sVar.bwdiff(name.sVar, intervals)}}{...}
 #'   \item{\code{make.dat.sWsA(p = 1, f.g_name = NULL, f.g_args = NULL, sA.object = NULL)}}{...}
@@ -404,6 +421,8 @@ DatNet <- R6Class(classname = "DatNet",
 #' @section Active Bindings:
 #' \describe{
 #'    \item{\code{dat.sWsA}}{...}
+#'    \item{\code{dat.bin.sVar}}{...}
+#'    \item{\code{emptydat.bin.sVar}}{...}
 #'    \item{\code{names.sWsA}}{...}
 #'    \item{\code{nobs}}{...}
 #'    \item{\code{noNA.Ynodevals}}{...}
@@ -416,15 +435,17 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
   portable = TRUE,
   class = TRUE,
   public = list(
-    datnetW = NULL,   # *** RENAME TO O.datnetW for clarity ***
-    datnetA = NULL,   # *** RENAME TO O.datnetA for clarity ***
-    YnodeVals = NULL, # Values of the binary outcome (Ynode) in observed data where det.Y = TRUE obs are set to NA
-    det.Y = NULL,     # Logical vector, where YnodeVals[det.Y==TRUE] are deterministic (0 or 1)
+    datnetW = NULL,            # *** RENAME TO O.datnetW for clarity ***
+    datnetA = NULL,            # *** RENAME TO O.datnetA for clarity ***
+    active.bin.sVar = NULL,    # name of active binarized cont sVar, changes as fit/predict is called (bin indicators are temp. stored in mat.bin.sVar)
+    # dat.bin.sVar = NULL,     # (MOVED TO AN ACT BIND) points to self$mat.bin.sVar
+    mat.bin.sVar = NULL,       # temp storage mat for bin indicators on currently binarized continous sVar (from self$active.bin.sVar)
+    ord.sVar = NULL,           # Ordinal (cat) transform for continous sVar
+    YnodeVals = NULL,          # Values of the binary outcome (Ynode) in observed data where det.Y = TRUE obs are set to NA
+    det.Y = NULL,              # Logical vector, where YnodeVals[det.Y==TRUE] are deterministic (0 or 1)
     p = 1,
     # **********
     # dat.sVar - (inherited act bind): now points to combine mat.sVar of above cbind(dat.sW, dat.sA)
-    # dat.bin.sVar - (inherited act bind): points to mat of binned sVar (currently selected) which is mat.bin.sVar
-    # active.bin.sVar - name of the currently selected binirized sVar
     # this keeps ALL methods and active bindings of DatNet valid in DatNet.sWsA for this combined data mat
     # **********
     initialize = function(datnetW, datnetA, YnodeVals, det.Y, ...) {
@@ -527,7 +548,8 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     bin.nms.sVar = function(name.sVar, nbins) { name.sVar%+%"_"%+%"B."%+%(1L:nbins) }, 
     pooled.bin.nm.sVar = function(name.sVar) { name.sVar %+% "_allB.j" },
     detect.sVar.intrvls = function(name.sVar, nbins, bin_bymass, bin_bydhist, max_nperbin) {
-      int <- define.intervals(x = self$dat.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass, bin_bydhist = bin_bydhist, max_nperbin = max_nperbin)
+      int <- define.intervals(x = self$get.sVar(name.sVar), nbins = nbins, bin_bymass = bin_bymass, bin_bydhist = bin_bydhist, max_nperbin = max_nperbin)
+      # int <- define.intervals(x = self$dat.sVar[, name.sVar], nbins = nbins, bin_bymass = bin_bymass, bin_bydhist = bin_bydhist, max_nperbin = max_nperbin)
       if (length(unique(int)) < length(int)) {
         message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+% 
                 (length(int)-1) %+% " to " %+% (length(unique(int))-1) %+% " due to too few obs.")
@@ -537,16 +559,32 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       }
       return(int)
     },
+    detect.cat.sVar.levels = function(name.sVar) {
+      levels <- sort(unique(self$get.sVar(name.sVar)))
+      return(levels)
+    },
     # create a vector of ordinal (categorical) vars out of cont. sVar vector:
     discretize.sVar = function(name.sVar, intervals) {
-      self$ord.sVar <- make.ordinal(x = self$dat.sVar[, name.sVar], intervals = intervals)
+      self$ord.sVar <- make.ordinal(x = self$get.sVar(name.sVar), intervals = intervals)
+      # self$ord.sVar <- make.ordinal(x = self$dat.sVar[, name.sVar], intervals = intervals)
       invisible(self$ord.sVar)
     },
-    # return matrix of bin indicators for ordinal sVar:
+    # return matrix of bin indicators for continuous sVar:
+    # change name to:
+    # binirize.cont.sVar = function(name.sVar, intervals, nbins, bin.nms) {
     binirize.sVar = function(name.sVar, intervals, nbins, bin.nms) {
       self$active.bin.sVar <- name.sVar
-      self$mat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
-      invisible(self$mat.bin.sVar)
+      self$dat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
+      # self$mat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
+      invisible(self$dat.bin.sVar)
+    },
+    # return matrix of bin indicators for ordinal sVar:
+    binirize.cat.sVar = function(name.sVar, levels) {
+      nbins <- length(levels)
+      bin.nms <- self$bin.nms.sVar(name.sVar, nbins)
+      self$active.bin.sVar <- name.sVar
+      self$dat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$get.sVar(name.sVar), nbins = nbins, bin.nms = bin.nms, levels = levels)
+      invisible(self$dat.bin.sVar)
     },
     # return the bin widths vector for the discretized continuous sVar (self$ord.sVar):
     get.sVar.bw = function(name.sVar, intervals) {
@@ -564,7 +602,8 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       # intrvls.width <- diff(intervals)
       # intrvls.width[intrvls.width <= gvars$tolerr] <- 1
       ord.sVar_leftint <- intervals[self$ord.sVar]
-      diff_bw <- self$dat.sVar[, name.sVar] - ord.sVar_leftint
+      diff_bw <- self$get.sVar(name.sVar) - ord.sVar_leftint
+      # diff_bw <- self$dat.sVar[, name.sVar] - ord.sVar_leftint      
       return(diff_bw)
     },
 
@@ -601,15 +640,29 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetA.gstar$dat.sVar)[, ]
         }
       }
-      self$mat.sVar <- df.sWsA
+      self$dat.sVar <- df.sWsA
+      # self$mat.sVar <- df.sWsA
       invisible(self)
     }
   ),
 
   active = list(
-    dat.sWsA = function() { self$mat.sVar }, # NO LONGER NEEDED, KEPT FOR COMPATIBILITY
+    dat.sWsA = function() { self$mat.sVar }, # NO LONGER NEEDED, using only self$dat.sVar, KEPT FOR COMPATIBILITY
+    dat.bin.sVar = function(dat.bin.sVar) {
+      if (missing(dat.bin.sVar)) {
+        return(self$mat.bin.sVar)
+      } else {
+        assert_that(is.matrix(dat.bin.sVar))
+        self$mat.bin.sVar <- dat.bin.sVar
+      }
+    },
+    # wipe out binirized mat.sVar:
+    emptydat.bin.sVar = function() { 
+      self$mat.bin.sVar <- NULL
+      self$active.bin.sVar <- NULL
+    }, 
     names.sWsA = function() { c(self$datnetW$names.sVar, self$datnetA$names.sVar) },
-    nobs = function() { nrow(self$dat.sWsA) },
+    nobs = function() { nrow(self$dat.sVar) },
     noNA.Ynodevals = function(noNA.Yvals) {
       if (missing(noNA.Yvals)) return(private$protected.YnodeVals)
       else private$protected.YnodeVals <- noNA.Yvals

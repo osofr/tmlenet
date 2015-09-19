@@ -32,28 +32,30 @@ This R6 class defines fields and methods for defining all the parameters that co
 \item{\code{outvar}} - Character vector of regression outcome variable names.
 \item{\code{predvars}} - Either a pool of all character predictors (\code{sW}) or regression-specific predictor names.
 \item{{reg_hazard}} - Logical, if TRUE, the joint probability model P(outvar | predvars) is factorized as
- \\prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard).
+   \\prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard).
 \item{\code{subset}} - Subset expression (later evaluated to logical vector in the envir of the data).
 \item{\code{ReplMisVal0}} - Logical, if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0).
 \item{\code{nbins}} - Integer number of bins used for a continuous outvar, the intervals are defined inside
  \code{ContinSummaryModel$new()} and then saved in this field.
 \item{\code{bin_nms}} - Character vector of column names for bin indicators.
 \item{\code{useglm}} - Logical, if TRUE then fit the logistic regression model using \code{\link{glm.fit}},
- if FALSE use \code{\link{speedglm.wfit}}..
+   if FALSE use \code{\link{speedglm.wfit}}..
 \item{\code{parfit}} - Logical, if TRUE then use parallel \code{\link{foreach}} loop to fit and predict binary logistic
- regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
+   regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
 \item{\code{bin_bymass}} - Logical, for continuous outvar, create bin cutoffs based on equal mass distribution.
 \item{\code{bin_bydhist}} - Logical, if TRUE, use dhist approach for bin definitions.  See Denby and Mallows "Variations on the
- Histogram" (2009)) for more..
+   Histogram" (2009)) for more..
 \item{\code{max_nperbin}} - Integer, maximum number of observations allowed per one bin.
 \item{\code{pool_cont}} - Logical, pool binned continuous outvar observations across bins and only fit only regression model
- across all bins (adding bin_ID as an extra covaraite)..
+   across all bins (adding bin_ID as an extra covaraite)..
 \item{\code{outvars_to_pool}} - Character vector of names of the binned continuous outvars, should match \code{bin_nms}.
 \item{\code{intrvls.width}} - Named numeric vector of bin-widths (\code{bw_j : j=1,...,M}) for each each bin in \code{self$intrvls}.
    When \code{sA} is not continuous, \code{intrvls.width} IS SET TO 1. When sA is continuous and this variable \code{intrvls.width}
    is not here, the intervals are determined inside \code{ContinSummaryModel$new()} and are assigned to this variable as a list,
    with \code{names(intrvls.width) <- reg$bin_nms}. Can be queried by \code{BinOutModel$predictAeqa()} as: \code{intrvls.width[outvar]}.
 \item{\code{intrvls}} - Numeric vector of cutoffs defining the bins or a named list of numeric intervals for \code{length(self$outvar) > 1}.
+\item{\code{cat.levels}} - Numeric vector of all unique values in categorical outcome variable.
+   Set by \code{\link{CategorSummaryModel}} constructor.
 }
 }
 \section{Methods}{

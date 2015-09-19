@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------------------
-# TEST SET 5 FOR CATEGORICAL TREATMENT
+# TEST SET 5 FOR CATEGORICAL TREATMENT sA (with network net.sA=sum(sA[[1:Kmax]]/nF))
 # ------------------------------------------------------------------------------------------
 
 `%+%` <- function(a, b) paste0(a, b)
@@ -111,8 +111,8 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 5, shift 
   return(list(psi0 = psi0, datO = datO, netind_cl = attributes(datO)$netind_cl, NetInd_mat = attributes(datO)$netind_cl$NetInd))
 }
 
-catnet.fit.density.iptw <- function() {
-# test.catnet.fit.density.iptw <- function() {
+test.catnet.fit.density.iptw <- function() {
+# catnet.fit.density.iptw <- function() {
   def.nodeojb.net <- function(Kmax, datO, NetInd_mat, gstar = FALSE) {
     if (gstar) {
       Anode <- "sA.gstar"
@@ -126,9 +126,7 @@ catnet.fit.density.iptw <- function() {
                       replaceNAw0 = TRUE)
     }
     nodes <- list(Anode = Anode, Wnodes = c("W1", "W2"))
-    # nodes <- list(Anode = Anode, Wnodes = c("W1", "W2", "W3"))
     def_sW <- def.sW(W1 = "W1", W2 = "W2",
-                    # , W3 = "W3",
                     net.W2 = ifelse(nF > 0, rowSums(W2[[1:Kmax]])/nF, 0),
                     replaceNAw0 = TRUE)
     # directly assign already existing network:
@@ -143,106 +141,68 @@ catnet.fit.density.iptw <- function() {
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
   }
 
-  nsamp <- 10000
+  # -------------------------------------------------------------------------------------------
+  # simulation parameters:
+  nsamp <- 50000
   shift <- 1
   Kmax <- 5
   sAmax <- 7
+
+  # -------------------------------------------------------------------------------------------
+  # simulating data:
   tsimdat <- system.time(DAGobj <- get.net.densityOdat(nsamp = nsamp, rndseed = 12345, Kmax = Kmax, shift = shift, sAmax = sAmax))
   print(tsimdat)
   NetInd_mat <- DAGobj$NetInd_mat
   datO <- DAGobj$datO
+  # [1] "mean(datO$Y): 0.3446"
+  # [1] "psi0: 0.2819"
+  nrow(datO)
+  length(unique(datO$sA))
+  length(unique(datO$net.sA))
 
+  # -------------------------------------------------------------------------------------------
+  # defining summary measures def.sA, def.sW and DatNet objects for g0 AND g_star:
   nodeobjs.g0 <- def.nodeojb.net(Kmax = Kmax, datO = datO, NetInd_mat = NetInd_mat)
   nodeobjs.gstar <- def.nodeojb.net(Kmax = Kmax, datO = datO, NetInd_mat = NetInd_mat, gstar = TRUE)
-
-  # g0:
-  testm.sW <- nodeobjs.g0$def_sW$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
-  # names(nodeobjs.g0)
-  # head(nodeobjs.g0$datNetObs$mat.sVar)
-  print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs.g0$def_sW$sVar.names.map); print(head(datO))
-  testm.sA <- nodeobjs.g0$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
-  print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs.g0$def_sA$sVar.names.map); print(head(datO))
-
-  # gstar:
-  testm.sW.gstar <- nodeobjs.gstar$def_sW$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
-  # print("testm.sW.gstar"); print(head(testm.sW.gstar)); print("testm.sW.gstar map"); print(nodeobjs.gstar$def_sW$sVar.names.map); print(head(datO))
-  testm.sA.gstar <- nodeobjs.gstar$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
-  # print("testm.sA.gstar"); print(head(testm.sA.gstar)); print("testm.sA.gstar map"); print(nodeobjs.gstar$def_sA$sVar.names.map); print(head(datO))
   # head(nodeobjs.g0$datNetObs$mat.sVar); head(nodeobjs.gstar$datNetObs$mat.sVar)
+  # sW:
+  testm.sW <- nodeobjs.g0$def_sW$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
+  print(head(datO))
+  print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs.g0$def_sW$sVar.names.map)
+  # sA under g0:
+  testm.sA <- nodeobjs.g0$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
+  print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs.g0$def_sA$sVar.names.map)
+  # sA under gstar:
+  testm.sA.gstar <- nodeobjs.gstar$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
+  print("testm.sW.gstar"); print(head(testm.sA.gstar)); print("testm.sA.gstar map"); print(nodeobjs.gstar$def_sA$sVar.names.map)
 
-  # Define est_params_list:
+  # -------------------------------------------------------------------------------------------
+  # Define regression parameters and RegressionClass object that defines regressions sA ~ sW:
   reg.sVars <- list(outvars = c("sA", "net.sA"), predvars = c("W1", "W2", "net.W2"))
   subset_vars <- lapply(reg.sVars$outvars, function(var) {var})
   sA_class <- nodeobjs.g0$datNetObs$datnetA$type.sVar[reg.sVars$outvars]
 
-  # # Define custom intervals for categorical contin and evaluate this estimator:
-  # # intrvl1 <- as.vector(summeas.g0$getPsAsW.models()[[1]]$intrvls[-c(1,23)])
-  # #manually enter above vector:
-  # intrvl1 <- c(-3.62548255, -1.12785162, -0.74009659, -0.44554917, -0.21835575, -0.02732957, 0.14833284, 0.31201017, 0.46825334, 0.62713418,
-  #             0.78276456, 0.92997633, 1.08788579, 1.23596099, 1.39740518, 1.56734601, 1.76611869, 1.97482902, 2.26222101,
-  #             2.68823295, 4.61699406)
-  # # intrvl2 <- as.vector(summeas.g0$getPsAsW.models()[[2]]$intrvls[-c(1,23)])
-  # intrvl2 <- c(-1.06075521, -0.08038125, 0.10973948, 0.23777585, 0.34791228, 0.43103335, 0.50965150, 0.57614829, 0.64389548, 0.71249435,
-  #             0.77465206, 0.83962149, 0.90341750, 0.97158744, 1.04194207, 1.11968210, 1.20547029, 1.29951751, 1.41824629,
-  #             1.61717215, 2.56542624)
-  # intervals <- list(intrvl1, intrvl2)
-  # names(intervals) <- reg.sVars$outvars
-
-  # RegressionClass object that defines the regression for sA ~ sW:
-  # regclass.obj <- RegressionClass$new(outvar.class = sA_class,
-  #                                                 outvar = reg.sVars$outvars,
-  #                                                 predvars = reg.sVars$predvars,
-  #                                                 subset = subset_vars,
-  #                                                 bin_bymass = FALSE,
-  #                                                 nbins = 1000,
-  #                                                 # nbins = 500,
-  #                                                 # nbins = 100,
-  #                                                 # nbins = 50,
-  #                                                 # nbins = 20,
-  #                                                 useglm = FALSE,
-  #                                                 parfit = TRUE
-  #                                                 )
   regclass.obj <- RegressionClass$new(outvar.class = sA_class,
-                                                outvar = reg.sVars$outvars,
-                                                predvars = reg.sVars$predvars,
-                                                subset = subset_vars,
-                                                bin_bymass = TRUE,
-                                                max_nperbin = 500,
-                                                pool_cont = FALSE,
-                                                useglm = FALSE,
-                                                parfit = FALSE,
-                                                intrvls = intervals
-                                                )
-
-  # regclass.obj <- RegressionClass$new(outvar.class = sA_class,
-  #                                               outvar = reg.sVars$outvars,
-  #                                               predvars = reg.sVars$predvars,
-  #                                               subset = subset_vars,
-  #                                               bin_bydhist = TRUE,
-  #                                               nbins = 50,
-  #                                               # nbins = 70,
-  #                                               pool_cont = FALSE,
-  #                                               useglm = FALSE,
-  #                                               parfit = TRUE
-  #                                               )
-
+                                      outvar = reg.sVars$outvars,
+                                      predvars = reg.sVars$predvars,
+                                      subset = subset_vars,
+                                      bin_bymass = TRUE,
+                                      max_nperbin = 500,
+                                      pool_cont = FALSE,
+                                      useglm = FALSE,
+                                      parfit = FALSE)
   # -------------------------------------------------------------------------------------------
-  # estimating h_g0
-  # -------------------------------------------------------------------------------------------
+  # estimating h_g0:
   summeas.g0 <- SummariesModel$new(reg = regclass.obj, DatNet.sWsA.g0 = nodeobjs.g0$datNetObs)
   summeas.g0$fit(data = nodeobjs.g0$datNetObs)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs.g0$datNetObs)
-
   # -------------------------------------------------------------------------------------------
-  # estimating h_gstar
-  # -------------------------------------------------------------------------------------------
+  # estimating h_gstar (cont sVar intervals based on observed sA under g0):
   summeas.gstar <- SummariesModel$new(reg = regclass.obj, DatNet.sWsA.g0 = nodeobjs.g0$datNetObs)
-  # for intervals based on observed sA under gstar:
-  # summeas.gstar <- SummariesModel$new(reg = regclass.obj, DatNet.sWsA.g0 = nodeobjs.gstar$datNetObs)
   summeas.gstar$fit(data = nodeobjs.gstar$datNetObs)
   h_gstar_obs.sA <- summeas.gstar$predictAeqa(newdata = nodeobjs.g0$datNetObs)
-
   # -------------------------------------------------------------------------------------------
+  # IPTW:
   max(h_gN); min(h_gN)
   max(h_gstar_obs.sA); min(h_gstar_obs.sA);
   trim_wt <- 130
@@ -259,38 +219,24 @@ catnet.fit.density.iptw <- function() {
   print("iptw (untrimmed): " %+% round(iptw_untrimmed, 6))
   print("iptw (wts trimmed by " %+% trim_wt %+% "): " %+% round(iptw_trimmed, 6))
 
-  # test 1:
-  checkTrue(abs(psi0 - 0.1138) < 10^-6)
-  # test 2:
-  checkTrue(abs(iptw_untrimmed - 0.1137114) < 10^-6)
-  # test 3:
-  checkTrue(abs(iptw_trimmed - 0.1137114) < 10^-6)
+  # TESTS (For 50K w/ rndseed = 12345):
+  checkTrue(abs(psi0 - 0.2901) < 10^-6)
+  checkTrue(abs(iptw_untrimmed - 0.291111) < 10^-6)
+  checkTrue(abs(iptw_trimmed - 0.291111) < 10^-6)
 
   # ------------------------------------------------------
-  # Benchmark for 10K:
+  # Benchmark for 50K:
   # ------------------------------------------------------
-  # >   # summeas.gstar$getPsAsW.models()[[2]]$intrvls.width
-  # >   max(h_gN); min(h_gN)
-  # [1] 0.4679077
-  # [1] 3.139113e-05
-  # >   max(h_gstar_obs.sA); min(h_gstar_obs.sA);
-  # [1] 0.4188395
-  # [1] 4.281069e-16
-  # > 
-  # >   wts <- h_gstar_obs.sA / h_gN
-  # >   wts[is.nan(wts)] <- 0
-  # >   # wts[wts > 500] <- 500
-  # > 
   # >   summary(h_gstar_obs.sA/h_gN)
-  #      Min.   1st Qu.    Median      Mean   3rd Qu.      Max.
-  #   0.00000   0.01102   0.06283   1.03100   0.30460 196.60000
+  #    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+  #  0.0000  0.1132  0.3799  1.0040  1.0980 42.3200
   # >   summary(wts)
-  #      Min.   1st Qu.    Median      Mean   3rd Qu.      Max.
-  #   0.00000   0.01102   0.06283   1.01900   0.30460 130.00000
-  # >   (iptw <- mean(datO[,"Y"] * (wts)))
-  # [1] "true psi0: 0.1138"
-  # [1] "iptw (untrimmed): 0.113711"
-  # [1] "iptw (wts trimmed by 130): 0.113711"
+  #    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+  #  0.0000  0.1132  0.3799  1.0040  1.0980 42.3200
+  # [1] "true psi0: 0.2901"
+  # [1] "iptw (untrimmed): 0.291111"
+  # [1] "iptw (wts trimmed by 130): 0.291111"
+
 }
 
 

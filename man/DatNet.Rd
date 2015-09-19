@@ -14,9 +14,7 @@ Class for evaluating and storing arbitrary summary measures sVar.
  in the environment of the input data.frame (Odata).
  The evaluated summary measures from sVar.object are stored as a matrix (self$mat.sVar).
  Contains methods for replacing missing values with default in gvars$misXreplace.
- Also contains method for detecting /setting sVar variable type (binary, categor, contin).
- For continous sVar this class provides methods for detecting / setting bin intervals,
- normalization, disretization and construction of bin indicators.
+ Also contains method for detecting / setting sVar variable type (binary, categor, contin).
 }
 \details{
 \itemize{
@@ -24,10 +22,7 @@ Class for evaluating and storing arbitrary summary measures sVar.
 \item{\code{addnFnode}} - Flag to add number of friends as an additional vector to the matrix of existing summary measures.
 \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
 \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
-\item{\code{ord.sVar}} - Ordinal (categorical) transformation of a continous covariate \code{sVar}.
-\item{\code{active.bin.sVar}} - Currently discretized continous \code{sVar} column in data matrix \code{mat.sVar}.
 \item{\code{Odata}} - Pointer to the input (observed) data frame.
-\item{\code{mat.bin.sVar}} - Matrix of the binary indicators for discretized continuous covariate \code{active.bin.sVar}.
 \item{\code{mat.sVar}} - The evaluated matrix of summary measures for \code{sW} or \code{sA}.
 \item{\code{sVar.object}} - Instance of the \code{Define_sVar} class which contains the summary measure expressions for \code{sW} or \code{sA}.
 \item{\code{type.sVar}} - named list of length \code{ncol(mat.sVar)} with \code{sVar} variable types: "binary"/"categor"/"contin".
@@ -58,9 +53,7 @@ Class for evaluating and storing arbitrary summary measures sVar.
    \item{\code{names.c.sVar}}{...}
    \item{\code{ncols.sVar}}{...}
    \item{\code{dat.sVar}}{...}
-   \item{\code{dat.bin.sVar}}{...}
    \item{\code{emptydat.sVar}}{...}
-   \item{\code{emptydat.bin.sVar}}{...}
    \item{\code{nodes}}{...}
 }
 }

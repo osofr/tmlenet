@@ -3,6 +3,7 @@
 S3method("+",Define_sVar)
 export(BinDat)
 export(BinOutModel)
+export(CategorSummaryModel)
 export(ContinSummaryModel)
 export(DatNet)
 export(DatNet.sWsA)

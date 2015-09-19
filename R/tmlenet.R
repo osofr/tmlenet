@@ -44,7 +44,6 @@
 #-----------------------------------------------------------------------------
 is.DatNet.sWsA <- function(DatNet.sWsA) "DatNet.sWsA"%in%class(DatNet.sWsA)
 is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
-
 #-----------------------------------------------------------------------------
 # ALL NETWORK VARIABLE NAMES MUST BE CONSTRUCTED BY CALLING THIS FUNCTION.
 # In the future might return the network variable (column vector) itself.
