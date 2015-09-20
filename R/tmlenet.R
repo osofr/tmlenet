@@ -80,6 +80,14 @@ netvar <- function(varnm, fidx) {
 #-----------------------------------------------------------------------------
 `%+%` <- function(a, b) paste0(a, b)
 
+checkpkgs <- function(pkgs) {
+  for (pkg in pkgs) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      stop(pkg %+% " package needed for this function to work. Please install it.", call. = FALSE)
+    }   
+  }
+}
+
 # Bound g(A|W) probability within supplied bounds
 bound <- function(x, bounds){
   x[x<min(bounds)] <- min(bounds)

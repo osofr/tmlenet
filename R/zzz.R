@@ -48,7 +48,7 @@ print_tmlenet_opts <- function() {
 #'  by parameter \code{maxNperBin}. Method \code{"dhist"} uses a mix of the above two approaches,
 #'  see Denby and Mallows "Variations on the Histogram" (2009) for more detail.
 #' @param parfit Default is \code{FALSE}. Set to \code{TRUE} to use \code{foreach} package and its functions
-#'  \code{\link{foreach}} and \code{dopar} to perform
+#'  \code{foreach} and \code{dopar} to perform
 #'  parallel logistic regression fits and predictions for discretized continuous outcomes. This functionality
 #'  requires registering a parallel backend prior to running \code{tmlenet} function, e.g., 
 #'  using \code{doParallel} R package and running \code{registerDoParallel(cores = ncores)} for integer 

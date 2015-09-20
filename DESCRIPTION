@@ -4,7 +4,7 @@ Version: 0.0.9
 Authors@R: c(
     person("Oleg", "Sofrygin", role=c("aut", "cre"), email="oleg.sofrygin@gmail.com"),
     person(c("Mark", "J."), "van der Laan", role="aut", email="laan@berkeley.edu"))
-Description: Targeted Maximum Likelihood Estimation (TMLE) of treatment/censoring specific mean outcome for single point stochastic interventions in networks.
+Description: Targeted Maximum Likelihood Estimation (TMLE) in dependent network data for estimation of treatment-specific mean outcome under arbitrary single point stochastic intervention.
 URL: https://github.com/osofr/tmlenet
 BugReports: https://github.com/osofr/tmlenet/issues
 Depends:
@@ -12,8 +12,6 @@ Depends:
 Imports:
     assertthat,
     data.table,
-    foreach,
-    Matrix,
     R6,
     Rcpp,
     reshape2,
@@ -26,12 +24,15 @@ Suggests:
     bigmemory,
     biganalytics,
     doParallel,
+    foreach,
     ggplot2,
     Hmisc,
     igraph,
     knitr,
     locfit,
     ltmle,
+    Matrix,
+    matrixStats,
     plyr,
     RUnit,
     snowfall,

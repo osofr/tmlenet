@@ -21,7 +21,8 @@ if(FALSE) {
   # CHECK AND BUILD PACKAGE:
   getwd()
   # setwd("./tmlenet"); setwd(".."); getwd()
-  devtools::check() # runs check with devtools
+  devtools::check(args = "--as-cran")
+  # devtools::check() # runs check with devtools
   # devtools::check(args = c("--no-vignettes"), build_args = c("--no-build-vignettes")) # runs check with devtools
   # devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
   devtools::build()

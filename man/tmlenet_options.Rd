@@ -13,7 +13,7 @@ tmlenet_options(useglm = FALSE, parfit = FALSE,
 \code{glm::glm.fit}.}
 
 \item{parfit}{Default is \code{FALSE}. Set to \code{TRUE} to use \code{foreach} package and its functions
-\code{\link{foreach}} and \code{dopar} to perform
+\code{foreach} and \code{dopar} to perform
 parallel logistic regression fits and predictions for discretized continuous outcomes. This functionality
 requires registering a parallel backend prior to running \code{tmlenet} function, e.g.,
 using \code{doParallel} R package and running \code{registerDoParallel(cores = ncores)} for integer

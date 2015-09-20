@@ -40,7 +40,7 @@ This R6 class defines fields and methods for defining all the parameters that co
 \item{\code{bin_nms}} - Character vector of column names for bin indicators.
 \item{\code{useglm}} - Logical, if TRUE then fit the logistic regression model using \code{\link{glm.fit}},
    if FALSE use \code{\link{speedglm.wfit}}..
-\item{\code{parfit}} - Logical, if TRUE then use parallel \code{\link{foreach}} loop to fit and predict binary logistic
+\item{\code{parfit}} - Logical, if TRUE then use parallel \code{foreach::foreach} loop to fit and predict binary logistic
    regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
 \item{\code{bin_bymass}} - Logical, for continuous outvar, create bin cutoffs based on equal mass distribution.
 \item{\code{bin_bydhist}} - Logical, if TRUE, use dhist approach for bin definitions.  See Denby and Mallows "Variations on the

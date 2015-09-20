@@ -70,7 +70,7 @@ get_sparse_Fiintersectmtx <- function() {
 # nsparseMatrix-classes
 # ?'nsCMatrix-class'
 # ngCMatrix, nsCMatrix, and ntCMatrix
-  # class of sparse “pattern” matrices, i.e., binary matrices conceptually with TRUE/FALSE entries. Only the positions of the elements that are TRUE are stored.
+  # class of sparse pattern matrices, i.e., binary matrices conceptually with TRUE/FALSE entries. Only the positions of the elements that are TRUE are stored.
   # Objects can be created by calls of the form new("ngCMatrix", ...) and so on. 
   # More frequently objects are created by coercion of a numeric sparse matrix to the pattern form for use in the symbolic 
   # analysis phase of an algorithm involving sparse matrices. Such algorithms often involve two phases: a symbolic phase wherein the 

@@ -66,7 +66,7 @@ NewSummaryModel.categor <- function(reg, DatNet.sWsA.g0, ...) {
 #' \item{\code{bin_nms}} - Character vector of column names for bin indicators.
 #' \item{\code{useglm}} - Logical, if TRUE then fit the logistic regression model using \code{\link{glm.fit}},
 #'    if FALSE use \code{\link{speedglm.wfit}}..
-#' \item{\code{parfit}} - Logical, if TRUE then use parallel \code{\link{foreach}} loop to fit and predict binary logistic 
+#' \item{\code{parfit}} - Logical, if TRUE then use parallel \code{foreach::foreach} loop to fit and predict binary logistic 
 #'    regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
 #' \item{\code{bin_bymass}} - Logical, for continuous outvar, create bin cutoffs based on equal mass distribution.
 #' \item{\code{bin_bydhist}} - Logical, if TRUE, use dhist approach for bin definitions.  See Denby and Mallows "Variations on the 
@@ -261,7 +261,6 @@ RegressionClass <- R6Class("RegressionClass",
   )
 )
 
-
 ## ---------------------------------------------------------------------
 #' R6 class for fitting and predicting model P(sA|sW) under g.star or g.0
 #'
@@ -305,7 +304,7 @@ RegressionClass <- R6Class("RegressionClass",
 #' \describe{
 #'   \item{\code{wipe.alldat}}{...}
 #' }
-#' @importFrom foreach foreach
+#@importFrom foreach foreach
 #' @export
 SummariesModel <- R6Class(classname = "SummariesModel",
 	portable = TRUE,
@@ -361,6 +360,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         }
       # parallel loop over all regressions in PsAsW.models:
       } else if (self$parfit_allowed) {
+        val <- checkpkgs(pkgs=c("foreach", "doParallel", "matrixStats"))
         mcoptions <- list(preschedule = FALSE)
         # NOTE: Each fitRes[[k_i]] will contain a copy of every single R6 object that was passed by reference -> 
         # *** the size of fitRes is 100x the size of private$PsAsW.models ***
@@ -390,6 +390,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		    }
       # parallel loop over all regressions in PsAsW.models:
       } else if (self$parfit_allowed) {
+        val <- checkpkgs(pkgs=c("foreach", "doParallel", "matrixStats"))
         mcoptions <- list(preschedule = FALSE)
         # NOTE: Each predRes[[k_i]] will contain a copy of every single R6 object that was passed by reference ->
         # *** the size of fitRes is 100x the size of private$PsAsW.models ***
@@ -419,6 +420,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 				    cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$predictAeqa(newdata = newdata, ...)
 			 }
       } else if (self$parfit_allowed) {
+        val <- checkpkgs(pkgs=c("foreach", "doParallel", "matrixStats"))
         mcoptions <- list(preschedule = TRUE)
         probAeqa_list <- foreach::foreach(k_i = seq_along(private$PsAsW.models), .options.multicore = mcoptions) %dopar% {
           private$PsAsW.models[[k_i]]$predictAeqa(newdata = newdata, ...)
