@@ -12,13 +12,13 @@ gvars$sVartypes <- list(bin = "binary", cat = "categor", cont = "contin")
 # gvars$binByMass <- FALSE
 # gvars$binBydhist <- FALSE
 
-setopt <- function(optname, val) {
-  opt <- gvars$opts
-  if (!(optname %in% (names(opt)))) stop(optname %+% ": this options does not exist")
-  old.optval <- opt[[optname]]
-  opt[[optname]] <- val
-  invisible(old.optval)
-}
+# setopt <- function(optname, val) {
+#   opt <- gvars$opts
+#   if (!(optname %in% (names(opt)))) stop(optname %+% ": this options does not exist")
+#   old.optval <- opt[[optname]]
+#   opt[[optname]] <- val
+#   invisible(old.optval)
+# }
 
 getopt <- function(optname) {
   opt <- gvars$opts
@@ -99,7 +99,7 @@ tmlenet_options <- function(useglm = FALSE,
   invisible(old.opts)
 }
 
-# returns a function (alternatively a call) that tests for missing values in (sA,sW)
+# returns a function (alternatively a call) that tests for missing values in (sA, sW)
 testmisfun <- function() {
   if (is.na(gvars$misval)) {
     return(is.na)

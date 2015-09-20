@@ -1,19 +1,15 @@
-iqr<-function(x){ return(diff(quantile(x,c(.25,.75),na.rm=T))) }
+iqr <- function(x){ return(diff(quantile(x,c(.25,.75),na.rm=T))) }
 
-# dhist<-function(x, a=10*iqr(x),
-dhist<-function(x, a = 5*iqr(x),
-	nbins=nclass.Sturges(x), rx = range(x, na.rm=T),
-	eps=.15, xlab = "x", plot = T,lab.spikes=T)
-{
-
+# dhist <- function(x, a=10*iqr(x),
+dhist <- function(x, a = 5*iqr(x), nbins=nclass.Sturges(x), rx = range(x, na.rm=TRUE), eps=.15, xlab = "x", plot = TRUE, lab.spikes=TRUE) {
 #x is the data
 #a is the scaling factor, default is 5 * IQR
 # nbins is the number of bins, default is assigned by the Stuges method
 #rx is the range used for the left of the left-most bin to the right of the
-#	right-most bin 
+#	right-most bin
 #xlab is label for the x axis
-#plot =T produces the plot, F returns the heights, breaks and counts
-#lab.spikes =T labels the % of data in the spikes
+#plot = TRUE produces the plot, F returns the heights, breaks and counts
+#lab.spikes = TRUE labels the % of data in the spikes
 
 if(is.character(nbins))
         nbins <- switch(casefold(nbins),
@@ -97,7 +93,8 @@ if(is.character(nbins))
 		cut.pt <- unique(c(min(x) - abs(min(x))/1000, approx(seq(length(
 			x)), x, (1:(nbins - 1)) * bin.size, rule = 2)$y, max(
 			x)))
-		aa <- hist(x, breaks = cut.pt, plot = F, probability = T)
+		aa <- hist(x, breaks = cut.pt, plot = FALSE)
+		# aa <- hist(x, breaks = cut.pt, plot = FALSE, probability = TRUE)
 	if(a == Inf) {
 		heights <- aa$counts
 		xbr <- aa$breaks

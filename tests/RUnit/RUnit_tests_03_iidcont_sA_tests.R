@@ -11,7 +11,7 @@ as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 allNA <- function(x) all(is.na(x))
 
 # ---------------------------------------------------------------------------------
-# Test 1. Directly fit a joint density for sA, sA2 ~ W, for sA - continuous
+# Test 1. Directly fit a joint density for sA, sA2 ~ W, for sA - continuous (with speedglm and glm.fit)
 # ---------------------------------------------------------------------------------
 test.simple.fit.density.sA <- function() {
   get.density.sAdat <- function(nsamp = 100000) {
@@ -50,6 +50,7 @@ test.simple.fit.density.sA <- function() {
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
     # Define datNetObs:
     datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes, addnFnode = TRUE)$make.sVar(Odata = datO, sVar.object = def_sW)
+    checkTrue(tmlenet:::is.DatNet(datnetW))
     datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
@@ -60,49 +61,105 @@ test.simple.fit.density.sA <- function() {
   datO <- get.density.sAdat(nsamp)
   nodeobjs <- def.nodeojb(datO)
   testm.sW <- nodeobjs$def_sW$get.mat.sVar(data.df = datO, netind_cl = nodeobjs$netind_cl, addnFnode = "nF") # addnFnode = NULL)
-  print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs$def_sW$sVar.names.map)
+  # print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs$def_sW$sVar.names.map)
   testm.sA <- nodeobjs$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs$netind_cl)
-  print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs$def_sA$sVar.names.map)
+  # print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs$def_sA$sVar.names.map)
 
   # Define est_params_list:
   reg.sVars <- list(outvars = c("sA"), predvars = c("W1", "W2", "W3"))
   subset_vars <- lapply(reg.sVars$outvars, function(var) {var})
   sA_class <- nodeobjs$datNetObs$datnetA$type.sVar[reg.sVars$outvars]
-  # Put all est_params in RegressionClass:
+
+  # Put all est_params in RegressionClass (regression with speedglm package)
   regclass <- RegressionClass$new(outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
   summeas.g0 <- SummariesModel$new(reg = regclass, DatNet.sWsA.g0 = nodeobjs$datNetObs)
   summeas.g0$fit(data = nodeobjs$datNetObs)
 
-  contsumobj <- summeas.g0$getPsAsW.models()$`P(sA|sW).1`
-  (intrvls <- contsumobj$intrvls)
-  (intrvls.width <- diff(intrvls))
-  length(intrvls.width)
+  # Test the coef and summary functions for binoutmodel class:
+  out_ContinSummaryModel <- summeas.g0$getPsAsW.models()$`P(sA|sW).1`
+  out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
+  print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
+  print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
 
-  ord.sVar <- nodeobjs$datNetObs$discretize.sVar(name.sVar = "sA", intervals = contsumobj$intrvls)
-  ord.sVar_bw <- intrvls.width[ord.sVar]
-  print(head(cbind(sA = nodeobjs$datNetObs$dat.sVar[, "sA"], ord.sVar, bw = ord.sVar_bw, nodeobjs$datNetObs$dat.bin.sVar), 5))
-  print("freq count for transformed ord.sVar: "); print(table(ord.sVar))
+  # (intrvls <- out_ContinSummaryModel$intrvls)
+  # (intrvls.width <- diff(intrvls))
+  # length(intrvls.width)
+
+  # ord.sVar <- nodeobjs$datNetObs$discretize.sVar(name.sVar = "sA", intervals = out_ContinSummaryModel$intrvls)
+  # ord.sVar_bw <- intrvls.width[ord.sVar]
+  # print(head(cbind(sA = nodeobjs$datNetObs$dat.sVar[, "sA"], ord.sVar, bw = ord.sVar_bw, nodeobjs$datNetObs$dat.bin.sVar), 5))
+  # print("freq count for transformed ord.sVar: "); print(table(ord.sVar))
   # plot(density(ord.sVar))
   # hist(ord.sVar)
   summeas.g0$predict(newdata = nodeobjs$datNetObs)  # summeas.g0$sA_nms
   # Get P(sA|W) for the observed data (W,sA):
   # SHOULD BE SIMILAR TO THE OBSERVED DENSITY OF s.A (but discretized)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
-
+  mean(h_gN) # [1] 0.2718823
+  checkTrue(abs(mean(h_gN)-0.2718823) < 10^-6)
   # ---------------------------------------------------------------------------------------------------------
   # Plot predicted discretized probs conditional on some values of W's
   # ---------------------------------------------------------------------------------------------------------
-  setWvals <- c(W1 = 0, W2 = 0, W3 = 1)
-  subs <- (datO$W1==setWvals["W1"] & datO$W2==setWvals["W2"] & datO$W3==setWvals["W3"])
-  sum(subs)
-  setWdat_res <- get.setW.sAdat(setWvals, nsamp)
+  # setWvals <- c(W1 = 0, W2 = 0, W3 = 1)
+  # subs <- (datO$W1==setWvals["W1"] & datO$W2==setWvals["W2"] & datO$W3==setWvals["W3"])
+  # sum(subs)
+  # setWdat_res <- get.setW.sAdat(setWvals, nsamp)
   # plot(density(setWdat_res$setWsA))
   # lines(datO[subs,"sA"], h_gN[subs], type = "p", cex = .3, col = "red")
+  # plot(datO[subs,"sA"], h_gN[subs], type = "p", cex = .3, col = "red")
+  # lines(density(setWdat_res$setWsA))
+
   # ---------------------------------------------------------------------------------------------------------
   # Plot all predicted discretized probs together (without conditioning on particular subset of W's)
   # ---------------------------------------------------------------------------------------------------------
   # plot(datO[,"sA"], h_gN, type = "p", cex = .3, col = "red")
   # lines(density(datO[,"sA"]))
+
+  # ---------------------------------------------------------------------------------------------------------
+  # **** Same fit as before but doing regressions with stats::glm.fit ****
+  # ---------------------------------------------------------------------------------------------------------
+  regclass.gml <- RegressionClass$new(useglm = TRUE, outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
+  summeas.g0.glm <- SummariesModel$new(reg = regclass.gml, DatNet.sWsA.g0 = nodeobjs$datNetObs)
+  summeas.g0.glm$fit(data = nodeobjs$datNetObs)
+  summeas.g0.glm$predict(newdata = nodeobjs$datNetObs)
+  h_gN.glm <- summeas.g0.glm$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
+  mean(h_gN.glm) # [1] 0.2718823
+  checkTrue(abs(mean(h_gN.glm)-0.2718823) < 10^-6)
+
+  # Test the coef and summary functions for binoutmodel class:
+  out_ContinSummaryModel <- summeas.g0.glm$getPsAsW.models()$`P(sA|sW).1`
+  out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
+  print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
+  print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
+
+  # ---------------------------------------------------------------------------------------------------------
+  # **** Same fit as before but doing binnning by mass intervals & regressions with speedglm ****
+  # ---------------------------------------------------------------------------------------------------------
+  regclass.binmass <- RegressionClass$new(useglm = FALSE,
+                                      bin_bymass = TRUE,
+                                      max_nperbin = 1000,
+                                      outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
+  summeas.g0 <- SummariesModel$new(reg = regclass.binmass, DatNet.sWsA.g0 = nodeobjs$datNetObs)
+  summeas.g0$fit(data = nodeobjs$datNetObs)
+  summeas.g0$predict(newdata = nodeobjs$datNetObs)
+  h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
+  mean(h_gN) # [1] 0.2668144
+  checkTrue(abs(mean(h_gN)-0.2668144) < 10^-6)
+
+  # ---------------------------------------------------------------------------------------------------------
+  # **** Same fit as before but binning using "dhist" function & regressions with speedglm ****
+  # ---------------------------------------------------------------------------------------------------------
+  regclass.bidhist <- RegressionClass$new(useglm = FALSE,
+                                      bin_bymass = FALSE,
+                                      bin_bydhist = TRUE,
+                                      max_nperbin = 1000,
+                                      outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
+  summeas.g0 <- SummariesModel$new(reg = regclass.bidhist, DatNet.sWsA.g0 = nodeobjs$datNetObs)
+  summeas.g0$fit(data = nodeobjs$datNetObs)
+  summeas.g0$predict(newdata = nodeobjs$datNetObs)
+  h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
+  mean(h_gN) # [1] 0.276875
+  checkTrue(abs(mean(h_gN)-0.276875) < 10^-6)
 }
 
 
@@ -267,6 +324,32 @@ test.onesim.iid.tmlefit <- function() {
   # test 3:
   checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-6)
 
+
+
+  # ---------------------------------------------------------------------------------------------------------
+  # Correct Q w/ glm.fit:
+  # ---------------------------------------------------------------------------------------------------------
+  old_opts <- tmlenet_options(useglm = FALSE)
+  print_tmlenet_opts()
+  set.seed(23466)
+  Qform.corr <- "Y ~ W1 + W2 + W3 + sA" # correct Q:
+  res3 <- run.1sim.tmlenet(nsamp = nsamp, psi0 = 0, Qform = Qform.corr,
+                          f.gstar = f.gstar,  trunc.const = 10, shift.const = shift.const,
+                          n_MCsims = 10)
+  res3$est
+  # [1] "new MC.ests mat: "
+  #         estimate
+  # TMLE   0.2391396
+  # h_IPTW 0.2443753
+  # MLE    0.2428439
+  #      tmle    h_iptw     gcomp
+  # 0.2391396 0.2443753 0.2428439
+  # test 1:
+  checkTrue(abs(res2$est["tmle"]-0.2391396) < 10^-6)
+  # test 2:
+  checkTrue(abs(res2$est["h_iptw"]-0.2443753) < 10^-6)
+  # test 3:
+  checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-6)
 
 
 

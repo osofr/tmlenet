@@ -26,7 +26,8 @@ if(FALSE) {
   # devtools::check(args = c("--no-vignettes"), build_args = c("--no-build-vignettes")) # runs check with devtools
   # devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
   devtools::build()
-  devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
+  devtools::build_win(args = "--as-cran") # build package on CRAN servers (windows os?)
+  # devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
   # devtools::build(args = "--compact-vignettes") # build package tarball compacting vignettes
   # devtools::build(args = "--no-build-vignettes") # build package tarball compacting vignettes
   # devtools::build() # build package tarball
@@ -106,7 +107,28 @@ test.defsWdefsA <- function() {
   checkException(def_sW <- def.sW("W1", "W2", "W3"))
 }
 
+test.opts.misfun.chkpkgs <- function() {
+  checkException(old_opts <- tmlenet_options(bin.method = "blah"))
 
+  funmiss <- tmlenet:::testmisfun()
+  checkTrue(funmiss(NA))
+  checkTrue(is.na(tmlenet:::get.misval()))
+  
+  tmlenet:::set.misval(tmlenet:::gvars, NaN)
+  checkTrue(is.nan(tmlenet:::gvars$misval))
+  tmlenet:::set.misval(tmlenet:::gvars, NA)
+  checkTrue(is.na(tmlenet:::gvars$misval))
+
+
+  checkException(tmlenet:::checkpkgs("blahblah"))
+
+
+  warns <- tmlenet:::GetWarningsToSuppress()
+
+
+  testdat <- data.frame(a = rnorm(5), b = rep("str", 5), stringsAsFactors=TRUE)
+  checkTrue(tmlenet:::CheckExistFactors(data = testdat)%in%"b")
+}
 
 # Add a bug with automatic interval/bin detection on binary variable (all vals get placed in one bin)
 test.bin01bug <- function() {

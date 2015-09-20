@@ -107,7 +107,7 @@ define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
     intvec[1] <- intvec[1] - 0.01
     intvec[length(intvec)] <- intvec[length(intvec)] + 0.01
   } else if (bin_bydhist) {
-    intvec <- dhist(x, plot = FALSE, nbins=nbins)$xbr
+    intvec <- dhist(x, plot = FALSE, nbins = nbins)$xbr
     intvec[1] <- intvec[1] - 0.01
     intvec[length(intvec)] <- intvec[length(intvec)] + 0.01
   }
