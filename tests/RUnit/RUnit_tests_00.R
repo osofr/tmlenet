@@ -26,11 +26,12 @@ if(FALSE) {
   # devtools::check(args = c("--no-vignettes"), build_args = c("--no-build-vignettes")) # runs check with devtools
   # devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
   devtools::build()
+  devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
   # devtools::build(args = "--compact-vignettes") # build package tarball compacting vignettes
   # devtools::build(args = "--no-build-vignettes") # build package tarball compacting vignettes
   # devtools::build() # build package tarball
   setwd("..")
-  system("R CMD check --as-cran tmlenet_0.2.0.tar.gz") # check R package tar ball prior to CRAN submission
+  system("R CMD check --as-cran tmlenet_0.0.9.tar.gz") # check R package tar ball prior to CRAN submission
       ## system("R CMD check --no-manual --no-vignettes tmlenet") # check without building the pdf manual and not building vignettes
       ## system("R CMD build tmlenet --no-build-vignettes")
       ## system("R CMD build tmlenet")  

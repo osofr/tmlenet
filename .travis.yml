@@ -39,12 +39,12 @@ r_binary_packages:
   - R6
   - Rcpp
   - RUnit
-  - reshape2
+  # - reshape2
   - speedglm
   - stringr
 
-r_packages:
-  - ltmle
+# r_packages:
+#   - ltmle
 
 r_github_packages:
   - jimhester/covr

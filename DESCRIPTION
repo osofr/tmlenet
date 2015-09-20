@@ -31,7 +31,6 @@ Suggests:
     igraph,
     knitr,
     locfit,
-    ltmle,
     matrixStats,
     RUnit,
     snowfall,
