@@ -39,8 +39,9 @@ r_binary_packages:
   - stringr
   - RUnit
   - igraph
-  - ggplot2
-  - Hmisc
+  - bigmemory,
+  - biganalytics,
+  - doParallel,
 
 r_packages:
   - ltmle
