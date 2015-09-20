@@ -12,6 +12,7 @@ Depends:
 Imports:
     assertthat,
     data.table,
+    Matrix,
     R6,
     Rcpp,
     reshape2,
@@ -31,9 +32,7 @@ Suggests:
     knitr,
     locfit,
     ltmle,
-    Matrix,
     matrixStats,
-    plyr,
     RUnit,
     snowfall,
     SuperLearner

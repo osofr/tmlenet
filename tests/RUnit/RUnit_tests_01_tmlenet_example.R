@@ -14,12 +14,13 @@ test.examples <- function() {
   #***************************************************************************************
   # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (OLD SIMULATION 3)
   #***************************************************************************************
-  tmlenet:::checkpkgs(pkgs = c("stringr", "bigmemory", "biganalytics", "plyr"))
+  tmlenet:::checkpkgs(pkgs = c("stringr", "bigmemory", "biganalytics"))
   # require(tmlenet)
   require(stringr)
   require(bigmemory)
   require(biganalytics)
-  require(plyr)
+  # require(plyr)
+  # "plyr"
   options(bigmemory.typecast.warning = FALSE)
 
   # Max number of friends in the network:

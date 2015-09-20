@@ -27,21 +27,21 @@ os:
 
 r_binary_packages:
   - assertthat
-  - R6
-  - Rcpp
+  - bigmemory
+  - biganalytics  
+  - data.table
+  - doParallel
   - foreach
+  - igraph
+  - Matrix
   - matrixStats
   - knitr
+  - R6
+  - Rcpp
+  - RUnit
   - reshape2
-  - data.table
   - speedglm
   - stringr
-  - RUnit
-  - igraph
-  - bigmemory
-  - biganalytics
-  - doParallel
-  - matrixStats
 
 r_packages:
   - ltmle
