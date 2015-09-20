@@ -7,7 +7,7 @@ tmlenet
 [![Travis-CI Build Status](https://travis-ci.org/osofr/tmlenet.svg?branch=master)](https://travis-ci.org/osofr/tmlenet)
 [![Coverage Status](https://coveralls.io/repos/osofr/tmlenet/badge.png?branch=master&service=github)](https://coveralls.io/r/osofr/tmlenet?branch=master)
 
-The `tmlenet` R package implements the Targeted Maximum Likelihood Estimation (TMLE) of causal effects under single time point stochastic interventions in network data. The package also implements the Horvitz-Thompson estimator for networks and the parametric g-computation formula-based estimator. The inference for the TMLE is based on the efficient influence curves for dependent data. See the paper below for more information on the estimation methodology employed by `tmlenet`:
+The `tmlenet` R package performs estimation of average causal effects for single time point interventions in the presense of network-dependent data (non-IID). Arbitrary interventions are supported and can be defined as either static, dynamic or stochastic. The package implements the Targeted Maximum Likelihood Estimator (TMLE), Horvitz-Thompson (IPTW) estimator and the parametric g-computation (GCOMP) estimator. The inference for the TMLE and IPTW esitmators is based on the efficient influence curves for dependent data. See the paper below for more information on the estimation methodology employed by `tmlenet`:
 
 > M. J. van der Laan, “Causal inference for a population of causally connected units,” J. Causal Inference J. Causal Infer., vol. 2, no. 1, pp. 13–74, 2014.
 
