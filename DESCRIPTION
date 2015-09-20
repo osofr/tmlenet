@@ -15,7 +15,6 @@ Imports:
     Matrix,
     R6,
     Rcpp,
-    reshape2,
     simcausal,
     speedglm,
     stats,

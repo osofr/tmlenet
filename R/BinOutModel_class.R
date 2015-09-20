@@ -60,7 +60,9 @@ summary.BinOutModel <- function(binoutmodel) {
   append(list(reg = binoutmodel$show()), fit)
 }
 
-#' @importFrom reshape2 melt
+# @importFrom reshape2 melt
+# @importFrom data.table `[.data.table`
+# @importFrom data.table melt.data.table
 #' @import data.table
 
 # Convert existing Bin matrix (Bin indicators) for continuous self$outvar into long format data.table with 3 columns:
@@ -68,8 +70,8 @@ summary.BinOutModel <- function(binoutmodel) {
 # automatically removed all missing (degenerate) bin indicators
 binirized.to.DTlong = function(BinsDat_wide, binID_seq, ID, bin_names, pooled_bin_name, name.sVar) {
   # Convert Bin matrix into a data.table (without data.frame as intermediate), with new row ID column:
-  DT_BinsDat_wide <- as.data.table(BinsDat_wide)[, c("ID") := ID, with = FALSE]
-  setcolorder(DT_BinsDat_wide, c("ID", names(DT_BinsDat_wide)[-ncol(DT_BinsDat_wide)]))
+  DT_BinsDat_wide <- data.table::as.data.table(BinsDat_wide)[, c("ID") := ID, with = FALSE]
+  data.table::setcolorder(DT_BinsDat_wide, c("ID", names(DT_BinsDat_wide)[-ncol(DT_BinsDat_wide)]))
   # melt into long format:
   sVar_melt_DT <- melt(DT_BinsDat_wide,
                       id.vars = "ID",

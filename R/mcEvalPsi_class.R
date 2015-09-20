@@ -122,6 +122,8 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
 #' }
 # data.table is used on fiW_Qinit for performing unit-level mean and var evaluation (n-length result)
 #' @import data.table
+# @importFrom data.table `[.data.table`
+# @importFrom data.table `[`
 #' @importFrom assertthat assert_that is.count is.flag
 #' @export
 mcEvalPsi <- R6Class(classname = "mcEvalPsi",
@@ -200,7 +202,7 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       # *******fi_W based on Q,N.init model ******
       ID <- rep.int(c(1 : self$nOdata), self$p)
       # taking average over p samples for each of n obs
-      fiW_Qinit <- data.table(ID = ID, fiW = self$QY.init)
+      fiW_Qinit <- data.table::data.table(ID = ID, fiW = self$QY.init)
       fiW_Qinit.mean <- fiW_Qinit[, lapply(.SD, mean, na.rm=TRUE), by="ID", .SDcols=c("fiW") ][["fiW"]]
       fiW_Qinit.var <- fiW_Qinit[, lapply(.SD, var, na.rm=TRUE), by="ID", .SDcols=c("fiW") ][["fiW"]]
 
