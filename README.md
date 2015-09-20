@@ -1,12 +1,11 @@
-`tmlenet` - Targeted Maximum Likelihood Estimation for Networks
+tmlenet
 ==========
 
-<!-- [![Build Status](https://travis-ci.org/osofr/simcausal.png?branch=master)](https://travis-ci.org/osofr/simcausal) -->
-<!-- [![Travis-CI Build Status](https://travis-ci.org/osofr/simcausal.svg?branch=master)](https://travis-ci.org/osofr/simcausal) -->
-<!-- [![](http://cranlogs.r-pkg.org/badges/simcausal)](http://cran.rstudio.com/web/packages/simcausal/index.html)
-[![Travis-CI Build Status](https://travis-ci.org/osofr/simcausal.svg?branch=master)](https://travis-ci.org/osofr/simcausal)
-[![Coverage Status](https://coveralls.io/repos/osofr/simcausal/badge.png?branch=master)](https://coveralls.io/r/osofr/simcausal)
- -->
+
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/tmlenet)](http://cran.r-project.org/package=tmlenet)
+<!-- [![](http://cranlogs.r-pkg.org/badges/tmlenet)](http://cran.rstudio.com/web/packages/tmlenet/index.html) -->
+[![Travis-CI Build Status](https://travis-ci.org/osofr/tmlenet.svg?branch=master)](https://travis-ci.org/osofr/tmlenet)
+[![Coverage Status](https://coveralls.io/repos/osofr/tmlenet/badge.png?branch=master&service=github)](https://coveralls.io/r/osofr/tmlenet?branch=master)
 
 The `tmlenet` R package implements the Targeted Maximum Likelihood Estimation (TMLE) of causal effects under single time point stochastic interventions in network data. The package also implements the Horvitz-Thompson estimator for networks and the parametric g-computation formula-based estimator. The inference for the TMLE is based on the efficient influence curves for dependent data. See the paper below for more information on the estimation methodology employed by `tmlenet`:
 

@@ -39,9 +39,9 @@ r_binary_packages:
   - stringr
   - RUnit
   - igraph
-  - bigmemory,
-  - biganalytics,
-  - doParallel,
+  - bigmemory
+  - biganalytics
+  - doParallel
 
 r_packages:
   - ltmle
