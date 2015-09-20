@@ -6,7 +6,11 @@
 #' @useDynLib tmlenet
 #' @import R6
 #' @importFrom Rcpp sourceCpp
-
+#' @importFrom grDevices nclass.FD nclass.Sturges nclass.scott
+#' @importFrom graphics axis barplot hist par text
+#' @importFrom methods is
+#' @importFrom stats approx binomial coef glm.control glm.fit plogis predict qlogis qnorm quantile rnorm terms var predict glm.control
+#' @importFrom utils data head str
 #######################################################################
 ######### BETA VERSION - NOT FOR DISTRIBUTION #########################
 #######################################################################

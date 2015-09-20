@@ -508,7 +508,7 @@ pred.hbars.old <- function(new_data=NULL, fit_h_reg_obj, NetInd_k) {
       P.hbar.star.c <- pred_h_fcn(h_logit_sep_k, fit_h_reg_obj$m.gAi_vec_gstar)
     }
     else {
-      h_bars_user <- h_user_fcn(k, data, node_l, NetInd_k)
+      h_bars_user <- h_user_fcn(k, new_data, node_l, NetInd_k)
       P.hbar.c <- h_bars_user$P.hbar.c
       P.hbar.star.c <- h_bars_user$P.hbar.star.c
     }

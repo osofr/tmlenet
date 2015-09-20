@@ -203,7 +203,7 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
 
   prob_Ni <- list(prob_Ni_W1_0, prob_Ni_W1_1, prob_Ni_W1_2, prob_Ni_W1_3, prob_Ni_W1_4, prob_Ni_W1_5)
   prob_Ni <- lapply(prob_Ni, function(x) x/sum(x))
-  Net_num <- sapply(c(1:n), function(i) sample(0:k, 1, replace=T, prob=prob_Ni[[W1[i]+1]]))
+  Net_num <- sapply(c(1:n), function(i) sample(0:k, 1, replace = TRUE, prob = prob_Ni[[W1[i]+1]]))
   	return(Net_num)
   }
   # W1-based probs of i being selected as someone's friend
@@ -214,8 +214,9 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
   # so that we never exceed |N_i| for each i
   # may result in actual # of friends being < |N_i| for some
   .f.genConnectMatx_asym_biased <- function(W1, Net_num) {
-    I <- bigmemory::big.matrix(n,n, type="short", init=0, shared=FALSE)
-    nFriendTot <- array(rep(0,n))
+    # I <- bigmemory::big.matrix(n,n, type="short", init=0, shared=FALSE)
+    I <- matrix(0L, nrow = n, ncol = n)
+    nFriendTot <- array(rep(0L,n))
     for (index in (1:n)) {
       I[index,index] <- 1
       FriendSampSet <- setdiff( c(1:n), index)  #set of possible friends to sample, anyone but itself
@@ -226,7 +227,7 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
         } else { #sample from the possible friend set, with prob based on W2=W_risk
           # W1[i] affects the probability of having [i] selected as someone's friend
           # W1-based probs of i being selected
-          friends_i <- sort(sample(FriendSampSet, nFriendSamp, prob=prob_f[W1[FriendSampSet]+1]))
+          friends_i <- sort(sample(FriendSampSet, nFriendSamp, prob = prob_f[W1[FriendSampSet]+1]))
         }
         I[friends_i, index] <- 1
         nFriendTot[index] <- nFriendTot[index] + nFriendSamp
@@ -235,7 +236,8 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
     return(I)
   }
   #Update the # of friends for each individual (given sampled connnectivity matrix)
-  .f.Net_num_update <- function(ConnectMatx) return(colsum(ConnectMatx, c(1:n)) - 1)
+  # .f.Net_num_update <- function(ConnectMatx) return(colsum(ConnectMatx, c(1:n)) - 1)
+  .f.Net_num_update <- function(ConnectMatx) return(base::colSums(ConnectMatx) - 1)
   #Convert connectivity matx to a lists of vector of friend's ids
   .f.Net_vect <- function(ConnectMatx) {
     f.netwklist_i <- function(index)  {
@@ -244,17 +246,24 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
     sapply(1:n, f.netwklist_i, simplify=F)
   }
   #Same, but using mwhich() instead of which() (faster for n>30,000)
-  .f.Net_vect_big <- function(ConnectMatx) {
-    f.netwklist_i <- function(index) setdiff(mwhich(ConnectMatx, index, 0, 'neq'), index)
-    sapply(1:n, f.netwklist_i, simplify=F)
-  }
-  .f.Net_vect_bigID <- function(ConnectMatx) {
+  # .f.Net_vect_big <- function(ConnectMatx) {
+  #   f.netwklist_i <- function(index) setdiff(mwhich(ConnectMatx, index, 0, 'neq'), index)
+  #   sapply(1:n, f.netwklist_i, simplify=F)
+  # }
+  .f.Net_vect_ID <- function(ConnectMatx) {
     f.netwklist_i <- function(index)  {
-      netwklist_i <- setdiff(mwhich(ConnectMatx, index, 0, 'neq'), index)
+      netwklist_i <- setdiff(which(ConnectMatx[, index]!=0), index)
       if (length(netwklist_i)>0) netwklist_i <- paste('I', netwklist_i, sep="")
       return(netwklist_i)}
     sapply(1:n, f.netwklist_i, simplify=F)
   }
+  # .f.Net_vect_bigID <- function(ConnectMatx) {
+  #   f.netwklist_i <- function(index)  {
+  #     netwklist_i <- setdiff(mwhich(ConnectMatx, index, 0, 'neq'), index)
+  #     if (length(netwklist_i)>0) netwklist_i <- paste('I', netwklist_i, sep="")
+  #     return(netwklist_i)}
+  #   sapply(1:n, f.netwklist_i, simplify=F)
+  # }
   .f.mkstrNet <- function(Net) sapply(Net, function(Net_i) paste(Net_i, collapse=' '))
   .f.mkstrNetWi <- function(Net,i) sapply(Net, function(Net_i) paste(Net_i[[i]], collapse=" "))
     .f_g_wrapper <- function(k, W_netW, fcn_name, ...) {   #wrapper fcn for g(A|W)
@@ -311,18 +320,18 @@ gendata_Cj <- function(C_j = 1, n, k, EC, f.g_name=NULL, f.g_args=NULL) {
   nFriends <- .f.Net_num(W1, samp=NONFIXED_N_FRIENDS, n, k)
   #---------------------------------------------------------
   # Generate symmetric connectivity matrix of friends, by infection risk W1
-  if (SYMM_CONN) {
-    ConnectMatx <- .f.genConnectMatx_sym(nFriends)
-  } else {
+  # if (SYMM_CONN) {
+  #   ConnectMatx <- .f.genConnectMatx_sym(nFriends)
+  # } else {
     ConnectMatx <-  .f.genConnectMatx_asym_biased(W1, nFriends)   
-  }
+  # }
   # Generate asymmetric connectivity matrix of friends
  	#--------------------------------------------------------- 	
   #Update # of actual friends sampled, |N_i|
   nFriends <- .f.Net_num_update(ConnectMatx)
   #Get list of vectors of friend's ids for each i
-  Net_vect <- .f.Net_vect_big(ConnectMatx)
-  Net_vectID <- .f.Net_vect_bigID(ConnectMatx)
+  Net_vect <- .f.Net_vect(ConnectMatx)
+  Net_vectID <- .f.Net_vect_ID(ConnectMatx)
   W1_netW <- data.frame(.f.redefineCov(k, W1, "W1", Net_vect))
   W2_netW <- data.frame(.f.redefineCov(k, W2, "W2", Net_vect))
   W3_netW <- data.frame(.f.redefineCov(k, W3, "W3", Net_vect))

@@ -30,8 +30,6 @@ os:
 
 r_binary_packages:
   - assertthat
-  - bigmemory
-  - biganalytics  
   - data.table
   - doParallel
   - foreach

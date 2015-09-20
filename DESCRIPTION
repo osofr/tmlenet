@@ -13,6 +13,7 @@ Imports:
     assertthat,
     data.table,
     Matrix,
+    methods,
     R6,
     Rcpp,
     simcausal,
@@ -21,18 +22,12 @@ Imports:
     stringr
 LinkingTo: Rcpp
 Suggests:
-    bigmemory,
-    biganalytics,
     doParallel,
     foreach,
-    ggplot2,
-    Hmisc,
     igraph,
     knitr,
     locfit,
     matrixStats,
-    RUnit,
-    snowfall,
-    SuperLearner
+    RUnit
 License: GPL-2
 LazyData: true

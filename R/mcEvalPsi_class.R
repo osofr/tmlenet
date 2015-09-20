@@ -122,8 +122,6 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
 #' }
 # data.table is used on fiW_Qinit for performing unit-level mean and var evaluation (n-length result)
 #' @import data.table
-# @importFrom data.table `[.data.table`
-# @importFrom data.table `[`
 #' @importFrom assertthat assert_that is.count is.flag
 #' @export
 mcEvalPsi <- R6Class(classname = "mcEvalPsi",
