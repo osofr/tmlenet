@@ -14,7 +14,7 @@ test.examples <- function() {
   #***************************************************************************************
   # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (OLD SIMULATION 3)
   #***************************************************************************************
-  tmlenet:::checkpkgs(pkgs = c("stringr", "bigmemory", "biganalytics", plyr))
+  tmlenet:::checkpkgs(pkgs = c("stringr", "bigmemory", "biganalytics", "plyr"))
   # require(tmlenet)
   require(stringr)
   require(bigmemory)
