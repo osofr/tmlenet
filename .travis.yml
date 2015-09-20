@@ -10,10 +10,13 @@
 # * Coveralls: https://coveralls.io/
 #
 # Validate your .travis.yml file at http://lint.travis-ci.org/
+# - reshape2
+# r_packages:
+#   - ltmle
 #----------------------------------------------------------------
 
 language: r
-warnings_are_errors: true
+warnings_are_errors: false
 # r_build_args: "--no-build-vignettes --no-manual"
 # r_check_args: "--no-build-vignettes --no-manual --as-cran"
 r_build_args: "--compact-vignettes"
@@ -39,12 +42,8 @@ r_binary_packages:
   - R6
   - Rcpp
   - RUnit
-  # - reshape2
   - speedglm
   - stringr
-
-# r_packages:
-#   - ltmle
 
 r_github_packages:
   - jimhester/covr
