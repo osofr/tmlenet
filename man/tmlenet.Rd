@@ -2,7 +2,7 @@
 % Please edit documentation in R/tmlenet.R
 \name{tmlenet}
 \alias{tmlenet}
-\title{Estimate Average Network Effects Under Arbitrary (Stochastic) Interventions}
+\title{Estimate Average Network Effects For Arbitrary (Stochastic) Interventions}
 \usage{
 tmlenet(data, Kmax, sW, sA, Wnodes = NULL, Anode, AnodeDET = NULL, Ynode,
   YnodeDET = NULL, IDnode = NULL, NETIDnode = NULL, sep = " ",
@@ -61,14 +61,15 @@ effects under two interventions}
 \item{Qform}{(Optional) Regression formula for outcome in Ynode, when NULL (default) Ynode is regressed on all
 variables defined in \code{sW} and \code{sA}. See Details.}
 
-\item{hform}{(Optional) Regression formula for estimating the conditional probability of P(sA | sW) under gN
-(observed treatment mechanism), when NULL (default) sA includes all variables in \code{sA} argument and sW includes
-all variables in \code{sW}. See Details.}
+\item{hform}{(Optional) Regression formula for estimating the conditional probability of P(sA | sW) under g0
+(the observed treatment mechanism), when NULL (the default), will include all variables (columns)
+in \code{sA} and in \code{sW}. See Details.}
 
 \item{hform.gstar}{(Optional) Regression formula for estimating the conditional probability P(sA | sW) under gstar,
 when NULL (default) the same regression formula as in hform will be used. See Details.}
 
-\item{verbose}{Set to \code{TRUE} to print all messages}
+\item{verbose}{Set to \code{TRUE} to print messages on status and information to the console.
+Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.}
 
 \item{optPars}{(Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as
  \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{f_g0}, \code{h_g0_SummariesModel} and
@@ -93,10 +94,9 @@ Currently available estimators are:
 }
 }
 \description{
-Estimate the average network effect among dependent units with known network structure (in the presence of
- interference and/or spillover)
- with a variety of estimation procedures: \emph{TMLE} (Targeted Minimum Loss-Based Estimation), \emph{IPTW}
- (Inverse Probability Weighted) and \emph{MLE} (parametric G-computation formula).
+Estimate the average network effect among dependent units with known network structure (in presence of
+ interference and/or spillover) using \emph{TMLE} (targeted maximum likelihood estimation), \emph{IPTW}
+ (Horvitz-Thompson or the inverse-probability-of-treatment) and \emph{GCOMP} (parametric G-computation formula).
 }
 \section{Details}{
 

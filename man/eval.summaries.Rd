@@ -4,46 +4,48 @@
 \alias{eval.summaries}
 \title{Evaluate Summary Measures sA and sW}
 \usage{
-eval.summaries(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL,
+eval.summaries(sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
   sep = " ", NETIDmat = NULL, verbose = getOption("tmlenet.verbose"))
 }
 \arguments{
-\item{data}{Same as \code{link{tmlenet}} input argument.}
+\item{sW}{Same as \code{\link{tmlenet}} input argument.}
 
-\item{Kmax}{Same as \code{link{tmlenet}} input argument.}
+\item{sA}{Same as \code{\link{tmlenet}} input argument.}
 
-\item{sW}{Same as \code{link{tmlenet}} input argument.}
+\item{Kmax}{Same as \code{\link{tmlenet}} input argument.}
 
-\item{sA}{Same as \code{link{tmlenet}} input argument.}
+\item{data}{Same as \code{\link{tmlenet}} input argument.}
 
-\item{IDnode}{(Optional) Same as \code{link{tmlenet}} input argument.}
+\item{IDnode}{(Optional) Same as \code{\link{tmlenet}} input argument.}
 
-\item{NETIDnode}{(Optional) Same as \code{link{tmlenet}} input argument.}
+\item{NETIDnode}{(Optional) Same as \code{\link{tmlenet}} input argument.}
 
-\item{sep}{(Optional) Same as \code{link{tmlenet}} input argument.}
+\item{sep}{(Optional) Same as \code{\link{tmlenet}} input argument.}
 
-\item{NETIDmat}{(Optional) Same as \code{link{tmlenet}} input argument.}
+\item{NETIDmat}{(Optional) Same as \code{\link{tmlenet}} input argument.}
 
-\item{verbose}{(Optional) Same as \code{link{tmlenet}} input argument.}
+\item{verbose}{Set to \code{TRUE} to print messages on status and information to the console.
+Turn this on by default using options(tmlenet.verbose=TRUE).}
 }
 \value{
 A list with: R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
 }
 \description{
-Take input data, create a network and evaluate the summary measures previously defined by calling functions \code{def.sW} and \code{def.sA}.
- This function is called internally by \code{tmlenet}.
- The resulting output R6 class object \code{DatNet.ObsP0} returned by this function can also be manually supplied to \code{tmlenet} function to
- to expedite the estimation time.
- When \code{DatNet.ObsP0} is provided to \code{tmlenet} function, there is no need to specifying the same input arguments to \code{tmlenet}.
+Take input data, create a network matrix (when input network matrix not provided) and evaluate the summary measures
+ previously defined with functions \code{def.sW} and \code{def.sA}. This function is called internally by \code{tmlenet}.
+ The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
+ \code{tmlenet} function.
+ When \code{DatNet.ObsP0} is provided as input to \code{tmlenet}, the rest of the input arguments already specified to this
+ function can be omitted from the \code{tmlenet} function call.
 }
 \examples{
 #***************************************************************************************
 # EXAMPLES OF SUMMARY MEASURES
 #***************************************************************************************
-
-# Defined with R expressions, s.a., 
-# W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax; 
+# Use R expressions to define summary measure functions, s.a.,
+# W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax;
 # sum(W2[[1:Kmax]]) is netW2_sum
+
 def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
             def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
@@ -100,10 +102,14 @@ def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
           def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
 #***************************************************************************************
-# Example.  NOT WRITTEN YET. Will evaluate the summary measures applied to the 
-# (O)bserved data (data.frame):
-# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax, 
-# NETIDnode = "Net_str", IDnode = "IDs")
+# Evaluate the summary measures applied to the  (O)bserved data (data.frame) and network
+#***************************************************************************************
+data(df_netKmax6) # load observed data
+data(NetInd_mat_Kmax6)  # load the network ID matrix
+# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax,
+#   NETIDnode = "Net_str", IDnode = "IDs")
+eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+  NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 #***************************************************************************************
 }
 \seealso{

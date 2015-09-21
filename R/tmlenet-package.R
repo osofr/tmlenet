@@ -2,10 +2,30 @@
 #'
 #' The \pkg{tmlenet} R package implements the Targeted Maximum Likelihood Estimation (TMLE) of causal effects 
 #'  under single time point stochastic interventions in network data. 
-#'  The package also implements the Horvitz-Thompson estimator for networks and the parametric g-computation formula-based estimator. 
-#'  The inference for the TMLE is based on the efficient influence curves for dependent data.
-#'  For additional details and examples please see the function-specific documentation.
+#'  The package also implements the Horvitz-Thompson estimator for networks (IPTW) and the parametric g-computation formula estimator. 
+#'  The inference for the TMLE is based on its asymptotic normality and the efficient influence curve for dependent data. 
+#'  The inference for IPTW is based on its corresponding influence curve for dependent data.
 #'
+#' The input data structure consists of rows of unit-specific observations, with each row \code{i} represented by random variables
+#'  (\code{F.i},\code{W.i},\code{A.i},\code{Y.i}), where \code{F.i} is a vector of "\emph{friend IDs}" of unit \code{i} 
+#'  (also referred to as \code{i}'s "\emph{network}"), \code{W.i} is a vector of \code{i}'s baseline covariates, \code{A.i} is \code{i}'s exposure
+#'  (either binary, categorical or continuous) and \code{Y.i} is \code{i}'s binary outcome.
+#'  Each exposure \code{A.i} depends on (possibly multivariate) baseline summary measure(s) \code{sW.i}, where \code{sW.i}
+#'  can be any user-specified function of \code{i}'s baseline covariates \code{W.i} and the baseline covariates of \code{i}'s friends in
+#'  set \code{F.i} (all \code{W.j} such that \code{j} is in \code{F.i}).
+#'  Similarly, each outcome \code{Y.i} depends on \code{sW.i} and (possibly multivariate) summary measure(s) \code{sA.i},
+#'  where \code{sA.i} can be any user-specified function of \code{i}'s baseline covariates and exposure (\code{W.i},\code{A.i}) and the
+#'  baseline covariates and exposures of \code{i}'s friends (all \code{W.j},\code{A.j} such that \code{j} is in \code{i}'s friend set \code{F.i}). 
+#'  
+#' The summary measures (\code{sW.i},\code{sA.i}) are defined simultaneously for all \code{i} with functions 
+#'  \code{\link{def.sW}} and \code{\link{def.sA}}.
+#'  It is assumed that (\code{sW.i},\code{sA.i}) have the same dimensionality across \code{i}. The function \code{\link{eval.summaries}} 
+#'  can be used for evaluating these summary measures. All estimation is performed by calling the \code{\link{tmlenet}} function. 
+#'  The vector of friends \code{F.i} can be specified either as a single column in the input data (where each \code{F.i} is a string
+#'  of friend IDs or friend row numbers delimited by character value in \code{sep}) or as a separate input matrix of network IDs
+#'  (where each row is a vector of friend IDs or friend row numbers).
+#'  Specifying the network as a matrix generally results in significant improvements to run time.
+
 # @section Documentation:
 # \itemize{
 # \item To see the package vignette use: \code{vignette("tmlenet_vignette", package="tmlenet")} 
@@ -13,15 +33,18 @@
 # }
 #'
 #' @section Routines:
-#' The following routines will be generally invoked by a user, in the same order as presented below.
+#' The following routines will be generally invoked, in the same order as presented below.
 #' \describe{
 #' 
-#' \item{\code{\link{def.sW}}}{Defines baseline summary measures \code{sW} that are functions of each unit's baseline covariates 
-#'    in \code{Wnodes} as well as unit's friends baseline covariates (\code{Wnode} values of units' friends).
+#' \item{\code{\link{def.sW}}}{Define the (multivariate) baseline-covariate-based network summary measure functions 
+#'    that will be later applied to the input data to obtain a matrix of summary measures \code{sW}. 
+#'    Each row \code{i} in \code{sW} will represent a vector of summary measures for observation \code{i}. 
+#'    The components (columns) of \code{sW} for unit \code{i} can be defined by any R function that takes as input
+#'    \code{i}'s baseline covariates and the baseline covariates of \code{i}'s friends.
 #'    This is the first part of the two part specification of the structural equation model for the outcome \code{Y}.
-#'    The function \code{def.sW} can take any number of arguments, with each argument specifying either a vector of summary measures for all units 
-#'    or a multivariate summary measure in a form of a matrix.
-#'    Each argument to \code{def.sW} must be named and has to be a valid R expression or a string containing an R expression. 
+#'    The function \code{def.sW} can take any number of arguments, each argument can specify either a single summary measure
+#'    or a multivariate summary measure.
+#'    Each argument to \code{def.sW} must be named and has to be a valid R expression or a string containing an R expression.
 #'    The expressions can contain double bracket indexing to reference variable values of friends. For example,
 #'    \code{Var[[1]]} produces a summary measure that is a vector of length \code{nrow(data)} that contains the values of \code{Var} variable of 
 #'    each unit's first friend. One could also use vectors for indexing friends, using a special constant \code{Kmax} to represent the largest number of friends for any unit.
@@ -33,8 +56,8 @@
 #' \item{\code{\link{def.sA}}}{Defines treatment summary measures \code{sA} that can be functions of each unit's exposure & baseline covariates, 
 #'    as well the exposures and baseline covariates of unit's friends. 
 #'    This is the second part of the two part specification of the structural equation model for the outcome \code{Y}. 
-#'    The syntax is identical to \code{def.sW} function except that \code{def.sA} can contain any summary measures defined as functions of \code{Wnodes} 
-#'    and \code{Anode}.}
+#'    The syntax is identical to \code{def.sW} function, except that \code{def.sA} can contain functions of \code{Wnodes} 
+#'    as well as \code{Anode}.}
 #' \item{\code{\link{eval.summaries}}}{A convenience function that may be used for checking and validating the user-defined summary measures. 
 #'    Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \code{def.sW} and \code{def.sA}.
 #'    Note that this function is automatically executed by \code{tmlenet} and does not need to be called by the user prior to calling \code{tmlenet}.}
@@ -115,8 +138,8 @@ NULL
 #'   \item{Y}{binary outcome that depends on unit's baseline covariate value and exposure, as well as the
 #'      baseline covariate values and exposures of observations in the friend network \code{Net_str}}
 #'   \item{nFriends}{number of friends for each observation (row), range 0-6}
-#'   \item{Net_str}{a vector of strings, where for each observation its a string of space separated friend IDs (this can be either observation IDs or
-#'      just space separated friend row numbers)}
+#'   \item{Net_str}{a vector of strings, where for each observation its a string of space separated friend IDs (this can
+#'      be either observation IDs or just space separated friend row numbers)}
 #' }
 #' @docType data
 #' @keywords datasets

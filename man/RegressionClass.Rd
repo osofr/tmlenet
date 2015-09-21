@@ -9,19 +9,19 @@
 RegressionClass
 }
 \description{
-This R6 class defines fields and methods for defining all the parameters that control the non-parametric
- modelling and estimation of multivariate joint conditional probability model \code{P(sA|sW)} for summary measures \code{(sA,sW)}.
- Note that sA can be multivariate and any component of \code{sA[j]} can be either binary, categorical or continuous.
+This R6 class defines fields and methods that controls all the parameters for non-parametric
+ modeling and estimation of multivariate joint conditional probability model \code{P(sA|sW)} for summary measures \code{(sA,sW)}.
+ Note that \code{sA} can be multivariate and any component of \code{sA[j]} can be either binary, categorical or continuous.
  The joint probability for \code{P(sA|sA)} = \code{P(sA[1],...,sA[k]|sA)} is first factorized as
- \code{P(sA[1]|sA) * P(sA[2]|sA, sA[1]) * ... * P(sA[k]|sA, sA[1],...,sA[k-1])},
+ \code{P(sA[1]|sA)} * \code{P(sA[2]|sA, sA[1])} * ... * \code{P(sA[k]|sA, sA[1],...,sA[k-1])},
  where each of these conditional probability models is defined by a new instance of a \code{\link{SummariesModel}} class
- (and the corresponding instance of a \code{RegressionClass} class).
- If \code{sA[j]} is binary, the conditional probability for \code{P(sA[j]|sW,sA[1],...,sA[j-1])} is evaluated via logistic regression model.
- When \code{sA[j]} is categorical or continuous, its estimation will be controlled with a new instance of
- the \code{\link{ContinSummaryModel}} class (and the accompanying instance of a \code{RegressionClass} class), which first partitions the range of
- continuous/categorical \code{sA[j]} into \code{K} bins and corresponding \code{K} bin indicators (\code{B_1,...,B_K}) and then instantiates \code{K} new
- \code{SummariesModel} classes (with their corresponding \code{RegressionClass} classes), where each of these \code{K} classes now defines a
- single logistic regression model with binary bin indicator outcome \code{B_j} and predictors (\code{sW, sA[1],...,sA[k-1]}).
+ (and a corresponding instance of the \code{RegressionClass} class).
+ If \code{sA[j]} is binary, the conditional probability \code{P(sA[j]|sW,sA[1],...,sA[j-1])} is evaluated via logistic regression model.
+ When \code{sA[j]} is continuous (or categorical), its estimation will be controlled by a new instance of
+ the \code{\link{ContinSummaryModel}} class (or the \code{\link{CategorSummaryModel}} class), as well as the accompanying new instance of the
+ \code{RegressionClass} class. The range of continuous \code{sA[j]} will be fist partitioned into \code{K} bins and the corresponding \code{K}
+ bin indicators (\code{B_1,...,B_K}), with \code{K} new instances of \code{\link{SummariesModel}} class, each instance defining a
+ single logistic regression model for one binary bin indicator outcome \code{B_j} and predictors (\code{sW, sA[1],...,sA[k-1]}).
  Thus, the first instance of \code{RegressionClass} and \code{SummariesModel} classes will automatically
  spawn recursive calls to new instances of these classes until the entire tree of binary logistic regressions that defines
  the joint probability \code{P(sA|sW)} is build.

@@ -352,27 +352,29 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
 
 #' Evaluate Summary Measures sA and sW
 #'
-#' Take input data, create a network and evaluate the summary measures previously defined by calling functions \code{def.sW} and \code{def.sA}.
-#'  This function is called internally by \code{tmlenet}. 
-#'  The resulting output R6 class object \code{DatNet.ObsP0} returned by this function can also be manually supplied to \code{tmlenet} function to 
-#'  to expedite the estimation time. 
-#'  When \code{DatNet.ObsP0} is provided to \code{tmlenet} function, there is no need to specifying the same input arguments to \code{tmlenet}.
-#' @param data Same as \code{link{tmlenet}} input argument.
-#' @param Kmax Same as \code{link{tmlenet}} input argument.
-#' @param sW Same as \code{link{tmlenet}} input argument.
-#' @param sA Same as \code{link{tmlenet}} input argument.
-#@param nFnode (Optional) Same as \code{link{tmlenet}} input argument.
-#' @param IDnode (Optional) Same as \code{link{tmlenet}} input argument.
-#' @param NETIDnode (Optional) Same as \code{link{tmlenet}} input argument.
-#' @param sep (Optional) Same as \code{link{tmlenet}} input argument.
-#' @param NETIDmat (Optional) Same as \code{link{tmlenet}} input argument.
-#' @param verbose (Optional) Same as \code{link{tmlenet}} input argument.
+#' Take input data, create a network matrix (when input network matrix not provided) and evaluate the summary measures 
+#'  previously defined with functions \code{def.sW} and \code{def.sA}. This function is called internally by \code{tmlenet}.
+#'  The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
+#'  \code{tmlenet} function.
+#'  When \code{DatNet.ObsP0} is provided as input to \code{tmlenet}, the rest of the input arguments already specified to this
+#'  function can be omitted from the \code{tmlenet} function call.
+#' @param sW Same as \code{\link{tmlenet}} input argument.
+#' @param sA Same as \code{\link{tmlenet}} input argument.
+#' @param Kmax Same as \code{\link{tmlenet}} input argument.
+#' @param data Same as \code{\link{tmlenet}} input argument.
+#@param nFnode (Optional) Same as \code{\link{tmlenet}} input argument.
+#' @param IDnode (Optional) Same as \code{\link{tmlenet}} input argument.
+#' @param NETIDnode (Optional) Same as \code{\link{tmlenet}} input argument.
+#' @param sep (Optional) Same as \code{\link{tmlenet}} input argument.
+#' @param NETIDmat (Optional) Same as \code{\link{tmlenet}} input argument.
+#' @param verbose Set to \code{TRUE} to print messages on status and information to the console. 
+#'  Turn this on by default using options(tmlenet.verbose=TRUE).
 #' @return A list with: R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
 #' @seealso \code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.
 #' @example tests/examples/2_defsWsA_examples.R
 #' @export
 #todo 80 (eval.summaries, inputs) +0: add data checks: 1) test Anode is binary or contin; 2) no missing data among A,W,Y
-eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
+eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
                             verbose = getOption("tmlenet.verbose")) {
   iid_data_flag <- FALSE  # set to true if no network is provided (will run iid TMLE)
   nFnode = "nF"
@@ -458,12 +460,11 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 # 4) 3 + spec separate hform.gstar (outcome have to be the same sA for both hform & hform.gstar)
 # *) Note: sA & sW can be character vectors consisting of R expressions
 #------------------------------------
-#' Estimate Average Network Effects Under Arbitrary (Stochastic) Interventions
+#' Estimate Average Network Effects For Arbitrary (Stochastic) Interventions
 #'
-#' Estimate the average network effect among dependent units with known network structure (in the presence of
-#'  interference and/or spillover)
-#'  with a variety of estimation procedures: \emph{TMLE} (Targeted Minimum Loss-Based Estimation), \emph{IPTW}
-#'  (Inverse Probability Weighted) and \emph{MLE} (parametric G-computation formula).
+#' Estimate the average network effect among dependent units with known network structure (in presence of
+#'  interference and/or spillover) using \emph{TMLE} (targeted maximum likelihood estimation), \emph{IPTW}
+#'  (Horvitz-Thompson or the inverse-probability-of-treatment) and \emph{GCOMP} (parametric G-computation formula).
 # Arguments:
 #' @param data Input observed data as a \code{data.frame}, with named columns for baseline covariates (W),
 #'  assigned treatment (A), the outcome (Y) and network of friends (F)
@@ -500,16 +501,17 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #  \code{hform.gstar} and \code{gform}. See Details.
 #' @param Qform (Optional) Regression formula for outcome in Ynode, when NULL (default) Ynode is regressed on all
 #'  variables defined in \code{sW} and \code{sA}. See Details.
-#' @param hform (Optional) Regression formula for estimating the conditional probability of P(sA | sW) under gN
-#'  (observed treatment mechanism), when NULL (default) sA includes all variables in \code{sA} argument and sW includes
-#'  all variables in \code{sW}. See Details.
+#' @param hform (Optional) Regression formula for estimating the conditional probability of P(sA | sW) under g0
+#'  (the observed treatment mechanism), when NULL (the default), will include all variables (columns)
+#'  in \code{sA} and in \code{sW}. See Details.
 #' @param hform.gstar (Optional) Regression formula for estimating the conditional probability P(sA | sW) under gstar,
 #'  when NULL (default) the same regression formula as in hform will be used. See Details.
 # @param gform  (Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all
 # friends treatments, P(A_i, A_{F_i} | W). See Details.
 # @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
 # @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
-#' @param verbose Set to \code{TRUE} to print all messages
+#' @param verbose Set to \code{TRUE} to print messages on status and information to the console. 
+#'  Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.
 #' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as
 #'  \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{f_g0}, \code{h_g0_SummariesModel} and
 #'  \code{h_gstar_SummariesModel}. See Details.

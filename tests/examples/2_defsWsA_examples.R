@@ -1,10 +1,10 @@
 #***************************************************************************************
 # EXAMPLES OF SUMMARY MEASURES
 #***************************************************************************************
-
-# Defined with R expressions, s.a., 
-# W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax; 
+# Use R expressions to define summary measure functions, s.a.,
+# W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax;
 # sum(W2[[1:Kmax]]) is netW2_sum
+
 def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
             def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
@@ -61,8 +61,12 @@ def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
           def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
 #***************************************************************************************
-# Example.  NOT WRITTEN YET. Will evaluate the summary measures applied to the 
-# (O)bserved data (data.frame):
-# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax, 
-# NETIDnode = "Net_str", IDnode = "IDs")
+# Evaluate the summary measures applied to the  (O)bserved data (data.frame) and network
+#***************************************************************************************
+data(df_netKmax6) # load observed data
+data(NetInd_mat_Kmax6)  # load the network ID matrix
+# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax,
+#   NETIDnode = "Net_str", IDnode = "IDs")
+eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+  NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 #***************************************************************************************

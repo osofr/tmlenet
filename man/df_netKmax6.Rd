@@ -15,8 +15,8 @@
   \item{Y}{binary outcome that depends on unit's baseline covariate value and exposure, as well as the
      baseline covariate values and exposures of observations in the friend network \code{Net_str}}
   \item{nFriends}{number of friends for each observation (row), range 0-6}
-  \item{Net_str}{a vector of strings, where for each observation its a string of space separated friend IDs (this can be either observation IDs or
-     just space separated friend row numbers)}
+  \item{Net_str}{a vector of strings, where for each observation its a string of space separated friend IDs (this can
+     be either observation IDs or just space separated friend row numbers)}
 }}
 \usage{
 data(df_netKmax6)

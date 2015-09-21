@@ -35,8 +35,8 @@ isValidAndUnreservedName <- function(string) {
 #'  \item \code{replaceNAw0 = TRUE} - To automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
 #' }
 #' @section Details: 
-#' The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} function, 
-#' using the environment of the input data, enclosed by the user calling environment.
+#' The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or \code{\link{eval.summaries}} functions,
+#' using the environment of the input data frame and enclosed within the user-calling environment.
 #' @param ... Named R expressions or character strings that specify the formula for creating the summary measures.
 #' @return R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
 #' @seealso \code{\link{tmlenet}}
