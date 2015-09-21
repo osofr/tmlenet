@@ -1,10 +1,10 @@
 Package: tmlenet
-Title: Targeted Maximum Likelihood Estimation for Networks
+Title: Targeted Maximum Likelihood Estimation for Network Data
 Version: 0.0.9
 Authors@R: c(
     person("Oleg", "Sofrygin", role=c("aut", "cre"), email="oleg.sofrygin@gmail.com"),
     person(c("Mark", "J."), "van der Laan", role="aut", email="laan@berkeley.edu"))
-Description: Targeted Maximum Likelihood Estimation (TMLE) in dependent network data for estimation of treatment-specific mean outcome under arbitrary single point stochastic intervention.
+Description: Estimation of average causal effects for single time point interventions in network-dependent (non-IID) data. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation formula (GCOMP) estimator. User-specified intervention (f_gstar1) can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. The input data are assumed to consist of rows of unit-specific observation, with each row i represented by variables (F[i],W[i],A[i],Y[i]), where F[i] is a string of "friend IDs" of unit i (also referred to as i's network), W[i] is a vector of i's baseline covariates, A[i] is i's exposure (either binary, categorical or continuous) and Y[i] is i's binary outcome. Each exposure A[i] is assumed dependent on (possibly multivariate) baseline summary measure(s) sW[i], where sW[i] can be any user-specified function of i's baseline covariates W[i] and the baseline covariates of i's friends in F[i] (all W[j] such that j is in F[i]). Similarly, each outcome Y[i] is assumed dependent on sW[i] and (possibly multivariate) summary measure(s) sA[i], where sA[i] can be any user-specified function of i's baseline covariates and exposure (W[i],A[i]) and the baseline covariates and exposures of i's friends (all W[j],A[j] such that j is in i's friend set F[i]). The summary measures (sW[i],sA[i]) are defined simultaneously for all i by calling the functions def.sW and def.sA. It is assumed that (sW[i],sA[i]) have the same dimensionality across i. The function eval.summaries can be used for evaluating the previously defined summary measures. All estimation is performed by calling the tmlenet function. See ?'tmlenet-package' and ?tmlenet for additional details and examples.
 URL: https://github.com/osofr/tmlenet
 BugReports: https://github.com/osofr/tmlenet/issues
 Depends:

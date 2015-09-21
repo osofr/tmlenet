@@ -3,7 +3,7 @@
 \docType{package}
 \name{tmlenet-package}
 \alias{tmlenet-package}
-\title{Targeted Maximum Likelihood Estimation for Networks}
+\title{Targeted Maximum Likelihood Estimation for Network Data}
 \description{
 The \pkg{tmlenet} R package implements the Targeted Maximum Likelihood Estimation (TMLE) of causal effects
  under single time point stochastic interventions in network data.

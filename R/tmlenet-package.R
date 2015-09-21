@@ -1,4 +1,4 @@
-#' Targeted Maximum Likelihood Estimation for Networks
+#' Targeted Maximum Likelihood Estimation for Network Data
 #'
 #' The \pkg{tmlenet} R package implements the Targeted Maximum Likelihood Estimation (TMLE) of causal effects 
 #'  under single time point stochastic interventions in network data. 
