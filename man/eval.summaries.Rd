@@ -25,92 +25,62 @@ eval.summaries(sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 \item{NETIDmat}{(Optional) Same as \code{\link{tmlenet}} input argument.}
 
 \item{verbose}{Set to \code{TRUE} to print messages on status and information to the console.
-Turn this on by default using options(tmlenet.verbose=TRUE).}
+Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.}
 }
 \value{
-A list with: R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
+A named list that contains:
+ \itemize{
+ \item \code{sW.matrix} - Matrix of evaluated summary measures for \code{sW}.
+ \item \code{sA.matrix} - Matrix of evaluated summary measures for \code{sA}.
+ \item \code{NETIDmat} - Network ID matrix that can be used for \code{NETIDmat} input argument to \code{tmlenet}.
+ \item \code{DatNet.ObsP0} - R6 object of class \code{\link{DatNet.sWsA}} that stores all the summary measures and the network information.
+   This object be passed to \code{\link{tmlenet}} as an argument, in which case the arguments already provided to \code{eval.summaries} no
+   longer need to be specified to \code{tmlenet}.
+ }
 }
 \description{
 Take input data, create a network matrix (when input network matrix not provided) and evaluate the summary measures
  previously defined with functions \code{def.sW} and \code{def.sA}. This function is called internally by \code{tmlenet}.
  The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
  \code{tmlenet} function.
- When \code{DatNet.ObsP0} is provided as input to \code{tmlenet}, the rest of the input arguments already specified to this
- function can be omitted from the \code{tmlenet} function call.
+ When \code{DatNet.ObsP0} is used as an input to \code{tmlenet}, the rest of the input arguments already provided to
+ \code{eval.summaries} function can be omitted from the \code{tmlenet} function call.
 }
 \examples{
 #***************************************************************************************
-# EXAMPLES OF SUMMARY MEASURES
+# Define some summary measures for sW and sA
 #***************************************************************************************
-# Use R expressions to define summary measure functions, s.a.,
-# W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax;
-# sum(W2[[1:Kmax]]) is netW2_sum
-
-def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
-            def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-            replaceMisVal0 = TRUE) +
-            def.sA(netA = A[[0:Kmax]])
-
-# MORE EXAMPLES of various summary measures:
-def_sW <- def.sW(netW1 = W1[[0:Kmax]], noname = TRUE) +
-          def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
-          def.sW(netW3 = W3[[1:Kmax]], noname = TRUE) +
-          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
-
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]), noname= TRUE,
-                  replaceMisVal0 = TRUE)
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]),
-                  replaceMisVal0 = FALSE, noname = TRUE)
-
-def_sW <- def.sW(W1 = W1[[0]], W1 = W2[[0:Kmax]], W1 = W3[[0:Kmax]],
-                  netW1_sum = rowSums(W1[[1:Kmax]]),
-                  netW2_sum = rowSums(W2[[1:Kmax]]),
-                  netW3_sum = rowSums(W3[[1:Kmax]]))
-
-#***************************************************************************************
-# Example. 3 equivalent ways to define summary measures:
-#***************************************************************************************
-def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]])
-def_sW <- def.sW(W1 = W1, W2 = W2, W3 = W3) # vs 2
-def_sW <- def.sW(W1 = "W1[[0]]", W2 = "W2[[0]]", W3 = "W3[[0]]") # vs 3
-
-#***************************************************************************************
-# Example. See contents of the Define_sVar object
-#***************************************************************************************
-def_sW$sVar.exprs
-def_sW$sVar.expr.names
-def_sW$ReplMisVal0
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-
-#***************************************************************************************
-# Example. More summary measures for sA
-#***************************************************************************************
-def_sA <- def.sA(netA = A[[0:Kmax]], noname = TRUE)
-def_sA <- def.sA(netA = "A[[0:Kmax]]",
-                sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))
-
-#***************************************************************************************
-# Example. More summary measures for sW and sA
-#***************************************************************************************
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
-          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
+          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
             
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-            replaceMisVal0 = TRUE) +
+            replaceNAw0 = TRUE) +
           def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
 #***************************************************************************************
 # Evaluate the summary measures applied to the  (O)bserved data (data.frame) and network
 #***************************************************************************************
-data(df_netKmax6) # load observed data
-data(NetInd_mat_Kmax6)  # load the network ID matrix
-# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax,
-#   NETIDnode = "Net_str", IDnode = "IDs")
-eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+# load observed data:
+data(df_netKmax6)
+# load the network ID matrix:
+data(NetInd_mat_Kmax6)
+res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
   NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
+
 #***************************************************************************************
+# Contents of the list returned by eval.summaries():
+#***************************************************************************************
+names(res)
+# matrix of sW summary measures:
+res$sW.matrix
+# matrix of sA summary measures:
+res$sA.matrix
+# matrix of network IDs:
+res$NETIDmat
+# Observed data (sW,sA) stored as "DatNet.sWsA" R6 class object:
+res$DatNet.ObsP0
+class(res$DatNet.ObsP0)
+
 }
 \seealso{
 \code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.

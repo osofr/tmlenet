@@ -29,7 +29,7 @@ Define and store \code{tmlenet} function arguments \code{sW} and \code{sA},
  Each summary measure \code{sVar} is specified as a named R expression or a named character argument.
  Separate calls to \code{def.sW/def.sA} functions can be aggregated into a single collection with '+' function,
  e.g., \code{def.sW(W1=W1)+def.sW(W2=W2)}.
- Additional named arguments that can be passed to \code{def.sW/def.sA} are:
+ Two special named arguments can be passed to the \code{def.sW}, \code{def.sA} functions:
  \itemize{
  \item \code{noname = TRUE} - to not use the summary measure name provided by the user when assigning
    the names to the summary measure columns (variables); and
@@ -43,28 +43,22 @@ using the environment of the input data frame and enclosed within the user-calli
 }
 \examples{
 #***************************************************************************************
-# EXAMPLES OF SUMMARY MEASURES
+# Examples of summary measures defined by def.sW
 #***************************************************************************************
 # Use R expressions to define summary measure functions, s.a.,
 # W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax;
-# sum(W2[[1:Kmax]]) is netW2_sum
-
-def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
-            def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-            replaceMisVal0 = TRUE) +
-            def.sA(netA = A[[0:Kmax]])
-
-# MORE EXAMPLES of various summary measures:
 def_sW <- def.sW(netW1 = W1[[0:Kmax]], noname = TRUE) +
           def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
           def.sW(netW3 = W3[[1:Kmax]], noname = TRUE) +
-          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
+
+def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
+            def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
 
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]), noname= TRUE,
-                  replaceMisVal0 = TRUE)
+                  replaceNAw0 = TRUE)
 def_sW <- def.sW(netW2 = W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]),
-                  replaceMisVal0 = FALSE, noname = TRUE)
+                  replaceNAw0 = FALSE, noname = TRUE)
 
 def_sW <- def.sW(W1 = W1[[0]], W1 = W2[[0:Kmax]], W1 = W3[[0:Kmax]],
                   netW1_sum = rowSums(W1[[1:Kmax]]),
@@ -72,14 +66,21 @@ def_sW <- def.sW(W1 = W1[[0]], W1 = W2[[0:Kmax]], W1 = W3[[0:Kmax]],
                   netW3_sum = rowSums(W3[[1:Kmax]]))
 
 #***************************************************************************************
-# Example. 3 equivalent ways to define summary measures:
+# Examples of summary measures defined by def.sA
+#***************************************************************************************
+def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
+            replaceNAw0 = TRUE) +
+            def.sA(netA = A[[0:Kmax]])
+
+#***************************************************************************************
+# Example. Three equivalent ways to define summary measures:
 #***************************************************************************************
 def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]])
 def_sW <- def.sW(W1 = W1, W2 = W2, W3 = W3) # vs 2
 def_sW <- def.sW(W1 = "W1[[0]]", W2 = "W2[[0]]", W3 = "W3[[0]]") # vs 3
 
 #***************************************************************************************
-# Example. See contents of the Define_sVar object
+# Example. See contents of the Define_sVar object returned by def.sW
 #***************************************************************************************
 def_sW$sVar.exprs
 def_sW$sVar.expr.names
@@ -97,11 +98,11 @@ def_sA <- def.sA(netA = "A[[0:Kmax]]",
 #***************************************************************************************
 # Example. More summary measures for sW and sA
 #***************************************************************************************
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
-          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceMisVal0 = TRUE)
+def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
+          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
             
 def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-            replaceMisVal0 = TRUE) +
+            replaceNAw0 = TRUE) +
           def.sA(netA = A[[0:Kmax]], noname = TRUE)
 
 #***************************************************************************************
@@ -109,13 +110,27 @@ def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
 #***************************************************************************************
 data(df_netKmax6) # load observed data
 data(NetInd_mat_Kmax6)  # load the network ID matrix
-# res <- eval.summaries(summaries = def_sA, Odata = df_K6, Kmax = kmax,
-#   NETIDnode = "Net_str", IDnode = "IDs")
-eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
   NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
+
 #***************************************************************************************
+# Contents of the list returned by eval.summaries():
+#***************************************************************************************
+names(res)
+# matrix of sW summary measures:
+res$sW.matrix
+# matrix of sA summary measures:
+res$sA.matrix
+# matrix of network IDs:
+res$NETIDmat
+# Observed data (sW,sA) stored as "DatNet.sWsA" R6 class object:
+res$DatNet.ObsP0
+class(res$DatNet.ObsP0)
+
 }
 \seealso{
-\code{\link{tmlenet}}
+\code{\link{eval.summaries}} for
+ evaluation and validation of the summary measures,
+ \code{\link{tmlenet}} for estimation.
 }
 

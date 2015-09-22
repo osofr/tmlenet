@@ -479,7 +479,7 @@ all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
 \seealso{
 \code{\link{tmlenet-package}} for the general overview of the package,
  \code{\link{def.sW}} for defining the summary measures, \code{\link{eval.summaries}} for
- validation of the summary measures,
+ evaluation and validation of the summary measures,
  and \code{\link{df_netKmax2}}/\code{\link{df_netKmax6}}/\code{\link{NetInd_mat_Kmax6}}
  for examples of network datasets.
 }

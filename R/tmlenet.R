@@ -356,8 +356,8 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
 #'  previously defined with functions \code{def.sW} and \code{def.sA}. This function is called internally by \code{tmlenet}.
 #'  The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
 #'  \code{tmlenet} function.
-#'  When \code{DatNet.ObsP0} is provided as input to \code{tmlenet}, the rest of the input arguments already specified to this
-#'  function can be omitted from the \code{tmlenet} function call.
+#'  When \code{DatNet.ObsP0} is used as an input to \code{tmlenet}, the rest of the input arguments already provided to 
+#'  \code{eval.summaries} function can be omitted from the \code{tmlenet} function call.
 #' @param sW Same as \code{\link{tmlenet}} input argument.
 #' @param sA Same as \code{\link{tmlenet}} input argument.
 #' @param Kmax Same as \code{\link{tmlenet}} input argument.
@@ -368,10 +368,18 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
 #' @param sep (Optional) Same as \code{\link{tmlenet}} input argument.
 #' @param NETIDmat (Optional) Same as \code{\link{tmlenet}} input argument.
 #' @param verbose Set to \code{TRUE} to print messages on status and information to the console. 
-#'  Turn this on by default using options(tmlenet.verbose=TRUE).
-#' @return A list with: R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
+#'  Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.
+#' @return A named list that contains:
+#'  \itemize{
+#'  \item \code{sW.matrix} - Matrix of evaluated summary measures for \code{sW}.
+#'  \item \code{sA.matrix} - Matrix of evaluated summary measures for \code{sA}.
+#'  \item \code{NETIDmat} - Network ID matrix that can be used for \code{NETIDmat} input argument to \code{tmlenet}.
+#'  \item \code{DatNet.ObsP0} - R6 object of class \code{\link{DatNet.sWsA}} that stores all the summary measures and the network information.
+#'    This object be passed to \code{\link{tmlenet}} as an argument, in which case the arguments already provided to \code{eval.summaries} no
+#'    longer need to be specified to \code{tmlenet}.
+#'  } 
 #' @seealso \code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.
-#' @example tests/examples/2_defsWsA_examples.R
+#' @example tests/examples/3_eval.summaries_examples.R
 #' @export
 #todo 80 (eval.summaries, inputs) +0: add data checks: 1) test Anode is binary or contin; 2) no missing data among A,W,Y
 eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
@@ -429,13 +437,13 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
   # Test parsing and evaluating the summary measures (in class Define_sVar):
   #----------------------------------------------------------------------------------
   # Testing the evaluation of summary measures:
-  sWmat <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = nFnode)
-  sAmat <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
+  sW.matrix <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = nFnode)
+  sA.matrix <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
   if (verbose) {
-    print("sWmat: "); print(head(sWmat))
-    print("sWmat map"); print(sW$sVar.names.map)    
-    print("sAmat: "); print(head(sAmat))
-    print("sAmat map"); print(sA$sVar.names.map)
+    print("sample matrix of sW summary measurs: : "); print(head(sW.matrix))
+    print("sample matrix of sA summary measurs: "); print(head(sA.matrix))
+    print("map of sW names to column names: "); print(sW$sVar.names.map)    
+    print("map of sA names to column names: "); print(sA$sVar.names.map)
   }
 
   #---------------------------------------------------------------------------------
@@ -447,7 +455,7 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
   datnetA <- DatNet$new(netind_cl = netind_cl)
   datnetA$make.sVar(Odata = data, sVar.object = sA)
   DatNet.ObsP0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
-  return(list(sWmat = sWmat, sAmat = sAmat, NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
+  return(list(sW.matrix = sW.matrix, sA.matrix = sA.matrix, NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
 }
 
 #---------------------------------------------------------------------------------
@@ -702,7 +710,7 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' }
 #' @seealso \code{\link{tmlenet-package}} for the general overview of the package,
 #'  \code{\link{def.sW}} for defining the summary measures, \code{\link{eval.summaries}} for
-#'  validation of the summary measures,
+#'  evaluation and validation of the summary measures,
 #'  and \code{\link{df_netKmax2}}/\code{\link{df_netKmax6}}/\code{\link{NetInd_mat_Kmax6}}
 #'  for examples of network datasets.
 #' @example tests/examples/1_tmlenet_example.R

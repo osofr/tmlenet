@@ -6,6 +6,7 @@
   # II) sVar naming:
   #todo 34 (sVar_evaluator, sVar.name) +0: Instead of throwing an error for un-named vector results (e.g., def.sW(A)), 
     # would be nice to extract the first is.name of the expression and use that as a name.
+    # this would also eliminate the need for noname argument -> when def.sA(W1) or def.sA("W1") always set noname=TRUE 
   #todo 7 (sVar_evaluator, sVar.name) +0: Check that the resulting column names in sVar are all unique!
   # Create an option $keep.sVar.nms; When TRUE do not change the output column names for sVar mat with ncol > 1. 
   # Create an option to overwrite sVar mat colname(s) with user-provided names
@@ -28,7 +29,7 @@ isValidAndUnreservedName <- function(string) {
 #'  Each summary measure \code{sVar} is specified as a named R expression or a named character argument. 
 #'  Separate calls to \code{def.sW/def.sA} functions can be aggregated into a single collection with '+' function, 
 #'  e.g., \code{def.sW(W1=W1)+def.sW(W2=W2)}.
-#'  Additional named arguments that can be passed to \code{def.sW/def.sA} are:
+#'  Two special named arguments can be passed to the \code{def.sW}, \code{def.sA} functions:
 #'  \itemize{
 #'  \item \code{noname = TRUE} - to not use the summary measure name provided by the user when assigning
 #'    the names to the summary measure columns (variables); and
@@ -39,7 +40,9 @@ isValidAndUnreservedName <- function(string) {
 #' using the environment of the input data frame and enclosed within the user-calling environment.
 #' @param ... Named R expressions or character strings that specify the formula for creating the summary measures.
 #' @return R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
-#' @seealso \code{\link{tmlenet}}
+#' @seealso \code{\link{eval.summaries}} for
+#'  evaluation and validation of the summary measures,
+#'  \code{\link{tmlenet}} for estimation.
 #' @example tests/examples/2_defsWsA_examples.R
 #' @export
 def.sW <- function(...) Define_sVar$new(..., type = "sW", user.env = parent.frame())
@@ -121,7 +124,7 @@ parse.sVar.out <- function(sVar.idx, self) {
     sVar.expr_call <- sVar.expr
     message(sVar.expr_call %+% ": sVar formula is already a parsed call")
   } else {
-    stop("sVar formula class: " %+% class(sVar.expr) %+% ". Currently can't process sVar formulas that are not strings or calls.")
+    stop("sVar formula class: " %+% class(sVar.expr) %+% ". Currently can't process sVar formulas that are not strings or expressions")
   }
   sVar.expr_call <- eval(substitute(substitute(e, list(Kmax = eval(self$Kmax))), list(e = sVar.expr_call))) # Replace Kmax its val
   evaled_expr <- try(eval(sVar.expr_call, envir = data.env, enclos = self$user.env)) # eval'ing expr in the envir of data.df
@@ -284,7 +287,9 @@ Define_sVar <- R6Class("Define_sVar",
 
       # SAVE THE MAP BETWEEEN EXPRESSION NAMES AND CORRESPONDING COLUMN NAMES:
       self$sVar.names.map <- lapply(sVar.res_l, colnames)
+
       mat.sVar <- do.call("cbind", sVar.res_l)
+
       self$data.df <- NULL # erase pointer to data after evaluation is done
       return(mat.sVar)
     },
