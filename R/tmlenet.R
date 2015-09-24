@@ -392,8 +392,8 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
   assert_that(is.data.frame(data))
   assert_that(is.integerish(Kmax))
   Kmax <- as.integer(Kmax)
-  assert_that(is.Define_sVar(sW))
-  assert_that(is.Define_sVar(sA))
+  assert_that(is.DefineSummariesClass(sW))
+  assert_that(is.DefineSummariesClass(sA))
   nobs <- nrow(data)
 
   # Check no factors exist in the input data:
