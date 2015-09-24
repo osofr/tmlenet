@@ -100,8 +100,13 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
 
   #---------------------------------------------------------------------------------
   # Getting OBSERVED sW
+  # **** TODO ******
+  # (1) RETURN A MORE INTERPRETABLE ERROR when check.sW.g0.exist or check.sW.gstar.exist fails (list vars not found in sW_g0, sW_gstar)
+  # (2) Same for check.sA.exist -> return a more interpretable error
+  # (3) Add the same check for Q model (if not already added)
+  # ****************
   #---------------------------------------------------------------------------------
-  # Summary measure names. Will be made specific to g.star or g0.
+  # Summary measure names
   sW.g0_nms <- h.sVars$predvars
   sW.gstar_nms <- h.gstar.sVars$predvars
   # *****

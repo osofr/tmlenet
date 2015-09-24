@@ -8,19 +8,23 @@ Kmax <- 6 # Max number of friends in the network
 # Mean population outcome under deterministic intervention A=0 with 6 friends.
 # Intercept based TMLE.
 #***************************************************************************************
+
+# *************
+# TO BE REMOVED (no longer need Wnodes argument in tmlenet())
+# *************
 Wnodes <- c("W1", "W2", "W3")
 
 # SUMMARY MEASURES:
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
-  def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
+def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
+  def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-  replaceNAw0 = TRUE) +
-            def.sA(netA = A[[0:Kmax]], noname = TRUE)
+def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
+          def.sA(netA = A[[0:Kmax]])
 
 # POSSIBLE INTERVENTION FUNCTIONS:
-# Set x% of community to A=1 (returns probability P(A=1)):
-f.A_x <- function(data, x, ...) rep(x, nrow(data))
+# Set x% of community to A=1 (returns A sampled with probability P(A=1)):
+# f.A_x <- function(data, x, ...) rep(x, nrow(data))
+f.A_x <- function(data, x, ...) rbinom(n = nrow(data), size = 1, prob = x[1])
 # Deterministically set every A=0:
 f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
 # Deterministically set every A=1:
@@ -66,14 +70,19 @@ res_K6_1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y
                   IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                   f_gstar1 = f.A_0,
                   sW = def_sW, sA = def_sA,
-                  Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
-                  hform = "netA ~ netW2 + netW3_sum + nF",
-                  hform.gstar = "netA ~ netW3_sum",
+                  Qform = "Y ~ sum.netW3 + sum.netAW2",
+                  hform = "netA ~ netW2 + sum.netW3 + nF",
+                  hform.gstar = "netA ~ sum.netW3",
                   optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+
+
 res_K6_1$EY_gstar1$estimates
 res_K6_1$EY_gstar1$vars
 res_K6_1$EY_gstar1$CIs
 res_K6_1$EY_gstar1$other.vars
+
+
+
 
 #***************************************************************************************
 # Example 2. 

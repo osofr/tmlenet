@@ -257,16 +257,16 @@ Kmax <- 6 # Max number of friends in the network
 Wnodes <- c("W1", "W2", "W3")
 
 # SUMMARY MEASURES:
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
-  def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
+def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
+  def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-  replaceNAw0 = TRUE) +
-            def.sA(netA = A[[0:Kmax]], noname = TRUE)
+def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
+          def.sA(netA = A[[0:Kmax]])
 
 # POSSIBLE INTERVENTION FUNCTIONS:
-# Set x\% of community to A=1 (returns probability P(A=1)):
-f.A_x <- function(data, x, ...) rep(x, nrow(data))
+# Set x\% of community to A=1 (returns A sampled with probability P(A=1)):
+# f.A_x <- function(data, x, ...) rep(x, nrow(data))
+f.A_x <- function(data, x, ...) rbinom(n = nrow(data, prob = x[1]))
 # Deterministically set every A=0:
 f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
 # Deterministically set every A=1:

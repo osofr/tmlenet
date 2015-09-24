@@ -437,8 +437,10 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
   # Test parsing and evaluating the summary measures (in class Define_sVar):
   #----------------------------------------------------------------------------------
   # Testing the evaluation of summary measures:
-  sW.matrix <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = nFnode)
-  sA.matrix <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
+  sW.matrix <- sW$eval.nodeforms(data.df = data, netind_cl = netind_cl)
+  # sW.matrix <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = nFnode)
+  sA.matrix <- sA$eval.nodeforms(data.df = data, netind_cl = netind_cl)
+  # sA.matrix <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
   if (verbose) {
     print("sample matrix of sW summary measurs: : "); print(head(sW.matrix))
     print("sample matrix of sA summary measurs: "); print(head(sA.matrix))
@@ -449,7 +451,8 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
   #---------------------------------------------------------------------------------
   # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
   #---------------------------------------------------------------------------------
-  datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode, addnFnode = TRUE)
+  datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode)
+  # datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode, addnFnode = TRUE)
   datnetW$make.sVar(Odata = data, sVar.object = sW)
   datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
   datnetA <- DatNet$new(netind_cl = netind_cl)

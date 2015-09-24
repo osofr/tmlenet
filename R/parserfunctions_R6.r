@@ -1,5 +1,7 @@
 # ************************************************************************************
 # TO DO: 
+# REIMPORT THIS FILE BACK INTO SIMCAUSAL
+# ************************************************************************************
   # x) Extend the checking for non_TD pars to TD parents in find_FormVars() 
   # x) For non_TD var outside of the DAG also check that length(non_TD) < 2
   # x) => Want to allow vectors in user.env to be referenced as uservec[t]
@@ -448,7 +450,6 @@ eval.nodeform.out <- function(expr.idx, self, data.df) {
 #' @section Methods:
 #' \describe{
 #'   \item{\code{new(..., type, user.env)}}{...}
-#'   \item{\code{get.mat.sVar(data.df, netind_cl, addnFnode = NULL)}}{...}
 #'   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special 
 #'   variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
 #' }
@@ -547,6 +548,10 @@ Define_sVar <- R6Class("Define_sVar",
         netind_cl <- env$netind_cl
         if (is.null(netind_cl)) stop("Network must be defined when using Var[[netidx]] syntax")
         Kmax <- netind_cl$Kmax
+
+        print("var: "); print(var)
+        print("netidx: "); print(netidx)
+        print("Kmax: "); print(Kmax)
 
         var <- substitute(var)
         var.chr <- as.character(var)

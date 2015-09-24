@@ -43,79 +43,146 @@ using the environment of the input data frame and enclosed within the user-calli
 }
 \examples{
 #***************************************************************************************
-# Examples of summary measures defined by def.sW
-#***************************************************************************************
-# Use R expressions to define summary measure functions, s.a.,
-# W2[[0]] just means W2; W2[[1:Kmax]] means vectors of (W2_netF_j), j=1, ..., Kmax;
-def_sW <- def.sW(netW1 = W1[[0:Kmax]], noname = TRUE) +
-          def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) +
-          def.sW(netW3 = W3[[1:Kmax]], noname = TRUE) +
-          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
-
-def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
-            def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
-
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]), noname= TRUE,
-                  replaceNAw0 = TRUE)
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], netW3_sum = rowSums(W3[[1:Kmax]]),
-                  replaceNAw0 = FALSE, noname = TRUE)
-
-def_sW <- def.sW(W1 = W1[[0]], W1 = W2[[0:Kmax]], W1 = W3[[0:Kmax]],
-                  netW1_sum = rowSums(W1[[1:Kmax]]),
-                  netW2_sum = rowSums(W2[[1:Kmax]]),
-                  netW3_sum = rowSums(W3[[1:Kmax]]))
-
-#***************************************************************************************
-# Examples of summary measures defined by def.sA
-#***************************************************************************************
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-            replaceNAw0 = TRUE) +
-            def.sA(netA = A[[0:Kmax]])
-
-#***************************************************************************************
-# Example. Three equivalent ways to define summary measures:
-#***************************************************************************************
-def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]])
-def_sW <- def.sW(W1 = W1, W2 = W2, W3 = W3) # vs 2
-def_sW <- def.sW(W1 = "W1[[0]]", W2 = "W2[[0]]", W3 = "W3[[0]]") # vs 3
-
-#***************************************************************************************
-# Example. See contents of the Define_sVar object returned by def.sW
-#***************************************************************************************
-def_sW$sVar.exprs
-def_sW$sVar.expr.names
-def_sW$ReplMisVal0
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-
-#***************************************************************************************
-# Example. More summary measures for sA
-#***************************************************************************************
-def_sA <- def.sA(netA = A[[0:Kmax]], noname = TRUE)
-def_sA <- def.sA(netA = "A[[0:Kmax]]",
-                sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))
-
-#***************************************************************************************
-# Example. More summary measures for sW and sA
-#***************************************************************************************
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
-          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
-            
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-            replaceNAw0 = TRUE) +
-          def.sA(netA = A[[0:Kmax]], noname = TRUE)
-
-#***************************************************************************************
-# Evaluate the summary measures applied to the  (O)bserved data (data.frame) and network
+# LOAD DATA, LOAD A NETWORK
 #***************************************************************************************
 data(df_netKmax6) # load observed data
+head(df_netKmax6)
 data(NetInd_mat_Kmax6)  # load the network ID matrix
-res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
-  NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
+netind_cl <- simcausal:::NetIndClass$new(nobs = nrow(df_netKmax6), Kmax = 6)
+netind_cl$NetInd <- NetInd_mat_Kmax6
+netind_cl$nF
 
 #***************************************************************************************
-# Contents of the list returned by eval.summaries():
+# Example. Equivalent ways of defining the same summary measures
+# Same rules apply to def.sA function
 #***************************************************************************************
+def_sW <- def.sW(W1, W2, W3)
+def_sW <- def.sW("W1", "W2", "W3")
+def_sW <- def.sW(W1 = W1, W2 = W2, W3 = W3)
+# W1[[0]] just means W1:
+def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]])
+def_sW <- def.sW(W1 = "W1[[0]]", W2 = "W2[[0]]", W3 = "W3[[0]]")
+
+#***************************************************************************************
+# Summary measures based on network information.
+# Matrix result of summary measure expression.
+#***************************************************************************************
+# Use R expressions to define summary measure functions, s.a.,
+# W2[[1:Kmax]] means vectors of W2 values of friends (W2_netF_j), j=1, ..., Kmax;
+def_sW <- def.sW(netW2 = W2[[0:Kmax]], W3 = W3[[0]])
+# resulting matrix of summary measures:
+resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+# the mapping from the summary measure names to the matrix column names:
+def_sW$sVar.names.map
+
+# Equivalent way to define the same summary measure is to use syntax '+'
+# and omit the names of the two summary measures
+# (the names will be assigned automatically as "W2" for the first matrix W2[[0:Kmax]])
+# and "W3" for the second summary measure "W3[[0]]"
+def_sW <- def.sW(W2[[0:Kmax]]) + def.sW(W3[[0]])
+resmat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+def_sW$sVar.names.map
+
+#***************************************************************************************
+# More complex summary measures that apply dimension reduction functions to network:
+#***************************************************************************************
+# define new summary measure as a sum of friend covariate values of W3:
+# replaceNAw0 = TRUE sets all the missing values to 0
+def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
+
+# resulting matrix of summary measures:
+resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+# the mapping from the summary measure names to the matrix column names:
+def_sW$sVar.names.map
+
+#***************************************************************************************
+# More complex summary measures that involve more than one covariate:
+#***************************************************************************************
+# replaceNAw0 = TRUE sets all the missing values to 0
+def_sW <- def.sW(netW1W3 = W3[[1:Kmax]]*W3[[1:Kmax]])
+
+# resulting matrix of summary measures:
+resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+# the mapping from the summary measure names to the matrix column names:
+def_sW$sVar.names.map
+
+#***************************************************************************************
+# vector result, complex expression with more than one parent
+# all complex expressions must be named, otherwise an error is produced
+#***************************************************************************************
+# named expression:
+def_sW <- def.sW(sum.netW2W3 = sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
+mat1a <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+
+# the same unnamed expression (trying to run will result in error):
+def_sW <- def.sW(sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
+\dontrun{
+  mat1b <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)  
+}
+
+#***************************************************************************************
+# matrix result, complex expression with more than one parent:
+# when more than one parent is present, the naming convention for resulting column names
+# sVar.name\%+\%c(1:ncol)
+# all complex expressions must be named, otherwise an error is produced
+#***************************************************************************************
+# named expression:
+def_sW <- def.sW(sum.netW2W3 = W3[[1:Kmax]]*W2[[1:Kmax]])
+mat1a <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+
+# the same as unnamed expression (try to run will result in an error):
+def_sW <- def.sW(W3[[1:Kmax]]*W2[[1:Kmax]])
+\dontrun{
+  mat1b <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+}
+
+#***************************************************************************************
+# Iteratively building higher dimensional summary measures using '+' function:
+#***************************************************************************************
+def_sW <- def.sW(W1) +
+          def.sW(netW1 = W2[[1:Kmax]]) +
+          def.sW(sum.netW1W3 = sum(W1[[1:Kmax]]*W3[[1:Kmax]]), replaceNAw0 = TRUE)
+
+# resulting matrix of summary measures:
+resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+# the mapping from the summary measure names to the matrix column names:
+def_sW$sVar.names.map
+
+#***************************************************************************************
+# Examples of summary measures defined by def.sA (functions of baseline and treatment)
+#***************************************************************************************
+def_sA <- def.sA(sum.netAW2net = sum((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
+                  replaceNAw0 = TRUE) +
+          def.sA(netA = A[[0:Kmax]])
+
+resmat <- def_sA$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+def_sW$sVar.names.map
+
+#***************************************************************************************
+# More summary measures for sA
+#***************************************************************************************
+def_sA <- def.sA(netA = "A[[0:Kmax]]") +
+          def.sA(sum.AW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE)
+
+resmat <- def_sA$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+def_sW$sVar.names.map
+
+#***************************************************************************************
+# Using eval.summaries to evaluate summary measures for both, def.sW and def.sA
+# based on the (O)bserved data (data.frame) and network
+#***************************************************************************************
+def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
+          def.sW(netW3_sum = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
+            
+def_sA <- def.sA(sum.AW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE) +
+          def.sA(netA = A[[0:Kmax]])
+
+data(df_netKmax6) # load observed data
+data(NetInd_mat_Kmax6)  # load the network ID matrix
+res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = 6, data = df_netKmax6,
+                      NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
+
+# Contents of the list returned by eval.summaries():
 names(res)
 # matrix of sW summary measures:
 res$sW.matrix
@@ -126,225 +193,6 @@ res$NETIDmat
 # Observed data (sW,sA) stored as "DatNet.sWsA" R6 class object:
 res$DatNet.ObsP0
 class(res$DatNet.ObsP0)
-
-
-
-
-#***************************************************************************************
-# Testing new parser Define_sVar_tmlenet:
-#***************************************************************************************
-data(df_netKmax6) # load observed data
-head(df_netKmax6)
-data(NetInd_mat_Kmax6)  # load the network ID matrix
-netind_cl <- simcausal:::NetIndClass$new(nobs = nrow(df_netKmax6), Kmax = 6)
-netind_cl$NetInd <- NetInd_mat_Kmax6
-netind_cl$nF
-
-eval_exprs <- function(sVar_expr, data.df, netind_cl) {
-  mat <- sVar_expr$eval.nodeforms(data.df = data.df, netind_cl = netind_cl)
-  return(mat)
-}
-
-# --------------------------------------------------------------------------------------
-# test 1 (simple vars, no names):
-# --------------------------------------------------------------------------------------
-# as expressions:
-def_sW <- def.sW(W1,W2,W3)
-mat1 <- eval_exprs(def_sW, df_netKmax6, netind_cl)
-def_sW$sVar.names.map
-mat1b <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl)
-def_sW$sVar.names.map
-head(mat1)
-head(mat1b)
-all.equal(mat1, mat1b)
-all.equal(mat1[,"W1"], df_netKmax6[,"W1"])
-all.equal(mat1[,"W2"], df_netKmax6[,"W2"])
-all.equal(mat1[,"W3"], df_netKmax6[,"W3"])
-all.equal(mat1[,"nF"], netind_cl$nF)
-
-def_sW <- def.sW(W1[[0]],W2,W3)
-mat2 <- eval_exprs(def_sW, df_netKmax6, netind_cl)
-def_sW$sVar.names.map
-mat2b <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl)
-def_sW$sVar.names.map
-head(mat2)
-head(mat2b)
-all.equal(mat2, mat2b)
-all.equal(mat1, mat2)
-
-# as character strings:
-def_sW <- def.sW("W1","W2","W3")
-mat2 <- eval_exprs(def_sW, df_netKmax6, netind_cl)
-def_sW$sVar.names.map
-mat2b <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl)
-def_sW$sVar.names.map
-head(mat2)
-head(mat2b)
-all.equal(mat2, mat2b)
-all.equal(mat1, mat2)
-
-def_sW <- def.sW("W1[[0]]","W2","W3")
-mat2 <- eval_exprs(def_sW, df_netKmax6, netind_cl)
-def_sW$sVar.names.map
-mat2b <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl)
-def_sW$sVar.names.map
-head(mat2)
-head(mat2b)
-all.equal(mat2, mat2b)
-all.equal(mat1, mat2)
-
-# --------------------------------------------------------------------------------------
-# test 2 (two expressions):
-# --------------------------------------------------------------------------------------
-def_sW <- def.sW(netW2 = W2[[0:Kmax]], W2 = "W2", W3 = W3[[0]])
-def_sW$exprs_list
-def_sW$asis.flags
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-def_sW$sVar.expr.names
-
-mat1 <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-(map1 <- def_sW$sVar.names.map)
-head(mat1)
-colnames(mat1)
-mat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-(map2 <- def_sW$sVar.names.map)
-head(mat2)
-colnames(mat2)
-all.equal(mat1, mat2)
-all.equal(map1, map2)
-
-# --------------------------------------------------------------------------------------
-# test 3 (simple expressions, noname = FALSE):
-# --------------------------------------------------------------------------------------
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], W2 = W2)
-def_sW$exprs_list
-def_sW$asis.flags
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-def_sW$sVar.expr.names
-
-mat1 <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-(map1 <- def_sW$sVar.names.map)
-head(mat1)
-colnames(mat1)
-mat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-(map2 <- def_sW$sVar.names.map)
-head(mat2)
-colnames(mat2)
-all.equal(mat1, mat2)
-all.equal(map1, map2)
-
-# --------------------------------------------------------------------------------------
-# test 1 (just one expression, noname):
-# both return the same results
-# --------------------------------------------------------------------------------------
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE)
-def_sW$exprs_list
-def_sW$asis.flags
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-def_sW$sVar.expr.names
-
-mat1 <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-head(mat1)
-colnames(mat1)
-mat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-head(mat2)
-colnames(mat2)
-all.equal(mat1, mat2)
-
-
-
-# --------------------------------------------------------------------------------------
-# test 3 (complex expression, noname = FALSE):
-# todo: should give an error for using A variable in def.sW
-# --------------------------------------------------------------------------------------
-# def_sW <- def.sW(netW2 = W2[[1:Kmax]], W2 = W2)
-def_sW <- def.sW(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE)
-def_sW$exprs_list
-def_sW$asis.flags
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-def_sW$sVar.expr.names
-
-# version 1 using the simcausal evaluator:
-mat1 <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-map1 <- def_sW$sVar.names.map
-head(mat1)
-colnames(mat1)
-mat2a <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-map2a <- def_sW$sVar.names.map
-head(mat2a)
-colnames(mat2a)
-all.equal(mat1, mat2a)
-all.equal(map1, map2a)
-
-# version 2 using the simcausal evaluator:
-def_sW <- def.sW(sum_1mAW2_nets = sum((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE)
-def_sW$exprs_list
-def_sW$asis.flags
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-def_sW$sVar.expr.names
-mat2b <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-map2b <- def_sW$sVar.names.map
-head(mat2b)
-colnames(mat2b)
-all.equal(mat1, mat2b)
-all.equal(map1, map2b)
-
-
-
-
-# --------------------------------------------------------------------------------------
-# test 4 (simple unnamed expression)
-# --------------------------------------------------------------------------------------
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], W2)
-def_sW$exprs_list
-def_sW$asis.flags
-def_sW$sVar.misXreplace
-def_sW$sVar.noname
-def_sW$sVar.expr.names
-
-mat1 <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-(map1 <- def_sW$sVar.names.map)
-head(mat1)
-colnames(mat1)
-
-mat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-map2 <- def_sW$sVar.names.map
-head(mat2)
-colnames(mat2)
-map2
-
-
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], W1[[0]]*W2[[0]])
-def_sW <- def.sW(W2[[1:Kmax]], W1[[0]]*W2[[0]])
-mat1 <- def_sW$get.mat.sVar(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-head(mat1)
-names(mat1)
-map1 <- def_sW$sVar.names.map
-names(map1)
-mat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl, addnFnode = "nF")
-map2 <- def_sW$sVar.names.map
-head(mat2)
-colnames(mat2)
-map2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
 \seealso{
 \code{\link{eval.summaries}} for

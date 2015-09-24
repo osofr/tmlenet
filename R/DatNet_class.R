@@ -172,7 +172,7 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms, levels = 1:nbins) {
 #' @details
 #' \itemize{
 #' \item{\code{Kmax}} - Maximum number of friends for any observation.
-#' \item{\code{addnFnode}} - Flag to add number of friends as an additional vector to the matrix of existing summary measures. 
+# \item{\code{addnFnode}} - Flag to add number of friends as an additional vector to the matrix of existing summary measures. 
 #' \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
 #' \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
 #' \item{\code{Odata}} - Pointer to the input (observed) data frame.
@@ -184,7 +184,7 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms, levels = 1:nbins) {
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(netind_cl, nodes, nFnode, addnFnode = FALSE, ...)}}{...}
+#'   \item{\code{new(netind_cl, nodes, nFnode, ...)}}{...}
 #'   \item{\code{make.sVar(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE)}}{...}
 #'   \item{\code{def_types_sVar(type.sVar = NULL)}}{...}
 #'   \item{\code{norm_c_sVars()}}{...}
@@ -211,8 +211,11 @@ DatNet <- R6Class(classname = "DatNet",
   class = TRUE,
   public = list(
     Kmax = integer(),          # max n of Friends in the network
+    # ***********************************************************
+    # TO DO: is nFnode even needed anymore???? Where is it used?
+    # ***********************************************************
     nFnode = "nF",
-    addnFnode = FALSE,         # Flag to add Fnode to predictors mat / df output
+    # addnFnode = FALSE,         # Flag to add Fnode to predictors mat / df output
     netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
     Odata = NULL,              # data.frame used for creating the summary measures in mat.sVar, saved each time make.sVar called
     # mat.netVar = NULL,         # NOT DONE mat of network VarNode vals (+ VarNode itself) for each node in VarNodes
@@ -227,12 +230,13 @@ DatNet <- R6Class(classname = "DatNet",
     # nobs = NA_integer_,      # n of samples in the OBSERVED (original) data
     nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
 
-    initialize = function(netind_cl, nodes, nFnode, addnFnode = FALSE, ...) {
-      assert_that(is.flag(addnFnode))
+    initialize = function(netind_cl, nodes, nFnode, ...) {
+    # initialize = function(netind_cl, nodes, nFnode, addnFnode = FALSE, ...) {
+      # assert_that(is.flag(addnFnode))
       self$netind_cl <- netind_cl
       self$Kmax <- netind_cl$Kmax
       if (!missing(nFnode)) self$nFnode <- nFnode
-      self$addnFnode <- addnFnode
+      # self$addnFnode <- addnFnode
       if (!missing(nodes)) self$nodes <- nodes
       invisible(self)
     },
@@ -251,8 +255,9 @@ DatNet <- R6Class(classname = "DatNet",
       }
 
       self$sVar.object <- sVar.object
-      if (self$addnFnode) { nFnode <- self$nFnode } else { nFnode <- NULL }
-      self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl, addnFnode = nFnode)
+      self$mat.sVar <- sVar.object$eval.nodeforms(data.df = Odata, netind_cl = self$netind_cl)
+      # if (self$addnFnode) { nFnode <- self$nFnode } else { nFnode <- NULL }
+      # self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl, addnFnode = nFnode)
 
       # MAKE def_types_sVar an active binding? calling self$def_types_sVar <- type.sVar assigns, calling self$def_types_sVar defines.
       self$def_types_sVar(type.sVar) # Define the type of each sVar[i]: bin, cat or cont
@@ -641,7 +646,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         }
       }
       self$dat.sVar <- df.sWsA
-      # self$mat.sVar <- df.sWsA
       invisible(self)
     }
   ),

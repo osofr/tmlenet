@@ -155,10 +155,8 @@ test.net.fit.density.iptw <- function() {
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO), Kmax = Kmax)
     netind_cl$NetInd <- NetInd_mat
     # Define datNetObs:
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes, addnFnode = TRUE)$make.sVar(Odata = datO, sVar.object = def_sW)
-    # datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes, VarNodes = nodes$Wnodes, addnFnode = TRUE)$make.sVar(Odata = datO, sVar.object = def_sW)
+    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sW)
     datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sA)
-    # datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes, VarNodes = nodes$Anode)$make.sVar(Odata = datO, sVar.object = def_sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
   }
@@ -180,19 +178,16 @@ test.net.fit.density.iptw <- function() {
   nodeobjs.gstar <- def.nodeojb.net(Kmax = Kmax, datO = datO, NetInd_mat = NetInd_mat, gstar = TRUE)
 
   # g0:
-  testm.sW <- nodeobjs.g0$def_sW$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
+  testm.sW <- nodeobjs.g0$def_sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
   # names(nodeobjs.g0)
   # head(nodeobjs.g0$datNetObs$mat.sVar)
   print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs.g0$def_sW$sVar.names.map); print(head(datO))
-  testm.sA <- nodeobjs.g0$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
+  testm.sA <- nodeobjs.g0$def_sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
   print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs.g0$def_sA$sVar.names.map); print(head(datO))
 
   # gstar:
-  testm.sW.gstar <- nodeobjs.gstar$def_sW$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
-  # print("testm.sW.gstar"); print(head(testm.sW.gstar)); print("testm.sW.gstar map"); print(nodeobjs.gstar$def_sW$sVar.names.map); print(head(datO))
-  testm.sA.gstar <- nodeobjs.gstar$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
-  # print("testm.sA.gstar"); print(head(testm.sA.gstar)); print("testm.sA.gstar map"); print(nodeobjs.gstar$def_sA$sVar.names.map); print(head(datO))
-  # head(nodeobjs.g0$datNetObs$mat.sVar); head(nodeobjs.gstar$datNetObs$mat.sVar)
+  testm.sW.gstar <- nodeobjs.gstar$def_sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
+  testm.sA.gstar <- nodeobjs.gstar$def_sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
 
   # Define est_params_list:
   reg.sVars <- list(outvars = c("sA", "net.mean.sA"), predvars = c("W1", "W2", "W3", "net.mean.W1"))

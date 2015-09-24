@@ -49,7 +49,7 @@ test.simple.fit.density.sA <- function() {
     def_sA <- def.sA(sA = "sA")
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
     # Define datNetObs:
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes, addnFnode = TRUE)$make.sVar(Odata = datO, sVar.object = def_sW)
+    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sW)
     checkTrue(tmlenet:::is.DatNet(datnetW))
     datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
@@ -60,10 +60,8 @@ test.simple.fit.density.sA <- function() {
   # nsamp <- 100000
   datO <- get.density.sAdat(nsamp)
   nodeobjs <- def.nodeojb(datO)
-  testm.sW <- nodeobjs$def_sW$get.mat.sVar(data.df = datO, netind_cl = nodeobjs$netind_cl, addnFnode = "nF") # addnFnode = NULL)
-  # print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs$def_sW$sVar.names.map)
-  testm.sA <- nodeobjs$def_sA$get.mat.sVar(data.df = datO, netind_cl = nodeobjs$netind_cl)
-  # print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs$def_sA$sVar.names.map)
+  testm.sW <- nodeobjs$def_sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
+  testm.sA <- nodeobjs$def_sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
 
   # Define est_params_list:
   reg.sVars <- list(outvars = c("sA"), predvars = c("W1", "W2", "W3"))

@@ -48,14 +48,19 @@ Take input data, create a network matrix (when input network matrix not provided
 }
 \examples{
 #***************************************************************************************
-# Define some summary measures for sW and sA
+# Define some summary measures for sW
 #***************************************************************************************
-def_sW <- def.sW(netW2 = W2[[1:Kmax]], noname = TRUE) + 
-          def.sW(netW3_sum = rowSums(W3[[1:Kmax]]), replaceNAw0 = TRUE)
-            
-def_sA <- def.sA(sum_1mAW2_nets = rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]),
-            replaceNAw0 = TRUE) +
-          def.sA(netA = A[[0:Kmax]], noname = TRUE)
+def_sW <- def.sW(W1, W2, W3) +
+          def.sW(netW1 = W1[[1:Kmax]]) +
+          def.sW(mean.netW2 = mean(W2[[1:Kmax]]), replaceNAw0 = TRUE) +
+          def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
+
+#***************************************************************************************
+# Define some summary measures for sA
+#***************************************************************************************
+def_sA <- def.sA("A") + # equivalent to def.sA(A)
+          def.sA(netA = A[[0:Kmax]]) +
+          def.sA(sum.AW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE)
 
 #***************************************************************************************
 # Evaluate the summary measures applied to the  (O)bserved data (data.frame) and network

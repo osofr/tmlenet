@@ -337,7 +337,6 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       return(mat.sVar)
     },
 
-   # eval.nodeforms = function(data.df, netind_cl, addnFnode = NULL) {
    eval.nodeforms = function(data.df, netind_cl) {
       assert_that(is.data.frame(data.df))
       if (missing(netind_cl) && is.null(self$netind_cl)) stop("must specify netind_cl arg at least once")
@@ -353,16 +352,9 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
 
       print("old names(self$exprs_list): "); print(names(self$exprs_list))
       print("new names self$new_expr_names: "); print(names(self$new_expr_names))
+
       names(sVar.res_l) <- names(self$new_expr_names)
       names(self$exprs_list) <- names(self$new_expr_names)
-
-      # if (!is.null(addnFnode)) {
-      #   self$exprs_evalres <- c(self$exprs_evalres, list(nF = netind_cl$mat.nF(addnFnode)))
-      #   self$exprs_parents <- c(self$exprs_parents, list(nF = addnFnode))
-      # }
-      # print("self$exprs_list: "); print(self$exprs_list)
-      # print("self$exprs_parents: "); print(self$exprs_parents)
-      # print("self$exprs_evalres: "); print(lapply(self$exprs_evalres, head))
 
       # assign self$sVar.names.map based on newly standardized summary names:
       self$sVar.names.map <- lapply(sVar.res_l, function(x) colnames(x[["evaled_expr"]]))
@@ -371,7 +363,6 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
 
       mat.sVar <- do.call("cbind", lapply(sVar.res_l, function(x) x[["evaled_expr"]]))
       print("eval result mat after standardizing: "); print(head(mat.sVar))
-      # mat.sVar <- do.call("cbind", self$exprs_evalres)
       return(mat.sVar)
     },
 

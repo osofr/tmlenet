@@ -19,7 +19,6 @@ Class for evaluating and storing arbitrary summary measures sVar.
 \details{
 \itemize{
 \item{\code{Kmax}} - Maximum number of friends for any observation.
-\item{\code{addnFnode}} - Flag to add number of friends as an additional vector to the matrix of existing summary measures.
 \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
 \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
 \item{\code{Odata}} - Pointer to the input (observed) data frame.
@@ -33,7 +32,7 @@ Class for evaluating and storing arbitrary summary measures sVar.
 \section{Methods}{
 
 \describe{
-  \item{\code{new(netind_cl, nodes, nFnode, addnFnode = FALSE, ...)}}{...}
+  \item{\code{new(netind_cl, nodes, nFnode, ...)}}{...}
   \item{\code{make.sVar(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE)}}{...}
   \item{\code{def_types_sVar(type.sVar = NULL)}}{...}
   \item{\code{norm_c_sVars()}}{...}

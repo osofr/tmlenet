@@ -33,7 +33,6 @@ This R6 class can parse and evaluate (given the input data) the summary measures
 
 \describe{
   \item{\code{new(..., type, user.env)}}{...}
-  \item{\code{get.mat.sVar(data.df, netind_cl, addnFnode = NULL)}}{...}
   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special
   variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
 }
