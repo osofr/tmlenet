@@ -95,8 +95,8 @@ Currently available estimators are:
 }
 \description{
 Estimate the average network effect among dependent units with known network structure (in presence of
- interference and/or spillover) using \emph{TMLE} (targeted maximum likelihood estimation), \emph{IPTW}
- (Horvitz-Thompson or the inverse-probability-of-treatment) and \emph{GCOMP} (parametric G-computation formula).
+ interference and/or spillover) using \strong{TMLE} (targeted maximum likelihood estimation), \strong{IPTW}
+ (Horvitz-Thompson or the inverse-probability-of-treatment) and \strong{GCOMP} (parametric G-computation formula).
 }
 \section{Details}{
 

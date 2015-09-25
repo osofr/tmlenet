@@ -83,7 +83,7 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
   # 
 
 ## ---------------------------------------------------------------------
-#' R6 class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention.
+#' R6 class for Monte-Carlo evaluation of various substitution estimators for exposures generated under the user-specified stochastic intervention function.
 #'
 #' This R6 class performs the Monte-Carlo evaluation of the target parameters using the data generated under 
 #'  the user-specified arbitrary intervention \code{gstar}.

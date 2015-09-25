@@ -40,11 +40,12 @@ A named list that contains:
 }
 \description{
 Take input data, create a network matrix (when input network matrix not provided) and evaluate the summary measures
- previously defined with functions \code{def.sW} and \code{def.sA}. This function is called internally by \code{tmlenet}.
+ previously defined with functions \code{\link{def.sW}} and \code{\link{def.sA}}.
+ This function is called internally by \code{tmlenet} for the evaluation of the summary measures.
  The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
  \code{tmlenet} function.
  When \code{DatNet.ObsP0} is used as an input to \code{tmlenet}, the rest of the input arguments already provided to
- \code{eval.summaries} function can be omitted from the \code{tmlenet} function call.
+ function \code{eval.summaries} can be omitted from the \code{tmlenet} function call.
 }
 \examples{
 #***************************************************************************************

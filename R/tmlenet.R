@@ -353,11 +353,12 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
 #' Evaluate Summary Measures sA and sW
 #'
 #' Take input data, create a network matrix (when input network matrix not provided) and evaluate the summary measures 
-#'  previously defined with functions \code{def.sW} and \code{def.sA}. This function is called internally by \code{tmlenet}.
+#'  previously defined with functions \code{\link{def.sW}} and \code{\link{def.sA}}. 
+#'  This function is called internally by \code{tmlenet} for the evaluation of the summary measures.
 #'  The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
 #'  \code{tmlenet} function.
 #'  When \code{DatNet.ObsP0} is used as an input to \code{tmlenet}, the rest of the input arguments already provided to 
-#'  \code{eval.summaries} function can be omitted from the \code{tmlenet} function call.
+#'  function \code{eval.summaries} can be omitted from the \code{tmlenet} function call.
 #' @param sW Same as \code{\link{tmlenet}} input argument.
 #' @param sA Same as \code{\link{tmlenet}} input argument.
 #' @param Kmax Same as \code{\link{tmlenet}} input argument.
@@ -474,8 +475,8 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' Estimate Average Network Effects For Arbitrary (Stochastic) Interventions
 #'
 #' Estimate the average network effect among dependent units with known network structure (in presence of
-#'  interference and/or spillover) using \emph{TMLE} (targeted maximum likelihood estimation), \emph{IPTW}
-#'  (Horvitz-Thompson or the inverse-probability-of-treatment) and \emph{GCOMP} (parametric G-computation formula).
+#'  interference and/or spillover) using \strong{TMLE} (targeted maximum likelihood estimation), \strong{IPTW}
+#'  (Horvitz-Thompson or the inverse-probability-of-treatment) and \strong{GCOMP} (parametric G-computation formula).
 # Arguments:
 #' @param data Input observed data as a \code{data.frame}, with named columns for baseline covariates (W),
 #'  assigned treatment (A), the outcome (Y) and network of friends (F)
@@ -812,7 +813,7 @@ tmlenet <- function(data, Kmax, sW, sA,
   DatNet.ObsP0 <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, IDnode = IDnode, NETIDnode = NETIDnode, 
                                   sep = sep, NETIDmat = NETIDmat, verbose = FALSE)$DatNet.ObsP0
   nobs <- DatNet.ObsP0$nobs
-  # variables that will only be available to eval.summaires:
+  # variables that will only be available to eval.summaries:
   # node_l <- list(IDnode = IDnode, NETIDnode = NETIDnode, nFnode = nFnode)
   # new version of nodes:
   node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anode = Anode, AnodeDET = AnodeDET,

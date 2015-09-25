@@ -9,8 +9,8 @@ tmlenet_options(useglm = FALSE, parfit = FALSE,
   maxncats = 20, poolContinVar = FALSE, maxNperBin = 1000)
 }
 \arguments{
-\item{useglm}{Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for
-\code{glm::glm.fit}.}
+\item{useglm}{Set to \code{FALSE} to estimate with \code{\link[speedglm]{speedglm.wfit}} and \code{TRUE} for
+\code{\link[stats]{glm.fit}}.}
 
 \item{parfit}{Default is \code{FALSE}. Set to \code{TRUE} to use \code{foreach} package and its functions
 \code{foreach} and \code{dopar} to perform

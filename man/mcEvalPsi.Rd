@@ -3,7 +3,7 @@
 \docType{class}
 \name{mcEvalPsi}
 \alias{mcEvalPsi}
-\title{R6 class for Monte-Carlo evaluation of various substitution estimators under user-specified stochastic intervention.}
+\title{R6 class for Monte-Carlo evaluation of various substitution estimators for exposures generated under the user-specified stochastic intervention function.}
 \format{An \code{\link{R6Class}} generator object}
 \usage{
 mcEvalPsi

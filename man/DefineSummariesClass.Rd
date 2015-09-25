@@ -9,30 +9,35 @@
 DefineSummariesClass
 }
 \description{
-This R6 class can parse and evaluate (given the input data) the summary measures defined with functions
+This \pkg{R6} class can parse and evaluate (given the input data frame) the summary measures defined by functions
  \code{\link{def.sW}} and \code{\link{def.sA}}.
- The summary measure expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
- Note that the resulting summary measures are never stored inside this class,
- the data is stored only in \code{\link{DatNet}} and \code{\link{DatNet.sWsA}} R6 classes.
+ The object of this class is generally instantiated by calling functions \code{def.sA} or \code{def.sW}.
+ The summary expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
+ Note that the evaluation results of the summary measures are never stored inside this class,
+ data can be stored only inside \code{\link{DatNet}} and \code{\link{DatNet.sWsA}} \pkg{R6} classes.
 }
 \details{
 \itemize{
-\item{\code{type}} - Type of the summary measure, sW or sA, determined by the calling functions \code{def.sW} or \code{def.sA}.
-\item{\code{exprs_list}} - Deparsed list of summary measure expressions (as strings).
-\item{\code{new_expr_names}} - Re-evaluated summary measure names, if none were provided by the user these will be
- evaluated on the basis of variable names used in the expression.
-\item{\code{sVar.names.map}} - Map of the summary measure names given by the user to actual column names in the summary measure matrix.
+\item{\code{type}} - Type of the summary measure, \code{sW} or \code{sA}, determined by the calling functions \code{\link{def.sW}} or \code{\link{def.sA}}.
+\item{\code{exprs_list}} - Deparsed list of summary expressions (as strings).
+\item{\code{new_expr_names}} - The summary measure names, if none were provided by the user these will be
+ evaluated on the basis of variable names used in the summary expression itself.
+\item{\code{sVar.names.map}} - Named list that maps the user specified summary measure names to the corresponding matrix column names
+ from the summary measure evaluation result.
 }
 }
 \section{Methods}{
 
 \describe{
-  \item{\code{new(type)}}{...}
-  \item{\code{set.new.exprs(exprs_list)}}{...}
-  \item{\code{add.new.exprs(NewSummaries)}}{...}
-  \item{\code{eval.nodeforms(data.df, netind_cl)}}{...}
+  \item{\code{new(type)}}{Instantiate a new object of class \code{DefineSummariesClass} by providing a type, \code{"sW"} or \code{"sA"}}
+  \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}}
+  \item{\code{add.new.exprs(NewSummaries)}}{Adds new internal summary measure expressions to the existing ones, \code{NewSummaries}
+   must be an object of class \code{DefineSummariesClass} (to enable \code{Object1 + Object2} syntax).}
+  \item{\code{eval.nodeforms(data.df, netind_cl)}}{Evaluate the expressions one by one, standardize all names according to one naming
+   convention (described in \code{\link{def.sW}}), cbinding results together into one output matrix. \code{data.df} is the input
+   data.frame and \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special
-  variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
+   variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
 }
 }
 \keyword{R6}

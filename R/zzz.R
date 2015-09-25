@@ -38,8 +38,8 @@ print_tmlenet_opts <- function() {
 #' Setting Options for \code{tmlenet}
 #'
 #' Additional options that control the estimation algorithm in \code{tmlenet} package
-#' @param useglm Set to \code{FALSE} to estimate with \code{speedglm::speedglm.wfit} and \code{TRUE} for 
-#' \code{glm::glm.fit}.
+#' @param useglm Set to \code{FALSE} to estimate with \code{\link[speedglm]{speedglm.wfit}} and \code{TRUE} for 
+#' \code{\link[stats]{glm.fit}}.
 #' @param bin.method The method for choosing bins when discretizing and fitting the conditional continuous summary
 #'  exposure variable \code{sA}. The default method is \code{"equal.len"}, which partitions the range of \code{sA}
 #'  into equal length \code{nbins} intervals. Method \code{"equal.mass"} results in a data-adaptive selection of the bins

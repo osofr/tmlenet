@@ -20,26 +20,79 @@ def.sA(...)
 \item{sVar2}{An object returned by a call to \code{def.sW} or \code{def.sA} functions.}
 }
 \value{
-R6 object of class \code{Define_sVar} which must be passed as argument to \code{\link{tmlenet}}.
+R6 object of class \code{DefineSummariesClass} which can be passed as an argument to \code{eval.summaries}
+ and \code{tmlenet} functions.
 }
 \description{
-Define and store \code{tmlenet} function arguments \code{sW} and \code{sA},
- which are arbitrary summary measures based on treatmet \code{Anode} and baseline covariates in \code{Wnodes}
- constructed from the input \code{data}.
- Each summary measure \code{sVar} is specified as a named R expression or a named character argument.
+Define and store summary measures \code{sW} and \code{sA} that can be later processed inside
+ \code{\link{eval.summaries}} or \code{\link{tmlenet}} functions.
+ \code{def.sW} and \code{def.sA} return an \code{R6} object of class \code{\link{DefineSummariesClass}}
+ which stores the user-defined summary measure functions of the baseline covariates \code{W}
+ and exposure \code{A}, which can be later evaluated inside the environment of the input \code{data} data frame.
+ Note that calls to \code{def.sW} must be used for defining the summary measures that are functions
+ of \strong{only the baseline covariates \code{W}}, while calls to \code{def.sA} must be used
+ for defining the summary measures that are functions of both, \strong{the baseline covariates \code{W}
+ and exposure \code{A}}.
+ Each summary measure is specified as an evaluable R expression or a string that can be parsed into
+ an evaluable R expression. Any variable name that exists as a named column in the input \code{data}
+ data frame can be used as part of these expressions.
  Separate calls to \code{def.sW/def.sA} functions can be aggregated into a single collection with '+' function,
- e.g., \code{def.sW(W1=W1)+def.sW(W2=W2)}.
- Two special named arguments can be passed to the \code{def.sW}, \code{def.sA} functions:
+ e.g., \code{def.sW(W1)+def.sW(W2)}.
+ A special syntax is allowed inside these summary expressions:
  \itemize{
- \item \code{noname = TRUE} - to not use the summary measure name provided by the user when assigning
-   the names to the summary measure columns (variables); and
- \item \code{replaceNAw0 = TRUE} - To automatically replace all the missing network covariate values (\code{NA}s) with \code{0}.
-}
+ \item \code{'Var[[index]]'} - will index the friend covariate values of the variable \code{Var}, e.g.,
+   \code{'Var[[1]]'} will pull the covariate value of \code{Var} for the first friend, \code{'Var[[Kmax]]'}
+   of the last friend, and
+   \code{'Var[[0]]'} is equivalent to writing \code{'Var'} itself (indexes itself).
+ }
+ A special argument named \code{replaceNAw0} can be also passed to the \code{def.sW}, \code{def.sA} functions:
+ \itemize{
+ \item \code{replaceNAw0 = TRUE} - automatically replaces all the missing network covariate values
+ (\code{NA}) with \code{0}.
+ }
+ One can then test the evaluation of these summary measures by either passing the returned
+ \code{\link{DefineSummariesClass}} object to function \code{\link{eval.summaries}} or by calling the
+ internal method \code{eval.nodeforms(data.df, netind_cl)} on the returned object.
+ The summary expressions defined here don't always need to be named, in which case the summary measure names
+ will be automatically assigned (see Details, Naming Conventions and Examples below).
 }
 \section{Details}{
 
-The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or \code{\link{eval.summaries}} functions,
-using the environment of the input data frame and enclosed within the user-calling environment.
+The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or
+ \code{\link{eval.summaries}} functions,
+ using the environment of the input data frame, which is also enclosed within the user-calling environment.
+}
+
+\section{Naming conventions}{
+
+Naming conventions for summary measures with no user-supplied name (e.g., \code{def.sW(W1)}).
+
+....................................
+ \itemize{
+ \item If only one unique variable name is used in the summary expression (only one parent), use the variable
+   name itself to name the summary measure;
+ \item If there is more than 1 unique variable name (e.g., \code{"W1+W2"}) in the summary expression, throw an exception
+   (user must always supply summary measure names for such expressions).
+ }
+
+Naming conventions for the evaluation results of summary measures defined by \code{def.sW} & \code{def.sA}.
+
+....................................
+ \itemize{
+ \item When summary expression evaluates to a vector result, the vector is first converted to a 1 col matrix,
+   with column name set equal to the summary expression name;
+ \item When the summary measure evaluates to a matrix result and the expression has only one unique variable
+   name (one parent), the matrix column names are generated as follows: for the expressions such as \code{"Var"}
+   or \code{"Var[[0]]"}, the column names \code{"Var"} are assigned
+   and for the expressions such as \code{"Var[[j]]"}, the column names \code{"Var_netFj"} are assigned.
+ \item When the summary measure (e.g., named \code{"SummName"}) evaluates to a matrix and either: 1) there is
+   more than one unique variable name used inside the expression (e.g., \code{"A + 2*W"}),
+   or 2) the resulting matrix has empty (\code{""}) column names, the column names are assigned according to the
+   convention:
+   \code{"SummName.1"}, ..., \code{"SummName.ncol"},
+   where \code{"SummName"} is replaced by the actual summary measure name and \code{ncol} is the number of columns
+   in the resulting matrix.
+ }
 }
 \examples{
 #***************************************************************************************
@@ -64,51 +117,46 @@ def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]])
 def_sW <- def.sW(W1 = "W1[[0]]", W2 = "W2[[0]]", W3 = "W3[[0]]")
 
 #***************************************************************************************
-# Summary measures based on network information.
-# Matrix result of summary measure expression.
+# Summary measures based on network (friend) values of the variable (matrix result).
 #***************************************************************************************
-# Use R expressions to define summary measure functions, s.a.,
-# W2[[1:Kmax]] means vectors of W2 values of friends (W2_netF_j), j=1, ..., Kmax;
+# W2[[1:Kmax]] means vectors of W2 values of friends (W2_netF_j), j=1, ..., Kmax:
 def_sW <- def.sW(netW2 = W2[[0:Kmax]], W3 = W3[[0]])
-# resulting matrix of summary measures:
+# evaluation result is a matrix:
 resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
-# the mapping from the summary measure names to the matrix column names:
+# The mapping from the summary measure names to actual evaluation column names:
 def_sW$sVar.names.map
 
 # Equivalent way to define the same summary measure is to use syntax '+'
-# and omit the names of the two summary measures
-# (the names will be assigned automatically as "W2" for the first matrix W2[[0:Kmax]])
-# and "W3" for the second summary measure "W3[[0]]"
+# and omit the names of the two summary measures above
+# (the names are assigned automatically as "W2" for the first matrix W2[[0:Kmax]]
+# and "W3" for the second summary measure "W3[[0]]")
 def_sW <- def.sW(W2[[0:Kmax]]) + def.sW(W3[[0]])
 resmat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+# The mapping from the summary measure names to actual evaluation column names:
 def_sW$sVar.names.map
 
 #***************************************************************************************
-# More complex summary measures that apply dimension reduction functions to network:
+# Define new summary measure as a sum of friend covariate values of W3:
 #***************************************************************************************
-# define new summary measure as a sum of friend covariate values of W3:
 # replaceNAw0 = TRUE sets all the missing values to 0
 def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
 
-# resulting matrix of summary measures:
+# evaluation result:
 resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
-# the mapping from the summary measure names to the matrix column names:
-def_sW$sVar.names.map
 
 #***************************************************************************************
 # More complex summary measures that involve more than one covariate:
 #***************************************************************************************
 # replaceNAw0 = TRUE sets all the missing values to 0
 def_sW <- def.sW(netW1W3 = W3[[1:Kmax]]*W3[[1:Kmax]])
-
-# resulting matrix of summary measures:
+# resulting evaluation matrix:
 resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 # the mapping from the summary measure names to the matrix column names:
 def_sW$sVar.names.map
 
 #***************************************************************************************
-# vector result, complex expression with more than one parent
-# all complex expressions must be named, otherwise an error is produced
+# Vector results, complex summary measure (more than one unique variable name):
+# NOTE: all complex summary measures must be named, otherwise an error is produced
 #***************************************************************************************
 # named expression:
 def_sW <- def.sW(sum.netW2W3 = sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
@@ -121,16 +169,17 @@ def_sW <- def.sW(sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
 }
 
 #***************************************************************************************
-# matrix result, complex expression with more than one parent:
-# when more than one parent is present, the naming convention for resulting column names
-# sVar.name\%+\%c(1:ncol)
-# all complex expressions must be named, otherwise an error is produced
+# Matrix result, complex summary measure (more than one unique variable name):
+# NOTE: all complex summary measures must be named, otherwise an error is produced
 #***************************************************************************************
+# When more than one parent is present, the columns are named by convention:
+# sVar.name\%+\%c(1:ncol)
+
 # named expression:
 def_sW <- def.sW(sum.netW2W3 = W3[[1:Kmax]]*W2[[1:Kmax]])
 mat1a <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 
-# the same as unnamed expression (try to run will result in an error):
+# the same unnamed expression (trying to run will result in error):
 def_sW <- def.sW(W3[[1:Kmax]]*W2[[1:Kmax]])
 \dontrun{
   mat1b <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
@@ -197,6 +246,7 @@ class(res$DatNet.ObsP0)
 \seealso{
 \code{\link{eval.summaries}} for
  evaluation and validation of the summary measures,
- \code{\link{tmlenet}} for estimation.
+ \code{\link{tmlenet}} for estimation,
+ \code{\link{DefineSummariesClass}} for details on how the summary measures are stored and evaluated.
 }
 

@@ -20,51 +20,46 @@ def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]])
 def_sW <- def.sW(W1 = "W1[[0]]", W2 = "W2[[0]]", W3 = "W3[[0]]")
 
 #***************************************************************************************
-# Summary measures based on network information.
-# Matrix result of summary measure expression.
+# Summary measures based on network (friend) values of the variable (matrix result).
 #***************************************************************************************
-# Use R expressions to define summary measure functions, s.a.,
-# W2[[1:Kmax]] means vectors of W2 values of friends (W2_netF_j), j=1, ..., Kmax;
+# W2[[1:Kmax]] means vectors of W2 values of friends (W2_netF_j), j=1, ..., Kmax:
 def_sW <- def.sW(netW2 = W2[[0:Kmax]], W3 = W3[[0]])
-# resulting matrix of summary measures:
+# evaluation result is a matrix:
 resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
-# the mapping from the summary measure names to the matrix column names:
+# The mapping from the summary measure names to actual evaluation column names:
 def_sW$sVar.names.map
 
 # Equivalent way to define the same summary measure is to use syntax '+'
-# and omit the names of the two summary measures
-# (the names will be assigned automatically as "W2" for the first matrix W2[[0:Kmax]])
-# and "W3" for the second summary measure "W3[[0]]"
+# and omit the names of the two summary measures above
+# (the names are assigned automatically as "W2" for the first matrix W2[[0:Kmax]]
+# and "W3" for the second summary measure "W3[[0]]")
 def_sW <- def.sW(W2[[0:Kmax]]) + def.sW(W3[[0]])
 resmat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+# The mapping from the summary measure names to actual evaluation column names:
 def_sW$sVar.names.map
 
 #***************************************************************************************
-# More complex summary measures that apply dimension reduction functions to network:
+# Define new summary measure as a sum of friend covariate values of W3:
 #***************************************************************************************
-# define new summary measure as a sum of friend covariate values of W3:
 # replaceNAw0 = TRUE sets all the missing values to 0
 def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
 
-# resulting matrix of summary measures:
+# evaluation result:
 resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
-# the mapping from the summary measure names to the matrix column names:
-def_sW$sVar.names.map
 
 #***************************************************************************************
 # More complex summary measures that involve more than one covariate:
 #***************************************************************************************
 # replaceNAw0 = TRUE sets all the missing values to 0
 def_sW <- def.sW(netW1W3 = W3[[1:Kmax]]*W3[[1:Kmax]])
-
-# resulting matrix of summary measures:
+# resulting evaluation matrix:
 resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 # the mapping from the summary measure names to the matrix column names:
 def_sW$sVar.names.map
 
 #***************************************************************************************
-# vector result, complex expression with more than one parent
-# all complex expressions must be named, otherwise an error is produced
+# Vector results, complex summary measure (more than one unique variable name):
+# NOTE: all complex summary measures must be named, otherwise an error is produced
 #***************************************************************************************
 # named expression:
 def_sW <- def.sW(sum.netW2W3 = sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
@@ -77,16 +72,17 @@ def_sW <- def.sW(sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
 }
 
 #***************************************************************************************
-# matrix result, complex expression with more than one parent:
-# when more than one parent is present, the naming convention for resulting column names
-# sVar.name%+%c(1:ncol)
-# all complex expressions must be named, otherwise an error is produced
+# Matrix result, complex summary measure (more than one unique variable name):
+# NOTE: all complex summary measures must be named, otherwise an error is produced
 #***************************************************************************************
+# When more than one parent is present, the columns are named by convention:
+# sVar.name%+%c(1:ncol)
+
 # named expression:
 def_sW <- def.sW(sum.netW2W3 = W3[[1:Kmax]]*W2[[1:Kmax]])
 mat1a <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 
-# the same as unnamed expression (try to run will result in an error):
+# the same unnamed expression (trying to run will result in error):
 def_sW <- def.sW(W3[[1:Kmax]]*W2[[1:Kmax]])
 \dontrun{
   mat1b <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
