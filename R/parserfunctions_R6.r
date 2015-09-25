@@ -1,3 +1,4 @@
+# nocov start
 # ************************************************************************************
 # TO DO: 
 # REIMPORT THIS FILE BACK INTO SIMCAUSAL
@@ -641,3 +642,4 @@ Define_sVar <- R6Class("Define_sVar",
     privplaceholder = function() {}
   )
 )
+# nocov end
