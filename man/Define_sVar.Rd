@@ -3,38 +3,43 @@
 \docType{class}
 \name{Define_sVar}
 \alias{Define_sVar}
-\title{R6 class for parsing and evaluating user-specified summary measures (in \code{sVar.exprs})}
+\title{R6 class for parsing and evaluating node R expressions.}
 \format{An \code{\link{R6Class}} generator object}
 \usage{
 Define_sVar
 }
 \description{
-This R6 class can parse and evaluate (given the input data) the summary measures defined with functions
- \code{\link{def.sW}} and \code{\link{def.sA}}.
- The summary measure expressions (stored in \code{sVar.exprs}) are evaluated in the environment of the input data.frame.
- Note that the resulting summary measures are never stored inside this class,
- the data is stored only in \code{\link{DatNet}} and \code{\link{DatNet.sWsA}} R6 classes.
+This \pkg{R6} class will parse and evaluate (in the environment of the input data) the node formulas defined by function
+ \code{\link[simcausal]{node}}.
+ The node formula expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
 }
 \details{
 \itemize{
-\item{\code{data.df}} - Input data frame that will be used for evaluating the summary measure expressions.
-\item{\code{Kmax}} - Maximum number of friends for any observation.
+\item{\code{exprs_list}} - Deparsed list of node formula expressions (as strings).
+\item{\code{user.env}} - Captured user-environment from calls to \code{node} that will be used as enclosing environment during evaluation.
+\item{\code{cur.node}} - Current evaluation node (set by \code{self$eval.nodeforms()})
+\item{\code{asis.flags}} - List of flags, \code{TRUE} for "as is" node expression evaluation
+\item{\code{ReplMisVal0}} - A logical vector that captures args \code{replaceNAw0=TRUE/FALSE} in \code{node} function call.
+ If \code{TRUE} for a particular node formula in \code{exprs_list} then all missing network \code{VarNode}
+ values (when \code{nF[i] < Kmax}) will get replaced with with corresponding value in code{sVar.misXreplace} (default is 0).
+\item{\code{sVar.misXreplace}} - Replacement values for missing sVar, vector of \code{length(exprs_list)}.
 \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
-\item{\code{ReplMisVal0}} - A logical vector that captures args \code{replaceNAw0=TRUE/FALSE} in functions \code{def.sW}, \code{def.sA}.
- If \code{TRUE} for a particular summary measure in \code{sVar.exprs} then all missing network \code{VarNode}
- values (when \code{nF[i] < Kmax}) will get replaced with \code{tmlenet:::gvars$misXreplace} (default is 0).
-\item{\code{sVar.misXreplace}} - Maximum number of friends for any observation.
-\item{\code{sVar.exprs}} - Deparsed summary measure expressions expressions (character vector).
- (one name can represent a multivariate summary measure).
-\item{\code{user.env}} - Captured user-environment from which \code{def.sW} or \code{def.sA} was called.
+\item{\code{Kmax}} - Maximum number of friends for any observation.
+\item{\code{Nsamp}} - Sample size (nrows) of the simulation dataset.
+\item{\code{node_fun}} - List that contains special subsetting functions \code{'['} and \code{'[['}, where \code{'['}
+ is used for subsetting time-varyng nodes and \code{'[['} is used for subsetting network covariate values.
 }
 }
 \section{Methods}{
 
 \describe{
-  \item{\code{new(..., type, user.env)}}{...}
-  \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special
-  variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
+  \item{\code{new(netind_cl}}{Instantiates new object of class \code{Define_sVar}.
+   \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
+  \item{\code{set.new.exprs(exprs_list)}}{Sets the internal node formula expressions to the list provided in \code{exprs_list}.}
+  \item{\code{eval.nodeforms(cur.node, data.df)}}{Evaluate the expressions one by one, returning a list with evaluated expressions.
+   \code{cur.node} is the current node object defined with function \code{node} and \code{data.df} is the input data.frame.}
+  \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special variable
+  (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
 }
 }
 \keyword{R6}

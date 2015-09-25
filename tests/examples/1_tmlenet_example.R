@@ -112,6 +112,7 @@ res_K6_2 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y
                   hform = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
                   optPars = list(runTMLE = "tmle.covariate", n_MCsims = 10))
+
 res_K6_2$EY_gstar1$estimates
 res_K6_2$EY_gstar1$vars
 res_K6_2$EY_gstar1$CIs

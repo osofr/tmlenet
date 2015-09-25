@@ -9,7 +9,7 @@
 DefineSummariesClass
 }
 \description{
-This \pkg{R6} class can parse and evaluate (given the input data frame) the summary measures defined by functions
+This \pkg{R6} class that inherits from \code{} can parse and evaluate (given the input data frame) the summary measures defined by functions
  \code{\link{def.sW}} and \code{\link{def.sA}}.
  The object of this class is generally instantiated by calling functions \code{def.sA} or \code{def.sW}.
  The summary expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
@@ -29,15 +29,15 @@ This \pkg{R6} class can parse and evaluate (given the input data frame) the summ
 \section{Methods}{
 
 \describe{
-  \item{\code{new(type)}}{Instantiate a new object of class \code{DefineSummariesClass} by providing a type, \code{"sW"} or \code{"sA"}}
-  \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}}
+  \item{\code{new(type)}}{Instantiate a new object of class \code{DefineSummariesClass} by providing a type, \code{"sW"} or \code{"sA"}.}
+  \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}.}
   \item{\code{add.new.exprs(NewSummaries)}}{Adds new internal summary measure expressions to the existing ones, \code{NewSummaries}
    must be an object of class \code{DefineSummariesClass} (to enable \code{Object1 + Object2} syntax).}
   \item{\code{eval.nodeforms(data.df, netind_cl)}}{Evaluate the expressions one by one, standardize all names according to one naming
-   convention (described in \code{\link{def.sW}}), cbinding results together into one output matrix. \code{data.df} is the input
+   convention (described in \code{\link{def.sW}}), \code{cbind}ing results together into one output matrix. \code{data.df} is the input
    data.frame and \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special
-   variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
+   variable (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
 }
 }
 \keyword{R6}

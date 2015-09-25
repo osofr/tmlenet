@@ -62,6 +62,7 @@ test.examples <- function() {
 
   def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
             def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
+
   def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
             def.sA(netA = A[[0:Kmax]])
 

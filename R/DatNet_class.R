@@ -65,7 +65,7 @@ detect.col.types <- function(sVar_mat){
 }
 
 ## ---------------------------------------------------------------------
-# Normalizing / Defining bin intervals / Converting contin to ordinal / Converting ordinal to bin indicators
+# Normalizing / Defining bin intervals / Converting contin. to ordinal / Converting ordinal to bin indicators
 ## ---------------------------------------------------------------------
 normalize <- function(x) {
   if (abs(max(x) - min(x)) > gvars$tolerr) { # Normalize to 0-1 only when x is not constant

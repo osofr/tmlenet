@@ -6,18 +6,27 @@ head(df_netKmax6)
 data(NetInd_mat_Kmax6)  # load the network ID matrix
 netind_cl <- simcausal:::NetIndClass$new(nobs = nrow(df_netKmax6), Kmax = 6)
 netind_cl$NetInd <- NetInd_mat_Kmax6
-netind_cl$nF
+head(netind_cl$nF)
 
 #***************************************************************************************
-# Example. Equivalent ways of defining the same summary measures
-# Same rules apply to def.sA function
+# Example. Equivalent ways of defining the same summary measures.
+# Note that 'nF' summary measure is always added to def.sW summary measures.
+# Same rules apply to def.sA function, except that 'nF' is not added.
 #***************************************************************************************
 def_sW <- def.sW(W1, W2, W3)
 def_sW <- def.sW("W1", "W2", "W3")
 def_sW <- def.sW(W1 = W1, W2 = W2, W3 = W3)
-# W1[[0]] just means W1:
-def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]])
+def_sW <- def.sW(W1 = W1[[0]], W2 = W2[[0]], W3 = W3[[0]]) # W1[[0]] just means W1
 def_sW <- def.sW(W1 = "W1[[0]]", W2 = "W2[[0]]", W3 = "W3[[0]]")
+
+# evaluate the sW summary measures defined last:
+resmatW <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+head(resmatW)
+
+# define sA summary measures and evaluate:
+def_sA <- def.sA(A, AW1 =A*W1)
+resmatA <- def_sA$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+head(resmatA)
 
 #***************************************************************************************
 # Summary measures based on network (friend) values of the variable (matrix result).
@@ -35,6 +44,7 @@ def_sW$sVar.names.map
 # and "W3" for the second summary measure "W3[[0]]")
 def_sW <- def.sW(W2[[0:Kmax]]) + def.sW(W3[[0]])
 resmat2 <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
+head(resmat2)
 # The mapping from the summary measure names to actual evaluation column names:
 def_sW$sVar.names.map
 
@@ -52,7 +62,8 @@ resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 #***************************************************************************************
 # replaceNAw0 = TRUE sets all the missing values to 0
 def_sW <- def.sW(netW1W3 = W3[[1:Kmax]]*W3[[1:Kmax]])
-# resulting evaluation matrix:
+
+# evaluation result (matrix):
 resmat <- def_sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 # the mapping from the summary measure names to the matrix column names:
 def_sW$sVar.names.map

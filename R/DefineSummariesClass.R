@@ -137,6 +137,10 @@ def.sA <- function(...) {
   assert_that(is.DefineSummariesClass(sVar1))
   assert_that(is.DefineSummariesClass(sVar2))
   assert_that(all.equal(sVar1$type, sVar2$type))
+  # remove duplicate nF node from sVar1 (keep the one in sVar2)
+  if (sVar1$type %in% "sW") {
+    sVar1 <- sVar1$remove.expr(SummaryName = "nF")
+  }
   sVar1$add.new.exprs(NewSummaries = sVar2)
   return(sVar1)
 }
@@ -156,7 +160,6 @@ def.sA <- function(...) {
 #                         list(nF = self$netind_cl$nF)
 #                         )
 #   data.env <- c(eval.sVar.params, self$node_fun, data.df)
-
 #   if (is.character(sVar.expr)) {
 #     sVar.expr_call <- try(parse(text=sVar.expr)[[1]])   # parse expression into a call
 #     if(inherits(sVar.expr_call, "try-error")) {
@@ -233,7 +236,7 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
 ## ---------------------------------------------------------------------
 #' R6 class for parsing and evaluating user-specified summary measures (in \code{exprs_list})
 #'
-#' This \pkg{R6} class can parse and evaluate (given the input data frame) the summary measures defined by functions 
+#' This \pkg{R6} class that inherits from \code{} can parse and evaluate (given the input data frame) the summary measures defined by functions 
 #'  \code{\link{def.sW}} and \code{\link{def.sA}}. 
 #'  The object of this class is generally instantiated by calling functions \code{def.sA} or \code{def.sW}.
 #'  The summary expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
@@ -254,20 +257,19 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(type)}}{Instantiate a new object of class \code{DefineSummariesClass} by providing a type, \code{"sW"} or \code{"sA"}}
-#'   \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}}
+#'   \item{\code{new(type)}}{Instantiate a new object of class \code{DefineSummariesClass} by providing a type, \code{"sW"} or \code{"sA"}.}
+#'   \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}.}
 #'   \item{\code{add.new.exprs(NewSummaries)}}{Adds new internal summary measure expressions to the existing ones, \code{NewSummaries} 
 #'    must be an object of class \code{DefineSummariesClass} (to enable \code{Object1 + Object2} syntax).}
 #'   \item{\code{eval.nodeforms(data.df, netind_cl)}}{Evaluate the expressions one by one, standardize all names according to one naming
-#'    convention (described in \code{\link{def.sW}}), cbinding results together into one output matrix. \code{data.df} is the input 
+#'    convention (described in \code{\link{def.sW}}), \code{cbind}ing results together into one output matrix. \code{data.df} is the input 
 #'    data.frame and \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
 #'   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special
-#'    variable (\code{ANCHOR_ALLVARNMS_VECTOR_0})}
+#'    variable (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
 #' }
 #' @importFrom assertthat assert_that
 #' @export
 DefineSummariesClass <- R6Class("DefineSummariesClass",
-# Define_sVar_tmlenet <- R6Class("Define_sVar",
   class = TRUE,
   portable = TRUE,
   inherit = Define_sVar,
@@ -277,32 +279,16 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
     new_expr_names = list(),        # re-evaluated summary measure names, if non provided by the user these will be evaluated on the basis of variable names used in the expression
     sVar.names.map = list(),        # the map between user-supplied expression (argument names) to the column names of each expression in self$exprs_list
 
-    # exprs_evalres = list(),       # the results of evaluation of each expression in exprs_list
-    # exprs_parents = list(),       # list of vectors with data.df variable names referenced in each expression, extracted by parser on each expression
-    # same as above sVar.names.map
-    # exprs_res_names = list(),     # list of vectors with the names of the evaluation column/vectors for each expression exprs_list[[i]] (if result is a matrix, its a vector of column names, if result is unnamed vector, its "")
-    # sVar.noname = FALSE,          # (TO BE REMOVED) vector, for each TRUE sVar.expr[[idx]] ignores user-supplied name and generates names automatically
-    # data.df = NULL,               # data.frame that is used for evaluation of sVar expressions (passed to get.mat.sVar)
-    # Kmax = NULL,
-    # netind_cl = NULL,
-    # ReplMisVal0 = FALSE,          # Replace missing network VarNode values (when nF[i] < Kmax) with gvars$misXreplace (0)?
-    # sVar.misXreplace = NULL,      # Replacement values for missing sVar (length(exprs_list)), either gvars$misXreplace or gvars$misval
-    # sVar.noname = FALSE,          # Vector, for each TRUE sVar.expr[[idx]] ignores user-supplied name and generates names automatically
-    # exprs_list = character(),     # deparsed sVar expressions (char vector)
-    # sVar.expr.names = character(),# user-provided name of each sVar.expr
-    # user.env = emptyenv(),        # User environment used as enclos arg to eval(sVar, enclos=)
-    # mat.sVar = matrix(),          # no longer storing the sVar evaluation result
-
     initialize = function(type) {
       self$type <- type
       invisible(self)
     },
 
     # define new summary measures to be evaluated later:
+    # will define 1) self$exprs_list; 2) self$asis.flags; 3) self$ReplMisVal0; 4) self$sVar.misXreplace
+    # initialize the map from self$exprs_list to variable names in each expression (column names)
     set.new.exprs = function(exprs_list) {
-      # will define 1) self$exprs_list; 2) self$asis.flags; 3) self$ReplMisVal0; 4) self$sVar.misXreplace
       super$set.new.exprs(exprs_list)
-      # map from self$exprs_list to variable names in each expression (column names):
       self$sVar.names.map <- vector(mode="list", length = length(self$exprs_list))
       invisible(self)
     },
@@ -318,24 +304,22 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       return(self)
     },
 
-# ---------------------------------------------------------------------------
-# DEPRECATED FUNCTION (TO BE REMOVED):
-# ---------------------------------------------------------------------------
-    # get.mat.sVar = function(data.df, netind_cl, addnFnode = NULL) {
-    #   assert_that(is.data.frame(data.df))
-    #   if (missing(netind_cl) && is.null(self$netind_cl)) stop("must specify netind_cl arg at least once")
-    #   if (!missing(netind_cl)) self$netind_cl <- netind_cl
-    #   self$Kmax <- self$netind_cl$Kmax
-    #   # call lapply on parse.sVar.out for each sVar in sVar.expr.names -> sVar.res_l
-    #   sVar.res_l <- lapply(seq_along(self$exprs_list), parse.sVar.out, self = self, data.df = data.df)
-    #   names(sVar.res_l) <- names(self$exprs_list)
-    #   if (!is.null(addnFnode)) sVar.res_l <- c(sVar.res_l, list(nF = netind_cl$mat.nF(addnFnode)))
-    #   # SAVE THE MAP BETWEEEN EXPRESSION NAMES AND CORRESPONDING COLUMN NAMES:
-    #   self$sVar.names.map <- lapply(sVar.res_l, colnames)
-    #   names(self$sVar.names.map) <- names(self$exprs_list)
-    #   mat.sVar <- do.call("cbind", sVar.res_l)
-    #   return(mat.sVar)
-    # },
+    # remove existing summary measure
+    # to enable overwriting nF summary measure in Object1 with nF summary measure from Object2
+    # when doing Object1 + Object2 syntax.
+    remove.expr = function(SummaryName) {
+      assert_that(is.character(SummaryName) && (length(SummaryName)==1L) && (!SummaryName%in%""))
+      if (any(names(self$exprs_list) %in% SummaryName)) {
+        remove_idx <- which(names(self$exprs_list)%in% SummaryName)
+        print("removing summaries: "); print(self$exprs_list[remove_idx])
+        self$exprs_list <- self$exprs_list[-remove_idx]
+        self$asis.flags <- self$asis.flags[-remove_idx]
+        self$ReplMisVal0 <- self$ReplMisVal0[-remove_idx]
+        self$sVar.misXreplace <- self$sVar.misXreplace[-remove_idx]
+        self$sVar.names.map <- self$sVar.names.map[-remove_idx]
+      }
+      return(self)
+    },
 
     # Evaluate the expressions one by one, standardize all names according to one naming convention,
     # cbinding results together into one output matrix
