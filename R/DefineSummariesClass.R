@@ -145,45 +145,6 @@ def.sA <- function(...) {
   return(sVar1)
 }
 
-# ------------------------------------------------------------
-# DEPRECATED PARSER (TO BE REMOVED):
-# ------------------------------------------------------------
-# take sVar expression index and evaluate:
-# parse.sVar.out <- function(sVar.idx, self, data.df) {
-#   sVar.expr <- self$exprs_list[[sVar.idx]]
-#   sVar.name <- names(self$exprs_list)[sVar.idx]
-#   misXreplace <- self$sVar.misXreplace[sVar.idx]
-#   eval.sVar.params <- c(list(self = self),
-#                         self$df.names(data.df), # special var "ANCHOR_ALLVARNMS_VECTOR_0" with names of already simulated vars
-#                         list(misXreplace = misXreplace), # replacement value for missing network covars
-#                         list(netind_cl = self$netind_cl),
-#                         list(nF = self$netind_cl$nF)
-#                         )
-#   data.env <- c(eval.sVar.params, self$node_fun, data.df)
-#   if (is.character(sVar.expr)) {
-#     sVar.expr_call <- try(parse(text=sVar.expr)[[1]])   # parse expression into a call
-#     if(inherits(sVar.expr_call, "try-error")) {
-#       stop("error while evaluating expression: " %+% sVar.expr %+% ".\nCheck syntax specification.", call.=FALSE)
-#     }
-#   } else if (is.call(sVar.expr)){
-#     sVar.expr_call <- sVar.expr
-#     message(sVar.expr_call %+% ": sVar formula is already a parsed call")
-#   } else {
-#     stop("sVar formula class: " %+% class(sVar.expr) %+% ". Currently can't process sVar formulas that are not strings or expressions")
-#   }
-#   sVar.expr_call <- eval(substitute(substitute(e, list(Kmax = eval(self$Kmax))), list(e = sVar.expr_call))) # Replace Kmax its val
-#   evaled_expr <- try(eval(sVar.expr_call, envir = data.env, enclos = self$user.env)) # eval'ing expr in the envir of data.df
-#   no.sVar.name <- is.null(sVar.name) || (sVar.name %in% "")
-#   if (is.matrix(evaled_expr)) {
-#     if (no.sVar.name) sVar.name <- colnames(evaled_expr)
-#     if (!no.sVar.name && ncol(evaled_expr) > 1) sVar.name <- sVar.name %+% "." %+% (1 : ncol(evaled_expr))
-#   } else {
-#     evaled_expr <- as.matrix(evaled_expr)
-#   }
-#   colnames(evaled_expr) <- sVar.name
-#   return(evaled_expr)
-# }
-
 # ------------------------------------------------------------------------------------------
 # Standardize all names (and fill-in the empty names) according TO THE *SAME* *NAMING* *CONVENTION*;
 # ------------------------------------------------------------------------------------------
@@ -345,7 +306,29 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       # print("new names self$new_expr_names: "); print(names(self$new_expr_names))
       # print("self$sVar.names.map: "); print(str(self$sVar.names.map))
       # print("eval result mat after standardizing: "); print(head(mat.sVar))
+
+      # 1) remove all duplicate summary measures (by name), keeping the ones that were added last:
+      if (length(unique(names(self$new_expr_names))) < length(names(self$new_expr_names))) {
+        duplic_idx <- duplicated(self$new_expr_names, fromLast = TRUE)
+        message("warning: detected duplicate summary measure names, (" %+%
+                paste0(self$new_expr_names[duplic_idx], collapse=",") %+%
+                "), all duplicates starting from first to last will be removed...")
+        sVar.res_l <- sVar.res_l[-duplic_idx]
+        self$sVar.names.map <- self$sVar.names.map[-duplic_idx]
+        self$new_expr_names <- self$new_expr_names[-duplic_idx]
+        self$exprs_list <- self$exprs_list[-duplic_idx]
+      }
+      
       mat.sVar <- do.call("cbind", lapply(sVar.res_l, function(x) x[["evaled_expr"]]))
+
+      # 2) remove duplicate columns, keeping the ones that were added last:
+      if (length(unique(colnames(mat.sVar))) < length(colnames(mat.sVar))) {
+        duplic_idx <- duplicated(colnames(mat.sVar), fromLast = TRUE)
+        message("warning: detected duplicate column names in summary evaluation matrix, (" %+%
+                paste0(colnames(mat.sVar)[duplic_idx], collapse=",") %+%
+                "), all duplicates starting from first to last will be removed...")
+        mat.sVar <- mat.sVar[,!duplic_idx]
+      }
       
       return(mat.sVar)
     },
