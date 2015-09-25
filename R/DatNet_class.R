@@ -1,6 +1,10 @@
+# ***********************************************************
+# TO DO: is nFnode even needed DatNet anymore???? Where is it used? Can it be removed completely?
+# ***********************************************************
 # #todo 33 (DatNet.sWsA) +0: rename datnetW, datnetA to O.datnetW, O.datnetA for clarity
 # #todo 71 (DatNet.sWsA) +0: *** NOTE *** When sVar is cat might be better to set bin_bymass = FALSE to avoid collapsing of categories for sVar
 # Fix 71 will still not solve the issue for ordinal sVar. Need to manually set intervals when sVar is categorical!
+# ***********************************************************
 
 #-----------------------------------------------------------------------------
 # DatNet.sWsA CLASS STRUCTURE:
@@ -211,9 +215,6 @@ DatNet <- R6Class(classname = "DatNet",
   class = TRUE,
   public = list(
     Kmax = integer(),          # max n of Friends in the network
-    # ***********************************************************
-    # TO DO: is nFnode even needed anymore???? Where is it used?
-    # ***********************************************************
     nFnode = "nF",
     # addnFnode = FALSE,         # Flag to add Fnode to predictors mat / df output
     netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix

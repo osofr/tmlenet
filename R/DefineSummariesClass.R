@@ -291,7 +291,7 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
     # exprs_list = character(),     # deparsed sVar expressions (char vector)
     # sVar.expr.names = character(),# user-provided name of each sVar.expr
     # user.env = emptyenv(),        # User environment used as enclos arg to eval(sVar, enclos=)
-    # mat.sVar = matrix(),        # no longer storing the sVar evaluation result
+    # mat.sVar = matrix(),          # no longer storing the sVar evaluation result
 
     initialize = function(type) {
       self$type <- type

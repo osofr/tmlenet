@@ -72,17 +72,16 @@ test.examples <- function() {
 
 
   #***************************************************************************************
-  # TODO: Should return an error since "netW1_sum", "netW2_sum", "netW3_sum" don't exist in the data!!!
+  # TO DO: Should return an error since "netW1_sum", "netW2_sum", "netW3_sum" don't exist in the data!!!
   #***************************************************************************************
   Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
 
 
   #***************************************************************************************
-  # TODO: ADD TO TEST CASE AND MAKE A MORE INTERPRETABLE ERROR
+  # TO DO: ADD TO TEST CASE AND MAKE A MORE INTERPRETABLE ERROR
   #***************************************************************************************
+  # ... moved here prevous call to tmlenet w/ wrong (non-existing) summary measure names:
   checkException(
-    # ... move below call to tmlenet here
-    )
   res_K6_1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
                     Kmax = Kmax,
                     IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
@@ -92,10 +91,9 @@ test.examples <- function() {
                     Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
                     hform = "netA ~ netW2 + netW3_sum + nF",
                     hform.gstar = "netA ~ netW3_sum",
-                    optPars = list(
-                      runTMLE = "tmle.intercept",
-                      n_MCsims = 10)
-                    )
+                    optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+  )
+
 
 
 # correct version:

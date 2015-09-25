@@ -245,6 +245,13 @@ This interval definition method is selected by passing an argument \code{bin.met
 }
 \examples{
 #***************************************************************************************
+# TO DO: 
+# (1) ADD AN EXAMPLE WITH STOCHASTIC INTERVENTION
+# (2) ADD AN EXAMPLE WITH CONTINUOUS EXPOSURE
+# (3) Add example of a call to eval.summaries()
+#***************************************************************************************
+
+#***************************************************************************************
 data(df_netKmax6) # Load the network data
 Kmax <- 6 # Max number of friends in the network
 #***************************************************************************************
@@ -254,33 +261,45 @@ Kmax <- 6 # Max number of friends in the network
 # Mean population outcome under deterministic intervention A=0 with 6 friends.
 # Intercept based TMLE.
 #***************************************************************************************
-Wnodes <- c("W1", "W2", "W3")
 
+#***************************************************************************************
+# POSSIBLE INTERVENTION FUNCTIONS:
+#***************************************************************************************
+# Set x\% of community to A=1 (returns A sampled with probability P(A=1)):
+# f.A_x <- function(data, x, ...) rep(x, nrow(data))
+f.A_x <- function(data, x, ...) rbinom(n = nrow(data), size = 1, prob = x[1])
+# Deterministically set every A=0:
+f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
+# Deterministically set every A=1:
+f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
+
+# *************
+# TO BE REMOVED (no longer need Wnodes argument in tmlenet())
+Wnodes <- c("W1", "W2", "W3")
+# *************
+
+#***************************************************************************************
 # SUMMARY MEASURES:
+#***************************************************************************************
 def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
   def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
 def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
           def.sA(netA = A[[0:Kmax]])
 
-# POSSIBLE INTERVENTION FUNCTIONS:
-# Set x\% of community to A=1 (returns A sampled with probability P(A=1)):
-# f.A_x <- function(data, x, ...) rep(x, nrow(data))
-f.A_x <- function(data, x, ...) rbinom(n = nrow(data, prob = x[1]))
-# Deterministically set every A=0:
-f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
-# Deterministically set every A=1:
-f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
-
+#***************************************************************************************
 # alternative ways to pass summary measures:
+# NOT IMPLEMENTED
+#***************************************************************************************
 # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", 
-            # netW1_sum = "rowSums(W1[[1:Kmax]]"), 
-            # netW2_sum = "rowSums(W2[[1:Kmax]])", 
-            # netW3_sum = "rowSums(W3[[1:Kmax]])"), 
-# sA = list("A[[0:Kmax]]", 
-            # sum_1mAW2_nets = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
+            # sum.netW1 = "rowSums(W1[[1:Kmax]]"), 
+            # sum.netW2 = "rowSums(W2[[1:Kmax]])", 
+            # sum.netW3 = "rowSums(W3[[1:Kmax]])"), 
+# sA = list("A[[0:Kmax]]", sum.netAW2 = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
 
-# NOT IMPLEMENTED YET. 
+#***************************************************************************************
+# EVALUATING SUMMARY MEASURES FOR INPUT DATA
+#***************************************************************************************
 # A helper function that can pre-evaluate the summary measures on (O)bserved data 
 # (data.frame)
 # This will help when examining the data and playing with various summary measures, 
@@ -288,12 +307,12 @@ f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 # res <- eval.summaries(summaries = def_sA, Odata = df_netKmax6, Kmax = Kmax, 
 # NETIDnode = "Net_str", IDnode = "IDs")
 
-# --------------------------------------------------
-# # NEW INTERFACE FOR SPECIFYING hform, Qform, gform allows including the summary 
+#***************************************************************************************
+# NEW INTERFACE FOR SPECIFYING hform, Qform, gform allows including the summary 
 # measure names
-# --------------------------------------------------
-# testform1 <- as.formula("sA + sA2 ~ sW1 + netW3_sum")
-# testform2 <- as.formula("netA ~ netW2 + netW3_sum")
+#***************************************************************************************
+# testform1 <- as.formula("sA + sA2 ~ sW1 + sum.netW3")
+# testform2 <- as.formula("netA ~ netW2 + sum.netW3")
 # testform <- testform1
 # testterms <- terms(testform)
 # # Getting predictor sW names:
@@ -306,16 +325,21 @@ f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 # out.vars.terms <- terms(out.vars.form)
 # (sA.names <- attributes(out.vars.terms)$term.labels)
 
+#***************************************************************************************
+# ESTIMATION
+#***************************************************************************************
 options(tmlenet.verbose = FALSE)
 res_K6_1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
                   Kmax = Kmax,
                   IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                   f_gstar1 = f.A_0,
                   sW = def_sW, sA = def_sA,
-                  Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
-                  hform = "netA ~ netW2 + netW3_sum + nF",
-                  hform.gstar = "netA ~ netW3_sum",
+                  Qform = "Y ~ sum.netW3 + sum.netAW2",
+                  hform = "netA ~ netW2 + sum.netW3 + nF",
+                  hform.gstar = "netA ~ sum.netW3",
                   optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+
+
 res_K6_1$EY_gstar1$estimates
 res_K6_1$EY_gstar1$vars
 res_K6_1$EY_gstar1$CIs
@@ -330,9 +354,9 @@ res_K6_2 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y
                   IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                   f_gstar1 = f.A_0,
                   sW = def_sW, sA = def_sA,
-                  Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
-                  hform = "netA ~ netW2 + netW3_sum + nF",
-                  hform.gstar = "netA ~ netW3_sum",
+                  Qform = "Y ~ sum.netW3 + sum.netAW2",
+                  hform = "netA ~ netW2 + sum.netW3 + nF",
+                  hform.gstar = "netA ~ sum.netW3",
                   optPars = list(runTMLE = "tmle.covariate", n_MCsims = 10))
 res_K6_2$EY_gstar1$estimates
 res_K6_2$EY_gstar1$vars
@@ -363,9 +387,9 @@ res_K6_net1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes,
                     NETIDmat = NetInd_mat,
                     f_gstar1 = f.A_0,
                     sW = def_sW, sA = def_sA,
-                    Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
-                    hform = "netA ~ netW2 + netW3_sum + nF",
-                    hform.gstar = "netA ~ netW3_sum",
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "netA ~ sum.netW3",
                     optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
 all.equal(res_K6_net1$EY_gstar1$estimates, res_K6_1$EY_gstar1$estimates)
