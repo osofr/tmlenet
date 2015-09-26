@@ -24,17 +24,19 @@ assigned treatment (A), the outcome (Y) and network of friends (F)}
 \item{sA}{Summary measures constructed from \code{Anode} and baseline covariates. This must be an object of class
 \code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.}
 
-\item{Anode}{Treatment variable name (column name in \code{data}), can be either binary, categorical or continuous}
+\item{Anode}{Treatment variable name (column name in \code{data}), can be either binary, categorical or continuous.
+This can instead be specified with argument \code{sA} by adding a call \code{+def.sA(Anode="ExposureVarName")} to \code{sA}.}
 
 \item{AnodeDET}{(Optional) Column name for indicators of deterministic values of A, coded as (TRUE/FALSE) or (1/0),
 the observations with AnodeDET=TRUE/1 are assumed to have constant value for their Anode}
 
-\item{Ynode}{Outcome variable name (column name in \code{data}), assumed normalized 0 to 1}
+\item{Ynode}{Outcome variable name (column name in \code{data}), assumed normalized 0 to 1. This can instead be specified
+on the left-side of the regression formula in argument \code{Qform}.}
 
 \item{YnodeDET}{(Optional) Column name for indicators of deterministic values of outcome Y, coded as (TRUE/FALSE) or (1/0),
 the observations with YnodeDET=TRUE/1 are assumed to have constant value for their Ynode}
 
-\item{IDnode}{(Optional) Subject identifier variable in the input data, if not supplied the network string in
+\item{IDnode}{Subject identifier variable in the input data, if not supplied the network string in
 NETIDnode is assumed to be indexing the row numbers in the input \code{data}}
 
 \item{NETIDnode}{Network specification, a column name in data consisting of strings that identify the unit's friends
@@ -53,20 +55,20 @@ or stochastic intervention. See Details.}
 \item{f_gstar2}{(Optional) Function for specifying another intervention of interest when estimating the treatment
 effects under two interventions}
 
-\item{Qform}{(Optional) Regression formula for outcome in Ynode, when NULL (default) Ynode is regressed on all
+\item{Qform}{Regression formula for outcome in Ynode, when omitted (\code{NULL}) Ynode is regressed on all
 variables defined in \code{sW} and \code{sA}. See Details.}
 
-\item{hform}{(Optional) Regression formula for estimating the conditional probability of P(sA | sW) under g0
-(the observed treatment mechanism), when NULL (the default), will include all variables (columns)
+\item{hform}{Regression formula for estimating the conditional probability of P(sA | sW) under g0
+(the observed treatment mechanism), when omitted (\code{NULL}), will include all variables (columns)
 in \code{sA} and in \code{sW}. See Details.}
 
-\item{hform.gstar}{(Optional) Regression formula for estimating the conditional probability P(sA | sW) under gstar,
-when NULL (default) the same regression formula as in hform will be used. See Details.}
+\item{hform.gstar}{Regression formula for estimating the conditional probability P(sA | sW) under gstar,
+when omitted (\code{NULL}), the same regression formula as in hform will be used. See Details.}
 
 \item{verbose}{Set to \code{TRUE} to print messages on status and information to the console.
 Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.}
 
-\item{optPars}{(Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as
+\item{optPars}{A named list of additional optional parameters to be passed to \code{tmlenet}, such as
  \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{f_g0}, \code{h_g0_SummariesModel} and
  \code{h_gstar_SummariesModel}. See Details.}
 }
@@ -243,13 +245,9 @@ This interval definition method is selected by passing an argument \code{bin.met
 # TO DO: 
 # (1) ADD AN EXAMPLE WITH STOCHASTIC INTERVENTION
 # (2) ADD AN EXAMPLE WITH CONTINUOUS EXPOSURE
-# (3) Add example of a call to eval.summaries()
-#***************************************************************************************
-
 #***************************************************************************************
 data(df_netKmax6) # Load the network data
 Kmax <- 6 # Max number of friends in the network
-#***************************************************************************************
 
 #***************************************************************************************
 # Example 1. 
@@ -261,7 +259,6 @@ Kmax <- 6 # Max number of friends in the network
 # POSSIBLE INTERVENTION FUNCTIONS:
 #***************************************************************************************
 # Set x\% of community to A=1 (returns A sampled with probability P(A=1)):
-# f.A_x <- function(data, x, ...) rep(x, nrow(data))
 f.A_x <- function(data, x, ...) rbinom(n = nrow(data), size = 1, prob = x[1])
 # Deterministically set every A=0:
 f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
@@ -278,57 +275,60 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
           def.sA(netA = A[[0:Kmax]])
 
 #***************************************************************************************
-# alternative ways to pass summary measures:
-# NOT IMPLEMENTED
-#***************************************************************************************
-# sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", 
-            # sum.netW1 = "rowSums(W1[[1:Kmax]]"), 
-            # sum.netW2 = "rowSums(W2[[1:Kmax]])", 
-            # sum.netW3 = "rowSums(W3[[1:Kmax]])"), 
-# sA = list("A[[0:Kmax]]", sum.netAW2 = "rowSums((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
-
-#***************************************************************************************
 # EVALUATING SUMMARY MEASURES FOR INPUT DATA
+# A helper function that can pre-evaluate the summary measures on (O)bserved data:
 #***************************************************************************************
-# A helper function that can pre-evaluate the summary measures on (O)bserved data 
-# (data.frame)
-# This will help when examining the data and playing with various summary measures, 
-# prior to running the tmletnet() function
-# res <- eval.summaries(summaries = def_sA, Odata = df_netKmax6, Kmax = Kmax, 
-# NETIDnode = "Net_str", IDnode = "IDs")
-
-#***************************************************************************************
-# NEW INTERFACE FOR SPECIFYING hform, Qform, gform allows including the summary 
-# measure names
-#***************************************************************************************
-# testform1 <- as.formula("sA + sA2 ~ sW1 + sum.netW3")
-# testform2 <- as.formula("netA ~ netW2 + sum.netW3")
-# testform <- testform1
-# testterms <- terms(testform)
-# # Getting predictor sW names:
-# (sW.names <- attributes(testterms)$term.labels)
-# sW.names.alt <- colnames(attributes(testterms)$factors)
-# assert_that(all(sW.names == sW.names.alt))
-# # Getting outcome sA names:
-# (out.var <- rownames(attributes(testterms)$factors)[1]) # character string
-# out.vars.form <- as.formula(". ~ " \%+\% out.var)
-# out.vars.terms <- terms(out.vars.form)
-# (sA.names <- attributes(out.vars.terms)$term.labels)
+res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+  NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 
 #***************************************************************************************
 # ESTIMATION
 #***************************************************************************************
 options(tmlenet.verbose = FALSE)
-res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax,
+res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                  Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
+                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                  optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+
+res_K6_1$EY_gstar1$estimates
+res_K6_1$EY_gstar1$vars
+res_K6_1$EY_gstar1$CIs
+res_K6_1$EY_gstar1$other.vars
+
+#***************************************************************************************
+# SPECIFYING the clever covariate regressions hform and hform.gstar:
+# Left side can consist of any summary names defined by def.sA (as linear terms)
+# Right side can consist of any summary names defined by def.sW (as linear terms) & 'nF'
+#***************************************************************************************
+hform1 <- "netA ~ netW2 + sum.netW3 + nF"
+hform.gstar1 <- "netA ~ sum.netW3"
+
+# alternatives:
+hform2 <- "netA + sum.netAW2 ~ netW2 + sum.netW3 + nF"
+hform3 <- "sum.netAW2 ~ netW2 + sum.netW3"
+
+#***************************************************************************************
+# SPECIFYING the outcome regression Qform:
+# Left side is ignored (with a warning if not equal to Ynode)
+# Right side can by any summary names defined by def.sW, def.sA & 'nF'
+#***************************************************************************************
+Qform1 <- "Y ~ sum.netW3 + sum.netAW2"
+Qform2 <- "Y ~ netA + netW + nF"
+Qform3 <- "blah ~ netA + netW + nF"
+
+#***************************************************************************************
+# ESTIMATION WITH regression formulas:
+#***************************************************************************************
+options(tmlenet.verbose = FALSE)
+res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                   Qform = "Y ~ sum.netW3 + sum.netAW2",
                   hform = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
-                  Anode = "A", Ynode = "Y",
-                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                  f_gstar1 = f.A_0,
-                  sW = def_sW, sA = def_sA,
-                  optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
+                  Anode = "A", Ynode = "Y", # should make Ynode optional when Qform
+                  f_gstar1 = f.A_0,
+                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                  optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
 res_K6_1$EY_gstar1$estimates
 res_K6_1$EY_gstar1$vars
@@ -339,14 +339,12 @@ res_K6_1$EY_gstar1$other.vars
 # Example 2. 
 # Same as above but for covariate-based TMLE.
 #***************************************************************************************
-res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax,
+res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                   Qform = "Y ~ sum.netW3 + sum.netAW2",
                   hform = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
-                  Anode = "A", Ynode = "Y",
+                  Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
                   IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                  f_gstar1 = f.A_0,
-                  sW = def_sW, sA = def_sA,
                   optPars = list(runTMLE = "tmle.covariate", n_MCsims = 10))
 
 res_K6_2$EY_gstar1$estimates
@@ -372,32 +370,18 @@ print(head(NetInd_mat))
 print(head(nF))
 print(all.equal(df_netKmax6[,"nFriends"], nF))
 
-res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax,
+res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", Ynode = "Y",
+                    Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
                     NETIDmat = NetInd_mat,
-                    f_gstar1 = f.A_0,
-                    sW = def_sW, sA = def_sA,
                     optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
 all.equal(res_K6_net1$EY_gstar1$estimates, res_K6_1$EY_gstar1$estimates)
 all.equal(res_K6_net1$EY_gstar1$vars, res_K6_1$EY_gstar1$vars)
 all.equal(res_K6_net1$EY_gstar1$CIs, res_K6_1$EY_gstar1$CIs)
 all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
-
-#***************************************************************************************
-# Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
-# OLD. REMOVE OR MODIFY.
-#***************************************************************************************
-# tmlenet_K6out2 <- tmlenet(data=df_netKmax6, Anode="A", Ynode="Y", 
-# Kmax=Kmax, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, h_form=hform,
-# f.g1.star=f.A_1, f.g1_args=NULL, n_MCsims=10, n_samp_g0gstar=10)
-
-# tmlenet_K6out2$estimates$EY_g1.star$tmle_B
-# tmlenet_K6out2$estimates$EY_g1.star$CI_tmle_B_iidIC
-
 
 #***************************************************************************************
 # EXAMPLE WITH SIMULATED DATA FOR 2 FRIENDS AND 1 COVARIATE W1 (SIMULATION 1)
@@ -409,44 +393,19 @@ all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
 #--------------------------------------------------------
 # Define regression formulas for Q and g
 # ****IMPORTANT****: 
-#	use notation netVAR_1 to refer to covariate VAR of the 1st friend
-# 	netVAR_2 to refer to covariate VAR of the 2nd friend and so on...
+# use notation netVAR_1 to refer to covariate VAR of the 1st friend
+#   netVAR_2 to refer to covariate VAR of the 2nd friend and so on...
 #--------------------------------------------------------
 # Qform <- "Y ~  W1 + A + netW1_1 + netW1_2 + netA_1 + netA_2 + nF"
 # gform <- "A ~  W1 + netW1_1 + netW1_2 + nF"
 
 #***************************************************************************************
-# Example 1. Mean population outcome under deterministic intervention A=0
-# OLD. REMOVE OR MODIFY.
+# Mean population outcome under stochastic intervention P(A=1)=0.2
 #***************************************************************************************
-# tmlenet_out1 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y", 
-# Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, 
-# f.g1.star=f.A_0, f.g1_args=NULL)
-
-# # TMLE estimate and iid IC-based 95\% CI:
-# tmlenet_out1$estimates$EY_g1.star$tmle_B
-# tmlenet_out1$estimates$EY_g1.star$CI_tmle_B_iidIC
-
-# # Efficient IPTW (h) and iid IC-based 95\% CI:
-# tmlenet_out1$estimates$EY_g1.star$iptw_h
-# tmlenet_out1$estimates$EY_g1.star$CI_iptw_h_iidIC
-
-# # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-# tmlenet_out1$estimates$EY_g1.star$iptw
-# tmlenet_out1$estimates$EY_g1.star$CI_iptw_iidIC_1stO
-# tmlenet_out1$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
-
-# # MLE
-# tmlenet_out1$estimates$EY_g1.star$mle
-
-#***************************************************************************************
-# Example 2. Mean population outcome under stochastic intervention P(A=1)=0.2
-# OLD. REMOVE OR MODIFY.
-#***************************************************************************************
-# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y", 
-# Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-# f.g1.star=f.A_x, f.g1_args=list(x=0.2),
-# n_MCsims=4000, n_samp_g0gstar=100)
+# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
+#             Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
+#             f.g1.star=f.A_x, f.g1_args=list(x=0.2),
+#             n_MCsims=4000, n_samp_g0gstar=100)
 
 # # TMLE estimate and iid IC-based 95\% CI:
 # tmlenet_out2$estimates$EY_g1.star$tmle_B
@@ -465,14 +424,12 @@ all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
 # tmlenet_out2$estimates$EY_g1.star$mle
 
 #***************************************************************************************
-# Example 3. Average treatment effect (ATE) for two interventions, 
-# f.g1.star: A=1 vs f.g2.star: A=0
-# OLD. REMOVE OR MODIFY.
+# Average treatment effect (ATE) for two interventions, f.g1.star: A=1 vs f.g2.star: A=0
 #***************************************************************************************
-# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y", 
-# Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-# f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
-# n_MCsims=4000, n_samp_g0gstar=100)
+# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
+#             Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
+#             f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
+#             n_MCsims=4000, n_samp_g0gstar=100)
 
 # # TMLE estimate for ATE + 95\% CI
 # tmlenet_out3$estimates$ATE$tmle_B

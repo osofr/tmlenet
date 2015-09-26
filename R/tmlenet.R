@@ -479,17 +479,19 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #'  assigned treatment (A), the outcome (Y) and network of friends (F)
 # @param estimators (NOT IMPLEMENTED) Character vector with estimator names.
 #' @param Kmax Maximal number of friends (connected units) for any observation in the input \code{data} data.frame.
-#' @param Anode Treatment variable name (column name in \code{data}), can be either binary, categorical or continuous
+#' @param Anode Treatment variable name (column name in \code{data}), can be either binary, categorical or continuous. 
+#'  This can instead be specified with argument \code{sA} by adding a call \code{+def.sA(Anode="ExposureVarName")} to \code{sA}.
 #' @param AnodeDET (Optional) Column name for indicators of deterministic values of A, coded as (TRUE/FALSE) or (1/0),
 #'  the observations with AnodeDET=TRUE/1 are assumed to have constant value for their Anode
-#' @param Ynode  Outcome variable name (column name in \code{data}), assumed normalized 0 to 1
+#' @param Ynode  Outcome variable name (column name in \code{data}), assumed normalized 0 to 1. This can instead be specified
+#'  on the left-side of the regression formula in argument \code{Qform}.
 #' @param YnodeDET (Optional) Column name for indicators of deterministic values of outcome Y, coded as (TRUE/FALSE) or (1/0),
 #'  the observations with YnodeDET=TRUE/1 are assumed to have constant value for their Ynode
 #' @param sW Summary measures constructed from baseline covariates alone. This must be an object of class
 #'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.
 #' @param sA Summary measures constructed from \code{Anode} and baseline covariates. This must be an object of class
 #'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.
-#' @param IDnode (Optional) Subject identifier variable in the input data, if not supplied the network string in
+#' @param IDnode Subject identifier variable in the input data, if not supplied the network string in
 #'  NETIDnode is assumed to be indexing the row numbers in the input \code{data}
 #' @param NETIDnode Network specification, a column name in data consisting of strings that identify the unit's friends
 #'  by their IDs or their row numbers (two friends are separated by space, e.g., "1 2"; unit with no friends should have
@@ -505,26 +507,22 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 # @param nFnode (Optional) Name of the variable for the number of friends each unit has, this name can then be used
 #  inside the summary measures and regression formulas \code{sW}, \code{sA}, \code{Qform}, \code{hform},
 #  \code{hform.gstar} and \code{gform}. See Details.
-#' @param Qform (Optional) Regression formula for outcome in Ynode, when NULL (default) Ynode is regressed on all
+#' @param Qform Regression formula for outcome in Ynode, when omitted (\code{NULL}) Ynode is regressed on all
 #'  variables defined in \code{sW} and \code{sA}. See Details.
-#' @param hform (Optional) Regression formula for estimating the conditional probability of P(sA | sW) under g0
-#'  (the observed treatment mechanism), when NULL (the default), will include all variables (columns)
+#' @param hform Regression formula for estimating the conditional probability of P(sA | sW) under g0
+#'  (the observed treatment mechanism), when omitted (\code{NULL}), will include all variables (columns)
 #'  in \code{sA} and in \code{sW}. See Details.
-#' @param hform.gstar (Optional) Regression formula for estimating the conditional probability P(sA | sW) under gstar,
-#'  when NULL (default) the same regression formula as in hform will be used. See Details.
+#' @param hform.gstar Regression formula for estimating the conditional probability P(sA | sW) under gstar,
+#'  when omitted (\code{NULL}), the same regression formula as in hform will be used. See Details.
 # @param gform  (Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all
 # friends treatments, P(A_i, A_{F_i} | W). See Details.
 # @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
 # @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
 #' @param verbose Set to \code{TRUE} to print messages on status and information to the console. 
 #'  Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.
-#' @param optPars (Optional) A named list of additional parameters to be passed to \code{tmlenet}, such as
+#' @param optPars A named list of additional optional parameters to be passed to \code{tmlenet}, such as
 #'  \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{f_g0}, \code{h_g0_SummariesModel} and
 #'  \code{h_gstar_SummariesModel}. See Details.
-#((NOT IMPLEMENTED)) @param AnodeDETfun function that evaluates to TRUE for observations with deterministically 
-# assigned A (alternative to AnodeDET)
-#((NOT IMPLEMENTED)) @param YnodeDETfun function that evaluates to TRUE for observations with deterministically
-# assigned Y (alternative to YnodeDET)
 #((NOT IMPLEMENTED)) @param Q.SL.library SuperLearner libraries for outcome, Q
 #((NOT IMPLEMENTED)) @param g.SL.library SuperLearner libraries for treatment mechanism, g
 #((NOT IMPLEMENTED)) @param h_f.g0_args Additional arguments to be passed to f_g0
@@ -715,8 +713,7 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' @export
 tmlenet <- function(data, Kmax, sW, sA,
                     # estimators = c("tmle", "iptw", "gcomp"),
-                    Anode, 
-                    AnodeDET = NULL, Ynode, YnodeDET = NULL, 
+                    Anode,  AnodeDET = NULL, Ynode, YnodeDET = NULL,
                     IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL,
                     f_gstar1, f_gstar2 = NULL,
                     Qform = NULL, hform = NULL, hform.gstar = NULL,
@@ -724,7 +721,7 @@ tmlenet <- function(data, Kmax, sW, sA,
                     optPars = list(
                       alpha = 0.05,
                       lbound = 0.005,
-                      family = "binomial", # NOT IMPLEMENTED YET
+                      family = "binomial", # NOT YET IMPLEMENTED
                       n_MCsims = ceiling(sqrt(nrow(data))),
                       runTMLE = c("tmle.intercept", "tmle.covariate"),
                       f_g0 = NULL,
@@ -737,6 +734,17 @@ tmlenet <- function(data, Kmax, sW, sA,
   gvars$verbose <- verbose
   message("Running tmlenet with the following settings: "); str(gvars$opts)
 
+  if (missing(Ynode)) Ynode <- NULL
+  if (is.null(Ynode) && is.null(Qform)) stop("Either Qform or Ynode must be specified")
+  if (!is.null(Qform) && !is.null(Ynode)) {
+    message("Since both Ynode and Qform are specified, the left-hand side of Qform will be ignored, with outcome being set to Ynode: " %+%
+      Ynode)
+  }
+  if (!is.null(Qform) && is.null(Ynode)) {
+    Ynode <- LhsVars(Qform)[1]
+    message("Setting the Ynode to: " %+% Ynode)
+  }
+
   #----------------------------------------------------------------------------------
   # ADDITIONAL ARGUMENTS (Removed from input args of tmlenet())
   #----------------------------------------------------------------------------------
@@ -745,10 +753,8 @@ tmlenet <- function(data, Kmax, sW, sA,
   g.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction") # NOT USED
   max_npwt <- 50 # NOT USED YET
   h_logit_sep_k <- FALSE # NOT USED YET
-  
   args_f_g1star = NULL # NO LONGER USED, REMOVED FROM tmlenet input
   args_f_g2star = NULL # NO LONGER USED, REMOVED FROM tmlenet input
-  
   alpha <- ifelse(is.null(optPars$alpha), 0.05, optPars$alpha)
   lbound <- ifelse(is.null(optPars$lbound), 0.005, optPars$lbound)
   family <- ifelse(is.null(optPars$family), "binomial", optPars$family)
@@ -858,24 +864,28 @@ tmlenet <- function(data, Kmax, sW, sA,
     h.gstar.sVars <- h.sVars
   }
 
-  # if (verbose) {
+  if (verbose) {
     print("Qform: " %+% Qform)
     print("Q.sVars"); print(str(Q.sVars))
     print("hform: " %+% hform)
     print("h.sVars"); print(str(h.sVars))
     print("hform.gstar: " %+% hform.gstar)
     print("h.gstar.sVars"); print(str(h.gstar.sVars))
-  # }
+  }
 
   #-----------------------------------------------------------
   # Defining and fitting regression for Y ~ sW + sA:
   # todo 45 (m.Q.init) +0: In the future add option to fit separate m.Q.init models for each nF value
   # todo 45 (m.Q.init) +0: Move fitting of Q inside get_all_ests?
   #-----------------------------------------------------------
+  check.Qpreds.exist <- unlist(lapply(Q.sVars$predvars, function(PredName) PredName %in% DatNet.ObsP0$names.sVar))
+  if (!all(check.Qpreds.exist)) stop("the following predictors in Qform regression could not be located among the summary measures: " %+%
+                                    paste0(Q.sVars$predvars[!check.Qpreds.exist], collapse = ","))
+
   Qreg <- RegressionClass$new(outvar = node_l$Ynode,
                               predvars = Q.sVars$predvars,
-                              subset = !determ.Q,
-                              ReplMisVal0 = TRUE)
+                              subset = !determ.Q, ReplMisVal0 = TRUE)
+
   m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)$predict(newdata = DatNet.ObsP0)
   print("m.Q.init$getoutvarnm: "); print(m.Q.init$getoutvarnm)
   print("coef(m.Q.init): "); print(coef(m.Q.init))
