@@ -6,6 +6,7 @@
 #***************************************************************************************
 data(df_netKmax6) # Load the network data
 Kmax <- 6 # Max number of friends in the network
+#***************************************************************************************
 
 #***************************************************************************************
 # Example 1. 
@@ -16,8 +17,8 @@ Kmax <- 6 # Max number of friends in the network
 #***************************************************************************************
 # POSSIBLE INTERVENTION FUNCTIONS:
 #***************************************************************************************
-# Stochastically set x% of community to A=1 
-# (returns a function that will sample A with probability x:=P(A=1))
+# Stochastically sets (100*x)% of community to A=1 
+# Returns a function that will sample A with probability x:=P(A=1))
 make_f.gstar <- function(x, ...) {
   eval(x)
   f.A_x <- function(data, ...){
@@ -25,11 +26,11 @@ make_f.gstar <- function(x, ...) {
   }
   return(f.A_x)
 }
-# Deterministically set every A=0:
+# Deterministic f_gstar setting every A=0:
 f.A_0 <- make_f.gstar(x = 0)
-# Deterministically set every A=1:
+# Deterministic f_gstar setting every A=1:
 f.A_1 <- make_f.gstar(x = 1)
-# Sample A=1 with probability 0.2:
+# Stochastic f_gstar that sets A=1 with probability 0.2:
 f.A_.2 <- make_f.gstar(x = 0.2)
 
 #***************************************************************************************

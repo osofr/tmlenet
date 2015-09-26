@@ -48,7 +48,7 @@ This class inherits from \code{DatNet} and extends its methods to handle a singl
   \item{\code{binirize.cat.sVar(name.sVar, levels)}}{...}
   \item{\code{get.sVar.bw(name.sVar, intervals)}}{...}
   \item{\code{get.sVar.bwdiff(name.sVar, intervals)}}{...}
-  \item{\code{make.dat.sWsA(p = 1, f.g_name = NULL, f.g_args = NULL, sA.object = NULL)}}{...}
+  \item{\code{make.dat.sWsA(p = 1, f.g_name = NULL, sA.object = NULL)}}{...}
 }
 }
 

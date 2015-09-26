@@ -4,12 +4,21 @@
 # ---------------------------------------------------------------------------------
 
 test.examples <- function() {
-  # Set x% of community to A=1 (returns probability P(A=1))
-  f.A_x <- function(data, x, ...) rbinom(n = nrow(data), size = 1, prob = x[1])
-  # Deterministically set every A=0
-  f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
-  # Deterministically set every A=1
-  f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
+  # Stochastically sets (100*x)% of community to A=1
+  # Returns a function that will sample A with probability x:=P(A=1))
+  make_f.gstar <- function(x, ...) {
+    eval(x)
+    f.A_x <- function(data, ...){
+      rbinom(n = nrow(data), size = 1, prob = x[1])
+    }
+    return(f.A_x)
+  }
+  # Deterministic f_gstar setting every A=0:
+  f.A_0 <- make_f.gstar(x = 0)
+  # Deterministic f_gstar setting every A=1:
+  f.A_1 <- make_f.gstar(x = 1)
+  # Stochastic f_gstar that sets A=1 with probability 0.2:
+  f.A_.2 <- make_f.gstar(x = 0.2)
 
   #***************************************************************************************
   # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (OLD SIMULATION 3)
@@ -67,9 +76,7 @@ test.examples <- function() {
               Qform = "Y ~ sum.netW3 + sum.netAW2",
               hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
               hform.gstar = "netA ~ sum.netW3",
-
               Anode = "A",
-
               Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
               f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
@@ -78,9 +85,7 @@ test.examples <- function() {
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-
                     Anode = "A", Ynode = "Y",
-
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",n_MCsims = 10))
 
@@ -179,40 +184,6 @@ test.examples <- function() {
   #      0.0004350965      0.0846013137      0.0000000000      0.0008532711      0.0008535512
 
   #----------------------------------------------------------------------------------
-  # Example 3. Same as Example 1 but with with true f_g0
-  # *** Note that since f_g0 depends on (W1, netW1, netW2, netW3), these covariates also need to be added to sW summary measure ***
-  #----------------------------------------------------------------------------------
-  def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
-              def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE) +
-              def.sW(netW1 = W1[[0:Kmax]], netW3 = W3[[1:Kmax]])
-
-  def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE) +
-              def.sA(netA = A[[0:Kmax]])
-
-  res_K6_3 <- tmlenet(data = df_netKmax6,
-                    Qform = "Y ~ sum.netW3 + sum.netAW2",
-                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
-                    hform.gstar = "netA ~ sum.netW3",
-
-                    Anode = "A", Ynode = "Y",
-                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",f_g0 = f.A,n_MCsims = 10))
-
-  # Test estimates:
-  checkTrue(abs(res_K6_3$EY_gstar1$estimates[tmle_idx] - 0.5054745) < 10^(-06))
-  checkTrue(abs(res_K6_3$EY_gstar1$estimates[h_iptw_idx] - 0.4668999) < 10^(-06))
-  checkTrue(abs(res_K6_3$EY_gstar1$estimates[gcomp_idx] - 0.4970377) < 10^(-06))
-  # Test asymptotic vars:
-  checkTrue(abs(res_K6_3$EY_gstar1$vars[tmle_idx] - 0.0008937359) < 10^(-06))
-  checkTrue(abs(res_K6_3$EY_gstar1$vars[h_iptw_idx] - 0.001738169) < 10^(-06))
-  # Test CIs:
-  checkTrue((abs(res_K6_3$EY_gstar1$CIs[tmle_idx][1] - 0.4468806) < 10^(-06)) &
-            (abs(res_K6_3$EY_gstar1$CIs[tmle_idx][2] - 0.5640685) < 10^(-06)))
-  checkTrue((abs(res_K6_3$EY_gstar1$CIs[h_iptw_idx][1] - 0.3851863) < 10^(-06)) &
-            (abs(res_K6_3$EY_gstar1$CIs[h_iptw_idx][2] - 0.5486134) < 10^(-06)))
-  # res_K6$EY_gstar1$other.vars
-
-  #----------------------------------------------------------------------------------
   # Same as Example 1, but specifying the network with NETIDmat: a matrix of friend row numbers from the input data
   #----------------------------------------------------------------------------------
   Net_str <- df_netKmax6[, "Net_str"]
@@ -240,70 +211,112 @@ test.examples <- function() {
   checkTrue(all.equal(res_K6net$EY_gstar1$vars, res_K6_1$EY_gstar1$vars))
   checkTrue(all.equal(res_K6net$EY_gstar1$CIs, res_K6_1$EY_gstar1$CIs))
   checkTrue(all.equal(res_K6net$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars))
+
+  #----------------------------------------------------------------------------------
+  # Example 3. Same as Example 1 but with with true f_g0
+  # *** Note that since f_g0 depends on (W1, netW1, netW2, netW3), these covariates also need to be added to sW summary measure ***
+  #----------------------------------------------------------------------------------
+  # options(tmlenet.verbose = TRUE)
+  def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
+              def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE) +
+              def.sW(netW1 = W1[[0:Kmax]], netW3 = W3[[1:Kmax]])
+
+  def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE) +
+              def.sA(netA = A[[0:Kmax]])
+
+  # True exposure model (under g0):
+  f.A_g0 <- function(data, ...) {
+    k <- 6
+    rbinom(n = nrow(data), size = 1, prob = f.A(k=k, data = data, ...))
+  }
+
+  set.seed(seed=12345)
+  res_K6_3 <- tmlenet(data = df_netKmax6,
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "netA ~ sum.netW3",
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", f_g0 = f.A_g0, n_MCsims = 10))
+
+  # Test estimates:
+  checkTrue(abs(res_K6_3$EY_gstar1$estimates[tmle_idx] - 0.5049234) < 10^(-06))
+  checkTrue(abs(res_K6_3$EY_gstar1$estimates[h_iptw_idx] - 0.4754295) < 10^(-06))
+  checkTrue(abs(res_K6_3$EY_gstar1$estimates[gcomp_idx] - 0.4970377) < 10^(-06))
+  # Test asymptotic vars:
+  checkTrue(abs(res_K6_3$EY_gstar1$vars[tmle_idx] - 0.0009049428) < 10^(-06))
+  checkTrue(abs(res_K6_3$EY_gstar1$vars[h_iptw_idx] - 0.001762281) < 10^(-06))
+  # Test CIs:
+  checkTrue((abs(res_K6_3$EY_gstar1$CIs[tmle_idx][1] - 0.4459632) < 10^(-06)) &
+            (abs(res_K6_3$EY_gstar1$CIs[tmle_idx][2] - 0.5638835) < 10^(-06)))
+  checkTrue((abs(res_K6_3$EY_gstar1$CIs[h_iptw_idx][1] - 0.3931511) < 10^(-06)) &
+            (abs(res_K6_3$EY_gstar1$CIs[h_iptw_idx][2] - 0.5577079) < 10^(-06)))
+  # res_K6$EY_gstar1$other.vars
+
+  #***************************************************************************************
+  # EXAMPLE WITH SIMULATED DATA FOR 2 FRIENDS AND 1 COVARIATE W1 (SIMULATION 1)
+  #***************************************************************************************
+  # data(sample_network_k2)
+  # load(file="./sample_network_k2.RData")
+  # head(sample_network_k2)
+
+  #--------------------------------------------------------
+  # Define regression formulas for Q and g
+  # ****IMPORTANT****: 
+  #	use notation netVAR_1 to refer to covariate VAR of the 1st friend
+  # 	netVAR_2 to refer to covariate VAR of the 2nd friend and so on...
+  #--------------------------------------------------------
+  # Qform <- "Y ~  W1 + A + netW1_1 + netW1_2 + netA_1 + netA_2 + nF"
+  # gform <- "A ~  W1 + netW1_1 + netW1_2 + nF"
+
+  #----------------------------------------------------------------------------------
+  # Example 2. Mean population outcome under stochastic intervention P(A=1)=0.2
+  # OLD. REMOVE OR MODIFY.
+  #----------------------------------------------------------------------------------
+  # tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
+  # 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
+  # 						f.g1.star=f.A_x, f.g1_args=list(x=0.2),
+  # 						n_MCsims=4000, n_samp_g0gstar=100)
+
+  # # TMLE estimate and iid IC-based 95% CI:
+  # tmlenet_out2$estimates$EY_g1.star$tmle_B
+  # tmlenet_out2$estimates$EY_g1.star$CI_tmle_B_iidIC
+
+  # # Efficient IPTW (h) and iid IC-based 95% CI:
+  # tmlenet_out2$estimates$EY_g1.star$iptw_h
+  # tmlenet_out2$estimates$EY_g1.star$CI_iptw_h_iidIC
+
+  # # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
+  # tmlenet_out2$estimates$EY_g1.star$iptw
+  # tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_1stO
+  # tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
+
+  # # MLE
+  # tmlenet_out2$estimates$EY_g1.star$mle
+
+  #----------------------------------------------------------------------------------
+  # Example 3. Average treatment effect (ATE) for two interventions, f.g1.star: A=1 vs f.g2.star: A=0
+  # OLD. REMOVE OR MODIFY.
+  #----------------------------------------------------------------------------------
+  # tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
+  # 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
+  # 						f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
+  # 						n_MCsims=4000, n_samp_g0gstar=100)
+
+  # # TMLE estimate for ATE + 95% CI
+  # tmlenet_out3$estimates$ATE$tmle_B
+  # tmlenet_out3$estimates$ATE$CI_tmle_B_iidIC
+
+  # # Efficient IPTW (h) and iid IC-based 95% CI:
+  # tmlenet_out3$estimates$ATE$iptw_h
+  # tmlenet_out3$estimates$ATE$CI_iptw_h_iidIC
+
+  # # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
+  # tmlenet_out3$estimates$ATE$iptw
+  # tmlenet_out3$estimates$ATE$CI_iptw_iidIC_1stO
+  # tmlenet_out3$estimates$ATE$CI_iptw_iidIC_2ndO
+
+  # # MLE
+  # tmlenet_out3$estimates$ATE$mle
 }
-
-#***************************************************************************************
-# EXAMPLE WITH SIMULATED DATA FOR 2 FRIENDS AND 1 COVARIATE W1 (SIMULATION 1)
-#***************************************************************************************
-# data(sample_network_k2)
-# load(file="./sample_network_k2.RData")
-# head(sample_network_k2)
-
-#--------------------------------------------------------
-# Define regression formulas for Q and g
-# ****IMPORTANT****: 
-#	use notation netVAR_1 to refer to covariate VAR of the 1st friend
-# 	netVAR_2 to refer to covariate VAR of the 2nd friend and so on...
-#--------------------------------------------------------
-# Qform <- "Y ~  W1 + A + netW1_1 + netW1_2 + netA_1 + netA_2 + nF"
-# gform <- "A ~  W1 + netW1_1 + netW1_2 + nF"
-
-#----------------------------------------------------------------------------------
-# Example 2. Mean population outcome under stochastic intervention P(A=1)=0.2
-# OLD. REMOVE OR MODIFY.
-#----------------------------------------------------------------------------------
-# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
-# 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-# 						f.g1.star=f.A_x, f.g1_args=list(x=0.2),
-# 						n_MCsims=4000, n_samp_g0gstar=100)
-
-# # TMLE estimate and iid IC-based 95% CI:
-# tmlenet_out2$estimates$EY_g1.star$tmle_B
-# tmlenet_out2$estimates$EY_g1.star$CI_tmle_B_iidIC
-
-# # Efficient IPTW (h) and iid IC-based 95% CI:
-# tmlenet_out2$estimates$EY_g1.star$iptw_h
-# tmlenet_out2$estimates$EY_g1.star$CI_iptw_h_iidIC
-
-# # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-# tmlenet_out2$estimates$EY_g1.star$iptw
-# tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_1stO
-# tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
-
-# # MLE
-# tmlenet_out2$estimates$EY_g1.star$mle
-
-#----------------------------------------------------------------------------------
-# Example 3. Average treatment effect (ATE) for two interventions, f.g1.star: A=1 vs f.g2.star: A=0
-# OLD. REMOVE OR MODIFY.
-#----------------------------------------------------------------------------------
-# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
-# 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-# 						f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
-# 						n_MCsims=4000, n_samp_g0gstar=100)
-
-# # TMLE estimate for ATE + 95% CI
-# tmlenet_out3$estimates$ATE$tmle_B
-# tmlenet_out3$estimates$ATE$CI_tmle_B_iidIC
-
-# # Efficient IPTW (h) and iid IC-based 95% CI:
-# tmlenet_out3$estimates$ATE$iptw_h
-# tmlenet_out3$estimates$ATE$CI_iptw_h_iidIC
-
-# # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-# tmlenet_out3$estimates$ATE$iptw
-# tmlenet_out3$estimates$ATE$CI_iptw_iidIC_1stO
-# tmlenet_out3$estimates$ATE$CI_iptw_iidIC_2ndO
-
-# # MLE
-# tmlenet_out3$estimates$ATE$mle

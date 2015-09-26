@@ -3,28 +3,12 @@
 # P_{g^*}(sA | sW)/P_{g0}(sA | sW)
 #-----------------------------------------------------------------------------
 
-# Get the prob of A^* (known stoch. intervention) from supplied function, fcn_name
-# #todo 56 (f.gen.probA.star) +0: 1) rename k to Kmax or remove? 2) remove f_args
-f.gen.probA.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
-  .f_g_wrapper <- function(k, df_AllW, fcn_name, ...) {
-      args0 <- list(k = k, data = df_AllW)
-      args <- c(args0, ...)
-    do.call(fcn_name, args)
-  }
-  probA <- .f_g_wrapper(k, df_AllW, fcn_name, f_args)
-  return(probA)
-}
-
-f.gen.A.star.cont <- function(k, df_AllW, fcn_name, f_args = NULL) {
-  f.gen.probA.star(k, df_AllW, fcn_name, f_args)
-}
-
 # @title Predict h weights under g_0 and g_star using existing m.h.fit model fit
 # @name pred.hbars
 # @export
 # fit models for m_gAi
 predict.hbars <- function(newdatnet = NULL, m.h.fit) {
-# pred.hbars <- function(newdatnet = NULL, m.h.fit) {  
+# pred.hbars <- function(newdatnet = NULL, m.h.fit) { 
     lbound <- m.h.fit$lbound
     # netA_names <- m.h.fit$m.gAi_vec_g$sA_nms
     # determ_cols_Friend <- m.h.fit$determ_cols_Friend # Should this be saved in m.gAi_vec_g and m.gAi_vec_gstar objects instead?
@@ -79,8 +63,8 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   f.gstar <- est_params_list$f.gstar
   f.g0 <- est_params_list$f.g0
 
-  f.g_args <- est_params_list$f.g_args # (HAVE BEEN DISABLED)
-  f.g0_args <- est_params_list$f.g0_args # (HAVE BEEN DISABLED)
+  # f.g_args <- est_params_list$f.g_args # (HAVE BEEN DISABLED)
+  # f.g0_args <- est_params_list$f.g0_args # (HAVE BEEN DISABLED)
 
   h_g0_SummariesModel <- est_params_list$h_g0_SummariesModel
   if (!is.null(h_g0_SummariesModel)) message("h_g0 will not be fit, predicting h_g0 based on the existing fit supplied in h_g0_SummariesModel object")
@@ -156,7 +140,9 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   if (!is.null(f.g0)) {
     if (gvars$verbose) message("generating DatNet.g0 under known g0")
     DatNet.g0 <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-    DatNet.g0$make.dat.sWsA(p = p_h0, f.g_name = f.g0, f.g_args = f.g0_args, sA.object = sA)
+    DatNet.g0$make.dat.sWsA(p = p_h0, f.g_name = f.g0, sA.object = sA)
+    print("head(DatNet.g0$dat.sWsA): "); print(head(DatNet.g0$dat.sWsA))
+    # DatNet.g0$make.dat.sWsA(p = p_h0, f.g_name = f.g0, f.g_args = f.g0_args, sA.object = sA)
   } else {
     DatNet.g0 <- DatNet.ObsP0
   }
@@ -194,7 +180,8 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   }
 
   DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_name = f.gstar, f.g_args = f.g_args, sA.object = sA)
+  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_name = f.gstar, sA.object = sA)
+  # DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_name = f.gstar, f.g_args = f.g_args, sA.object = sA)
 
   if (gvars$verbose) {
     print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): "); print(class(DatNet.gstar$dat.sWsA))

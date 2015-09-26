@@ -143,7 +143,7 @@ f.A_cutt_offW <- function(k, data, cutt_offW, ...) {
   A[which((indivW==1)|(sum_friendWs>cutt_offW))] <- 1 
   return(A)  	
 }
- 
+
 #---------------------------------------------------------------------------------
 # Generate the network population using structural equations model
 #---------------------------------------------------------------------------------

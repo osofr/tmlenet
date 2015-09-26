@@ -246,11 +246,13 @@ BinDat <- R6Class(classname = "BinDat",
       self$pooled_bin_name <- data$pooled.bin.nm.sVar(self$outvar)
       self$bin_names <- self$outvars_to_pool
 
-      print("self$bin_names: "); print(self$bin_names)
-      print("self$pooled_bin_name: "); print(self$pooled_bin_name)
-      print("self$data$active.bin.sVar: "); print(self$data$active.bin.sVar)
-      print("self$outvar: "); print(self$outvar)
-      print("self$nbins: "); print(self$nbins)
+      if (gvars$verbose) {
+        print("self$bin_names: "); print(self$bin_names)
+        print("self$pooled_bin_name: "); print(self$pooled_bin_name)
+        print("self$data$active.bin.sVar: "); print(self$data$active.bin.sVar)
+        print("self$outvar: "); print(self$outvar)
+        print("self$nbins: "); print(self$nbins)        
+      }
 
       binID_seq <- 1L:self$nbins
       BinsDat_wide <- data$get.dat.sWsA(self$subset_idx, self$outvars_to_pool)
@@ -267,9 +269,12 @@ BinDat <- R6Class(classname = "BinDat",
       setcolorder(X_mat, c("Intercept", "bin_ID", self$predvars)) # re-order columns by reference (no copy)
       self$ID <- sVar_melt_DT[["ID"]]
       private$X_mat <- as.matrix(X_mat)
-      print("private$X_mat[1:10,]"); print(private$X_mat[1:10,])
       private$Y_vals <- sVar_melt_DT[, self$pooled_bin_name, with = FALSE][[1]] # outcome vector:
-      print("head(private$Y_vals)"); print(head(private$Y_vals, 100))
+
+      if (gvars$verbose) {
+        print("private$X_mat[1:10,]"); print(private$X_mat[1:10,])
+        print("head(private$Y_vals)"); print(head(private$Y_vals, 100))        
+      }
 
       # **************************************
       # TO FINISH...

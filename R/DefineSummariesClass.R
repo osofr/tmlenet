@@ -273,7 +273,7 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       assert_that(is.character(SummaryName) && (length(SummaryName)==1L) && (!SummaryName%in%""))
       if (any(names(self$exprs_list) %in% SummaryName)) {
         remove_idx <- which(names(self$exprs_list)%in% SummaryName)
-        print("removing summaries: "); print(self$exprs_list[remove_idx])
+        # print("removing summaries: "); print(self$exprs_list[remove_idx])
         self$exprs_list <- self$exprs_list[-remove_idx]
         self$asis.flags <- self$asis.flags[-remove_idx]
         self$ReplMisVal0 <- self$ReplMisVal0[-remove_idx]

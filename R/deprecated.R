@@ -283,7 +283,7 @@ f_est <- function(d, form, family) {
               (1-data.probA[,1])^(1-as.integer(data.indA[,1]))
   if (dim(data.probA)[2] > 1) {
     for (i in 2:dim(data.probA)[2]) {
-      y[,i] <- y[,i-1] * (data.probA[,i]^as.integer(data.indA[,i]) * 
+      y[,i] <- y[,i-1] * (data.probA[,i]^as.integer(data.indA[,i]) *
                 (1-data.probA[,i])^(1-as.integer(data.indA[,i])))
     }
   }
@@ -291,10 +291,21 @@ f_est <- function(d, form, family) {
   return(y[,dim(data.probA)[2]])
 }
 
+f.gen.probA.star.old <- function(k, df_AllW, fcn_name, f_args = NULL) {
+  .f_g_wrapper <- function(k, df_AllW, fcn_name, ...) {
+      args0 <- list(k = k, data = df_AllW)
+      args <- c(args0, ...)
+    do.call(fcn_name, args)
+  }
+  probA <- .f_g_wrapper(k, df_AllW, fcn_name, f_args)
+  return(probA)
+}
+
+
 # (DEPRECATED) No longer called
-f.gen.A.star <- function(k, df_AllW, fcn_name, f_args = NULL) {
+f.gen.A.star.old <- function(k, df_AllW, fcn_name, f_args = NULL) {
   n <- nrow(df_AllW)
-  rbinom(n, 1, f.gen.probA.star(k, df_AllW, fcn_name, f_args))
+  rbinom(n, 1, f.gen.probA.star.old(k, df_AllW, fcn_name, f_args))
 }
 
 # (DEPRECATED)
@@ -328,7 +339,7 @@ iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial"
   determ.g <- data$determ.g
   determ.g_vals <- data[determ.g, Anode]
   # predict g*(A=1|W):
-  pA_gstar <- f.gen.probA.star(k, cA.mtx, f.gstar, f.g_args)
+  pA_gstar <- f.gen.probA.star.old(k, cA.mtx, f.gstar, f.g_args)
   netpA_gstar <- .f.allCovars(k, NetInd_k, pA_gstar, Anode)
 
   # calculate likelihoods P_*(A=a|W):
@@ -345,7 +356,7 @@ iptw_est <- function(k, data, node_l, m.gN, f.gstar, f.g_args, family="binomial"
   }
   else {   # If g_0 is known get true P_g0
     # print("RUNNING IPTW ON TRUE g0")
-    pA_g0N <- f.gen.probA.star(k, cA.mtx, f.g0, f.g0_args)
+    pA_g0N <- f.gen.probA.star.old(k, cA.mtx, f.g0, f.g0_args)
   }
   #************************************************
   netpA_g0 <- .f.allCovars(k, NetInd_k, pA_g0N, Anode)
@@ -539,7 +550,7 @@ fit.hbars.old <- function(data, h_fit_params) {
     #---------------------------------------------------------------------------------
     get_hfit_data <- function(cY_mtx, k, Anode, NetInd_k, netW, f.g_name, f.g_args, p, misval = 0L)  {
       samp_g_data <- function(df_sel) {
-        resamp_A <- f.gen.A.star(k, df_sel, f.g_name, f.g_args)
+        resamp_A <- f.gen.A.star.old(k, df_sel, f.g_name, f.g_args)
         resamp_netA <- .f.allCovars(k, NetInd_k, resamp_A, Anode, misval = misval)
         fit.g_data <- cbind(netW, resamp_netA)
         return(fit.g_data)
@@ -808,7 +819,7 @@ get.MCS_ests.old <- function(data, MC_fit_params, fit_h_reg_obj) {
         }
         nFriend <- subset(data, select=nFnode) # nFriends (network) is never resampled
         # print("full_dfW"); print(head(full_dfW,10))
-        resamp_A <- f.gen.A.star(k, data.frame(full_dfW, subset(data, select=nFnode)), f.gstar, f.g_args)
+        resamp_A <- f.gen.A.star.old(k, data.frame(full_dfW, subset(data, select=nFnode)), f.gstar, f.g_args)
         full_dfA <- .f.allCovars(k, NetInd_k, resamp_A, Anode)
         determ_df <-  data.frame(determ.g=data$determ.g[resamp_idx], determ.Q=data$determ.Q[resamp_idx]) # get deterministic nodes, also resampled, since fcn of W's
         Y_resamp <- subset(data, select=Ynode) # use observed Y's - INCORRECT, BASED ON NEW W (iidW=TRUE), deterministic Y's might change values
@@ -870,7 +881,7 @@ get.MCS_ests.old <- function(data, MC_fit_params, fit_h_reg_obj) {
       # get an estimate of fi_W (hold ALL W's fixed at once) - a component of TMLE Var
       .f.gen.fi_W <- function(NetInd_k, emp_netW) {
         determ_df <-  data.frame(determ.g=data$determ.g, determ.Q=data$determ.Q)
-        resamp_A <- f.gen.A.star(k, data.frame(emp_netW,subset(data, select=nFnode)), f.gstar, f.g_args)
+        resamp_A <- f.gen.A.star.old(k, data.frame(emp_netW,subset(data, select=nFnode)), f.gstar, f.g_args)
         samp_dataA <- .f.allCovars(k, NetInd_k, resamp_A, Anode)
         resamp_A_fixW <- data.frame(emp_netW, samp_dataA, subset(data, select=c(nFnode, Ynode)), determ_df)
         # *******fi_W based on Q,N.init model ******

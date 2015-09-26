@@ -49,11 +49,15 @@ an empty "" string). See Details.}
 \code{nrow=nrow(data)}), where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row
 numbers in \code{data} if \code{IDnode=NULL}. See Details.}
 
-\item{f_gstar1}{Function for specifying an intervention of interest that can be static, dynamic treatment regimen
-or stochastic intervention. See Details.}
+\item{f_gstar1}{Intervention function that returns a vector of counterfactual exposures evaluated based on the summary
+measures (\code{sW,sA}). The summary measures are passed under argument \code{"data"}, therefore this function
+must contain a named argument \code{"data"} in its signature. The interventions defined by \code{f_gstar1} can
+be static, dynamic or stochastic. See Details and Examples below.}
 
-\item{f_gstar2}{(Optional) Function for specifying another intervention of interest when estimating the treatment
-effects under two interventions}
+\item{f_gstar2}{Function that retuns a vector of counterfactual exposures under alternative intervention.
+Used for estimating contrasts (average treatment effect) for two interventions, if omitted, only the average
+counterfactual outcome under intervention \code{f_gstar1} is estimated. The requirements for \code{f_gstar2}
+are the same as for \code{f_gstar1}.}
 
 \item{Qform}{Regression formula for outcome in Ynode, when omitted (\code{NULL}) Ynode is regressed on all
 variables defined in \code{sW} and \code{sA}. See Details.}
@@ -123,10 +127,6 @@ The formalas in \code{Qform}, \code{hform.g0} and \code{hform.gstar} can include
  \code{hform.g0 = "A + A_netF1 + A_netF2 ~ W + W_netF1 + W_netF2"} for \code{sW,sA} summary measures defined by
  \code{def.sW(netW=W[[0:2]], noname=TRUE)} and \code{def.sA(netA=A[[0:2]], noname=TRUE)}.
 
-The functions \code{f_gstar1} and \code{f_gstar2} can only depend on variables specified in the summary measures
- \code{sW}, the functions have to return a vector of length \code{nrow(data)} that represent the counterfactual
- treatment assignments for observations in the input data.
-
 Additional optional parameters that can be passed inside a named list \code{optPars} include:
  \itemize{
  \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs);
@@ -139,6 +139,13 @@ Additional optional parameters that can be passed inside a named list \code{optP
  randomized trial). Used only when estimating P(sA | sW) under g0 by sampling large vector of A
  (of length n*n_MCsims) from \code{f_g0};
 }
+}
+
+\section{Specifying the counterfactual intervention functions \code{f_gstar1} and \code{f_gstar2}}{
+
+The functions \code{f_gstar1} and \code{f_gstar2} can only depend on variables specified by the combined matrix
+ of summary measures (\code{sW},\code{sA}), which is passed using the argument \code{data}. The functions should
+ return a vector of length \code{nrow(data)} of counterfactual treatments for observations in the input data.
 }
 
 \section{Specifying the Network of Friends}{
@@ -158,43 +165,51 @@ The network of friends (connections) for observations in the input \code{data} c
  irrelevant.
 }
 
-\section{Algorithm for estimating P(sA[j] | sW) for continuous one-dimenstional summary measure \code{sA[j]}}{
+\section{IPTW estimator}{
 
 **********************************************************************
 
-*) Fit one density for P_{g_0}(sA | sW) implied by (A,W)~g_0(A|W)Q_0(W)
-   and another density for P_{g_star}(sA^* | sW) that is implied by (A^*,W)~g_star(A|W)Q_0(W).
+*) Fit one density for P_{g_0}(\code{sA} | \code{sW}) implied by (\code{A},\code{W})~g_0(\code{A}|\code{W})Q_0(\code{W})
+   and another density for P_{g_star}(\code{sA^*} | \code{sW^*}) that is implied by (\code{A^*},\code{W})~g_star(\code{A}|\code{W})Q_0(\code{W}).
 
-*) Same algorithm is used for estimation of P_{g_0}(sA | sW) or P_{g_star}(sA^* | sW).
+*) Same algorithm is used for estimating P_{g_0}(\code{sA} | \code{sW}) and P_{\code{f_gstar}}(\code{sA^*} | \code{sW}) (see below).
 
-*) These two densities form the basis of the IPTW estimator,
-   which is evaluated at the observed N data points o_i=(y_i, sa_i, sw_i), i=1,...,N.
-   The IPTW is then given by \\sum_i={1,...,N} {Y_i * P_{g_star}(sA^*=sa_i | sW=sw_i) / P_{g_0}(sA=sa_i | sW=sw_i)}
+*) These two density estimates form the basis of the IPTW estimator,
+   which is evaluated at the observed N data points \code{o_i}=(\code{y_i}, \code{sa_i}, \code{sw_i}), i=1,...,N.
+   The IPTW is then given by \code{psi_n} = \\sum_i={1,...,N} {\code{Y_i} *
+   P_{\code{f_gstar}}(\code{sA^*} = \code{sa_i} | \code{sW}=\code{sw_i}) / P_{\code{g_N}}(\code{sA}=\code{sa_i} | \code{sW}=\code{sw_i})}.
+}
 
-*) For simplicity, we now suppose sA is univariate and we first describe an algorithm for fitting P_{g_0}(sA | sW):
+\section{Algorithm for estimating P(\code{sA} | \code{sW}) for continuous one-dimenstional summary measure \code{sA}}{
 
-1) Generate a dataset of N observed continuous summary measures (sa_i:i=1,...,N) from observed ((a_i,w_i):i=1,...,N). Let sa\\in{sa_i:i=1,...,M}.
+**********************************************************************
 
-2) Divide the range of sA values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point sa_i belongs to one interval in S, namely,
-   for each possible value sa of sA there is k\\in{1,...,M}, such that, i_k < sa <= i_{k+1}.
+*) For simplicity, suppose \code{sA} is continuous and univariate and we describe here an algorithm for fitting P_{\code{g_0}}(\code{sA} | \code{sW}) (the algorithm
+ for fitting P_{\code{f_gstar}}(\code{sA^*} | \code{sW^*}) is eqivalent, except that exposure \code{A} is replaced with exposure \code{A^*} generated under \code{f_gstar} and
+ the predictors \code{sW} from the regression formula \code{hform.g0} are replaced with predictors \code{sW^*} specified by the regression formula \code{hform.gstar}).
+
+1) Generate a dataset of N observed continuous summary measures (\code{sa_i}:i=1,...,N) from observed ((\code{a_i},\code{w_i}):i=1,...,N). Let \code{sa}\\in{\code{sa_i}:i=1,...,M}.
+
+2) Divide the range of \code{sA} values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point \code{sa_i} belongs to one interval in S, namely,
+   for each possible value sa of \code{sA} there is k\\in{1,...,M}, such that, i_k < \code{sa} <= i_{k+1}.
    Let the mapping B(sa)\\in{1,...,M} denote a unique interval in S for sa, such that, i_{B(sa)} < sa <= i_{B(sa)+1}.
    Let bw_{B(sa)}:=i_{B(sa)+1}-i_{B(sa)} be the length of the interval (bandwidth) (i_{B(sa)},i_{B(sa)+1}).
    Also define the binary indicators b_1,...,b_M, where b_j:=I(B(sa)=j), for all j <= B(sa) and b_j:=NA for all j>B(sa).
    That is we set b_j to missing ones the indicator I(B(sa)=j) jumps from 0 to 1.
-   Now let sA denote the random variable for the observed summary measure for one unit
-   and denote by (B_1,...,B_M) the corresponding random indicators for sA defined as B_j := I(B(sA) = j)
-   for all j <= B(sA) and B_j:=NA for all j>B(sA).
+   Now let \code{sA} denote the random variable for the observed summary measure for one unit
+   and denote by (B_1,...,B_M) the corresponding random indicators for \code{sA} defined as B_j := I(B(\code{sA}) = j)
+   for all j <= B(\code{sA}) and B_j:=NA for all j>B(\code{sA}).
 
 3) For each j=1,...,M, fit the logistic regression model for the conditional probability P(B_j = 1 | B_{j-1}=0, sW), i.e.,
    at each j this is defined as the conditional probability of B_j jumping from 0 to 1 at bin j, given that B_{j-1}=0 and
    each of these logistic regression models is fit only among the observations that are still at risk of having B_j=1 with B_{j-1}=0.
 4) Normalize the above conditional probability of B_j jumping from 0 to 1 by its corresponding interval length (bandwidth) bw_j to
    obtain the discrete conditional hazards h_j(sW):=P(B_j = 1 | (B_{j-1}=0, sW) / bw_j, for each j.
-   For the summary measure sA, the above conditional hazard h_j(sW) is equal to P(sA \\in (i_j,i_{j+1}) | sA>=i_j, sW),
-   i.e., this is the probability that sA falls in the interval (i_j,i_{j+1}), conditional on sW and conditional on the fact that
-   sA does not belong to any intervals before j.
+   For the summary measure \code{sA}, the above conditional hazard h_j(sW) is equal to P(\code{sA} \\in (i_j,i_{j+1}) | \code{sA}>=i_j, sW),
+   i.e., this is the probability that \code{sA} falls in the interval (i_j,i_{j+1}), conditional on sW and conditional on the fact that
+   \code{sA} does not belong to any intervals before j.
 
-5) Finally, for any given data-point \code{(sa,sw)}, evaluate the discretized conditional density for P(sA=sa|sW=sw) by first
+5) Finally, for any given data-point \code{(sa,sw)}, evaluate the discretized conditional density for P(\code{sA}=sa|sW=sw) by first
    evaluating the interval number k=B(sa)\\in{1,...,M} for \code{sa} and then computing \\prod{j=1,...,k-1}{1-h_j(sW))*h_k(sW)}
    which is equivalent to the joint conditional probability that \code{sa} belongs to the interval (i_k,i_{k+1}) and does not belong
    to any of the intervals 1 to k-1, conditional on sW.
@@ -208,7 +223,7 @@ The network of friends (connections) for observations in the input \code{data} c
 
 **********************************************************************
 
-There are 3 alternative methods to defining the bin cutoffs S=(i_1,...,i_M,i_{M+1}) for a continuous summary measure sA.
+There are 3 alternative methods to defining the bin cutoffs S=(i_1,...,i_M,i_{M+1}) for a continuous summary measure \code{sA}
 The choice of which method is used along with other discretization parameters (e.g., total number of bins) is controlled via the tmlenet_options() function.
 See \code{?tmlenet_options} argument \code{bin.method} for additional details.
 
@@ -216,7 +231,7 @@ Approach 1 (\code{equal.len}): equal length, default.
 
 *********************
 
-The bins are defined by splitting the range of observed sA (sa_1,...,sa_n) into equal length intervals.
+The bins are defined by splitting the range of observed \code{sA} (sa_1,...,sa_n) into equal length intervals.
 This is the dafault discretization method, set by passing an argument \code{bin.method="equal.len"} to \code{tmlenet_options} function prior to calling \code{tmlenet()}.
 The intervals will be defined by splitting the range of (sa_1,...,sa_N) into \code{nbins} number of equal length intervals,
 where \code{nbins} is another argument of \code{tmlenet_options()} function.
@@ -259,8 +274,8 @@ Kmax <- 6 # Max number of friends in the network
 #***************************************************************************************
 # POSSIBLE INTERVENTION FUNCTIONS:
 #***************************************************************************************
-# Stochastically set x\% of community to A=1 
-# (returns a function that will sample A with probability x:=P(A=1))
+# Stochastically sets (100*x)\% of community to A=1 
+# Returns a function that will sample A with probability x:=P(A=1))
 make_f.gstar <- function(x, ...) {
   eval(x)
   f.A_x <- function(data, ...){
@@ -268,11 +283,11 @@ make_f.gstar <- function(x, ...) {
   }
   return(f.A_x)
 }
-# Deterministically set every A=0:
+# Deterministic f_gstar setting every A=0:
 f.A_0 <- make_f.gstar(x = 0)
-# Deterministically set every A=1:
+# Deterministic f_gstar setting every A=1:
 f.A_1 <- make_f.gstar(x = 1)
-# Sample A=1 with probability 0.2:
+# Stochastic f_gstar that sets A=1 with probability 0.2:
 f.A_.2 <- make_f.gstar(x = 0.2)
 
 #***************************************************************************************
