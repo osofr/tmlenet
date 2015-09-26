@@ -125,14 +125,20 @@ test.tmleneterrrors <- function() {
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                   f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
   )
+
   # Throws exception since Ynode arg is omitted, but blah from Qform LHS doesn't exist:
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
                   Qform = " blah ~ sum.netW3 + sum.netAW2",
                   hform = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
-
                   Anode = "A",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                  f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
-  )
+                  f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10)))
+}
+
+
+
+
+
+
