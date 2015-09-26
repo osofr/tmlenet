@@ -98,7 +98,6 @@ test.tmleneterrrors <- function() {
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                   f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
   )
-
   # Throws exception since Ynode arg is omitted, but blah from Qform LHS doesn't exist:
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
@@ -115,7 +114,12 @@ test.tmleneterrrors <- function() {
                   Anode = "A", Ynode = "Y",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                   f_gstar1 = f.A_wrong, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10)))
-
+  # Throws an exception when f_gstar1 is a vector of 1<length<n:
+  checkException(
+     res_K6_1 <- tmlenet(data = df_netKmax6,
+                  Anode = "A", Ynode = "Y",
+                  Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                  f_gstar1 = rep(1L,50), sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10)))
 
 
 

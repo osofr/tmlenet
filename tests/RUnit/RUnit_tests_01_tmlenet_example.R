@@ -61,7 +61,6 @@ test.examples <- function() {
   # Intercept based TMLE
   #----------------------------------------------------------------------------------
   options(tmlenet.verbose = FALSE)
-
   def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
             def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
@@ -80,32 +79,23 @@ test.examples <- function() {
               Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
               f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
-  # With Ynode:
-  res_K6_1 <- tmlenet(data = df_netKmax6,
-                    Qform = "Y ~ sum.netW3 + sum.netAW2",
-                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
-                    hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", Ynode = "Y",
-                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",n_MCsims = 10))
-
-  tmle_idx <- rownames(res_K6_1$EY_gstar1$estimates)%in%"tmle"
-  h_iptw_idx <- rownames(res_K6_1$EY_gstar1$estimates)%in%"h_iptw"
-  gcomp_idx <- rownames(res_K6_1$EY_gstar1$estimates)%in%"gcomp"
+  tmle_idx <- rownames(res_K6_1a$EY_gstar1$estimates)%in%"tmle"
+  h_iptw_idx <- rownames(res_K6_1a$EY_gstar1$estimates)%in%"h_iptw"
+  gcomp_idx <- rownames(res_K6_1a$EY_gstar1$estimates)%in%"gcomp"
 
   # Test estimates:
-  checkTrue(abs(res_K6_1$EY_gstar1$estimates[tmle_idx] - 0.5051903) < 10^(-06))
-  checkTrue(abs(res_K6_1$EY_gstar1$estimates[h_iptw_idx] - 0.5065960) < 10^(-06))
-  checkTrue(abs(res_K6_1$EY_gstar1$estimates[gcomp_idx] - 0.4970377) < 10^(-06))
+  checkTrue(abs(res_K6_1a$EY_gstar1$estimates[tmle_idx] - 0.5051903) < 10^(-06))
+  checkTrue(abs(res_K6_1a$EY_gstar1$estimates[h_iptw_idx] - 0.5065960) < 10^(-06))
+  checkTrue(abs(res_K6_1a$EY_gstar1$estimates[gcomp_idx] - 0.4970377) < 10^(-06))
   # Test asymptotic vars:
-  checkTrue(abs(res_K6_1$EY_gstar1$vars[tmle_idx] - 0.0009268804) < 10^(-06))
-  checkTrue(abs(res_K6_1$EY_gstar1$vars[h_iptw_idx] - 0.0021023317) < 10^(-06))
+  checkTrue(abs(res_K6_1a$EY_gstar1$vars[tmle_idx] - 0.0009268804) < 10^(-06))
+  checkTrue(abs(res_K6_1a$EY_gstar1$vars[h_iptw_idx] - 0.0021023317) < 10^(-06))
   # Test CIs:
-  checkTrue((abs(res_K6_1$EY_gstar1$CIs[tmle_idx][1] - 0.4455197) < 10^(-06)) &
-              (abs(res_K6_1$EY_gstar1$CIs[tmle_idx][2] - 0.5648608) < 10^(-06)))
-  checkTrue((abs(res_K6_1$EY_gstar1$CIs[h_iptw_idx][1] - 0.4167293) < 10^(-06)) &
-              (abs(res_K6_1$EY_gstar1$CIs[h_iptw_idx][2] - 0.5964627) < 10^(-06)))
-  # res_K6_1$EY_gstar1$other.vars
+  checkTrue((abs(res_K6_1a$EY_gstar1$CIs[tmle_idx][1] - 0.4455197) < 10^(-06)) &
+              (abs(res_K6_1a$EY_gstar1$CIs[tmle_idx][2] - 0.5648608) < 10^(-06)))
+  checkTrue((abs(res_K6_1a$EY_gstar1$CIs[h_iptw_idx][1] - 0.4167293) < 10^(-06)) &
+              (abs(res_K6_1a$EY_gstar1$CIs[h_iptw_idx][2] - 0.5964627) < 10^(-06)))
+  # res_K6_1a$EY_gstar1$other.vars
 
   #----------------------------------------------------------------------------------
   # Example 2. Same as above but for covariate-based TMLE
@@ -114,7 +104,6 @@ test.examples <- function() {
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
                       hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
-
                       Anode = "A", Ynode = "Y",
                       Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                       f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
@@ -202,15 +191,14 @@ test.examples <- function() {
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
                       hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
-
                       Anode = "A", Ynode = "Y",
                       Kmax = Kmax, NETIDmat = NetInd_mat,
                       f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",n_MCsims = 10))
 
-  checkTrue(all.equal(res_K6net$EY_gstar1$estimates, res_K6_1$EY_gstar1$estimates))
-  checkTrue(all.equal(res_K6net$EY_gstar1$vars, res_K6_1$EY_gstar1$vars))
-  checkTrue(all.equal(res_K6net$EY_gstar1$CIs, res_K6_1$EY_gstar1$CIs))
-  checkTrue(all.equal(res_K6net$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars))
+  checkTrue(all.equal(res_K6net$EY_gstar1$estimates, res_K6_1a$EY_gstar1$estimates))
+  checkTrue(all.equal(res_K6net$EY_gstar1$vars, res_K6_1a$EY_gstar1$vars))
+  checkTrue(all.equal(res_K6net$EY_gstar1$CIs, res_K6_1a$EY_gstar1$CIs))
+  checkTrue(all.equal(res_K6net$EY_gstar1$other.vars, res_K6_1a$EY_gstar1$other.vars))
 
   #----------------------------------------------------------------------------------
   # Example 3. Same as Example 1 but with with true f_g0
@@ -235,7 +223,6 @@ test.examples <- function() {
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-
                     Anode = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", f_g0 = f.A_g0, n_MCsims = 10))
@@ -253,6 +240,39 @@ test.examples <- function() {
   checkTrue((abs(res_K6_3$EY_gstar1$CIs[h_iptw_idx][1] - 0.3931511) < 10^(-06)) &
             (abs(res_K6_3$EY_gstar1$CIs[h_iptw_idx][2] - 0.5577079) < 10^(-06)))
   # res_K6$EY_gstar1$other.vars
+
+
+  #***************************************************************************************
+  # (*) EQUIVALENT WAYS OF SPECIFYING INTERVENTIONS f_gstar1/f_gstar2.
+  # (*) LOWERING THE DIMENSIONALITY OF THE SUMMARY MEASURES.
+  #***************************************************************************************
+  def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
+  def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
+  # can define intervention by function f.A_0 that sets everyone's A to constant 0:
+  res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                      Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
+                      IDnode = "IDs", NETIDnode = "Net_str")
+
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[tmle_idx] - 0.4955328) < 10^(-06))
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[h_iptw_idx] - 0.5010294) < 10^(-06))
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[gcomp_idx] - 0.4966022) < 10^(-06))
+
+  # equivalent way to define intervention f.A_0 is to just set f_gstar1 to 0:
+  res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                      Anode = "A", Ynode = "Y", f_gstar1 = 0L,
+                      IDnode = "IDs", NETIDnode = "Net_str")
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[tmle_idx] - 0.4955328) < 10^(-06))
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[h_iptw_idx] - 0.5010294) < 10^(-06))
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[gcomp_idx] - 0.4966022) < 10^(-06))
+
+  # or set f_gstar1 to a vector of 0's of length nrow(data):
+  res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                      Anode = "A", Ynode = "Y", f_gstar1 = rep_len(0L, nrow(df_netKmax6)),
+                      IDnode = "IDs", NETIDnode = "Net_str")
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[tmle_idx] - 0.4955328) < 10^(-06))
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[h_iptw_idx] - 0.5010294) < 10^(-06))
+  checkTrue(abs(res_K6_1$EY_gstar1$estimates[gcomp_idx] - 0.4966022) < 10^(-06))
+
 
   #***************************************************************************************
   # EXAMPLE WITH SIMULATED DATA FOR 2 FRIENDS AND 1 COVARIATE W1 (SIMULATION 1)

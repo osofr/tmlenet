@@ -55,29 +55,36 @@ is.integerish <- function (x) is.integer(x) || (is.numeric(x) && all(x == as.int
 #' @importFrom stats as.formula glm na.exclude rbinom 
 NULL
 
-# # Get the prob P(A^*=1|W) (under known stoch. intervention f_gstar) from user-supplied function, fcn_name_prob:
-# # NOT USED
-# f.gen.probA.star <- function(data, fcn_name_prob) {
-#   .f_g_wrapper <- function(data, fcn_name_prob, ...) {
-#       args0 <- list(k = k, data = data)
-#       args <- c(args0, ...)
-#     do.call(fcn_name_prob, args)
-#   }
-#   probA <- .f_g_wrapper(data = data, fcn_name_prob = fcn_name_prob)
-#   return(probA)
-# }
 # Get the actual A^* sampled from user-supplied intervention f_gstar (fcn_name):
-f.gen.A.star <- function(data, fcn_name) {
-  .f_g_wrapper <- function(data, fcn_name, ...) {
+f.gen.A.star <- function(data, f.g_fun) {
+  .f_g_wrapper <- function(data, f.g_fun, ...) {
       args0 <- list(data = data)
       args <- c(args0, ...)
-    do.call(fcn_name, args)
+    do.call(f.g_fun, args)
   }
-  if (!("data" %in% names(formals(fcn_name)))) stop("functions f_gstar1 / f_gstar2 must have a named argument 'data'")
-  # if (missing(data)) stop("function f_gstar1 or f_gstar2 does not accept argument")
-  newA <- .f_g_wrapper(data = data, fcn_name = fcn_name)
+  # test f.g_fun is a function, if not it must be a vector
+  if (!is.function(f.g_fun)) {
+    newA <- as.vector(f.g_fun)
+    if (length(newA)!=nrow(data) && length(newA)!=1L) stop("f_gstar1/f_gstar2 must be either a function or a vector of length nrow(data) or 1")
+    if (length(newA)==1L) newA <- rep_len(newA, nrow(data))
+  } else {
+    if (!("data" %in% names(formals(f.g_fun)))) stop("functions f_gstar1 / f_gstar2 must have a named argument 'data'")  
+    newA <- .f_g_wrapper(data = data, f.g_fun = f.g_fun)
+  }
   return(newA)
 }
+# # Get the prob P(A^*=1|W) (under known stoch. intervention f_gstar) from user-supplied function, f.g_fun_prob:
+# # NOT USED
+# f.gen.probA.star <- function(data, f.g_fun_prob) {
+#   .f_g_wrapper <- function(data, f.g_fun_prob, ...) {
+#       args0 <- list(k = k, data = data)
+#       args <- c(args0, ...)
+#     do.call(f.g_fun_prob, args)
+#   }
+#   probA <- .f_g_wrapper(data = data, f.g_fun_prob = f.g_fun_prob)
+#   return(probA)
+# }
+
 
 ## ---------------------------------------------------------------------
 # DETECTING VECTOR TYPES
@@ -440,7 +447,7 @@ DatNet <- R6Class(classname = "DatNet",
 #'   \item{\code{binirize.cat.sVar(name.sVar, levels)}}{...}
 #'   \item{\code{get.sVar.bw(name.sVar, intervals)}}{...}
 #'   \item{\code{get.sVar.bwdiff(name.sVar, intervals)}}{...}
-#'   \item{\code{make.dat.sWsA(p = 1, f.g_name = NULL, sA.object = NULL)}}{...}
+#'   \item{\code{make.dat.sWsA(p = 1, f.g_fun = NULL, sA.object = NULL)}}{...}
 #' }
 #' @section Active Bindings:
 #' \describe{
@@ -628,12 +635,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     },
 
     # This function returns mat.sVar, which is a matrix that combines all sW and sA summary measures;
-    # Odata is only needed for evaluating new sA (!is.null(f.g_name));
-    # When !is.null(f.g_name) create p new datnetA.gstar's (n obs at a time), which are not saved separately (only combined);
-    # When is.null(f.g_name), returns combined cbind(sW, sA) for observed O.datnetW, O.datnetA;
+    # Odata is only needed for evaluating new sA (!is.null(f.g_fun));
+    # When !is.null(f.g_fun) create p new datnetA.gstar's (n obs at a time), which are not saved separately (only combined);
+    # When is.null(f.g_fun), returns combined cbind(sW, sA) for observed O.datnetW, O.datnetA;
     # TO ADD: Consider passing ahead a total number of sA that will be created by DatNet class (need it to pre-allocate self$dat.sWsA);
-    make.dat.sWsA = function(p = 1, f.g_name = NULL, sA.object = NULL)  {
-    # make.dat.sWsA = function(p = 1, f.g_name = NULL, f.g_args = NULL, sA.object = NULL)  {
+    make.dat.sWsA = function(p = 1, f.g_fun = NULL, sA.object = NULL)  {
+    # make.dat.sWsA = function(p = 1, f.g_fun = NULL, f.g_args = NULL, sA.object = NULL)  {
       datnetW <- self$datnetW
       datnetA <- self$datnetA
       assert_that(is.count(p))
@@ -641,9 +648,9 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       nobs <- datnetW$nOdata
       # Copy variable detected types (bin, cat or contin) from the observed data classes (datnetW, datnetA) to self:
       self$copy.sVar.types()
-      if (is.null(f.g_name)) {  # set df.sWsA to observed data (sW,sA) if g.fun is.null
+      if (is.null(f.g_fun)) {  # set df.sWsA to observed data (sW,sA) if g.fun is.null
         df.sWsA <- cbind(datnetW$dat.sVar, datnetA$dat.sVar) # assigning summary measures as data.frames:
-      } else {  # need to sample A under f.g_name (gstar or known g0), possibly re-evaluate sW from O.datnetW
+      } else {  # need to sample A under f.g_fun (gstar or known g0), possibly re-evaluate sW from O.datnetW
         if (is.null(self$nodes$Anode)) stop("Anode was not appropriately specified and is null; can't replace observed Anode with that sampled under g_star")
         Odata <- datnetW$Odata
         # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping a old pointer to O.datnetA)
@@ -651,12 +658,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
         colnames(df.sWsA) <- self$names.sWsA
         for (i in seq_len(p)) {
-          # *** f.g_name can only depend on covariates in datnetW$dat.sVar ***
+          # *** f.g_fun can only depend on covariates in datnetW$dat.sVar ***
           # if Anode is continuous, just call f.gen.probA.star:
 
-          A.gstar <- f.gen.A.star(data = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_name)
-          # A.gstar <- f.gen.A.star(k = self$Kmax, df_AllW = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_name)
-          # A.gstar <- f.gen.A.star.cont(k = self$Kmax, df_AllW = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_name, f_args = f.g_args)
+          A.gstar <- f.gen.A.star(data = cbind(datnetW$dat.sVar,datnetA$dat.sVar), f.g_fun = f.g_fun)
+          # A.gstar <- f.gen.A.star(k = self$Kmax, df_AllW = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_fun)
+          # A.gstar <- f.gen.A.star.cont(k = self$Kmax, df_AllW = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_fun, f_args = f.g_args)
 
           Odata[, self$nodes$Anode] <- A.gstar # replace A under g0 in Odata with A^* under g.star:
           datnetA.gstar$make.sVar(Odata = Odata, sVar.object = sA.object) # create new summary measures sA (under g.star)

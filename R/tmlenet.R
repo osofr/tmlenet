@@ -500,14 +500,16 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' @param NETIDmat Alternative method for network specification, ths must be a matrix (\code{ncol=Kmax},
 #'  \code{nrow=nrow(data)}), where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row
 #'  numbers in \code{data} if \code{IDnode=NULL}. See Details.
-#' @param f_gstar1 Intervention function that returns a vector of counterfactual exposures evaluated based on the summary 
-#'  measures (\code{sW,sA}). The summary measures are passed under argument \code{"data"}, therefore this function 
-#'  must contain a named argument \code{"data"} in its signature. The interventions defined by \code{f_gstar1} can 
-#'  be static, dynamic or stochastic. See Details and Examples below. 
-#' @param f_gstar2 Function that retuns a vector of counterfactual exposures under alternative intervention. 
+#' @param f_gstar1 Either an function or a vector of counterfactual exposures. If a function is specified, it must return 
+#'  a vector of counterfactual exposures evaluated based on the summary measures matrix (\code{sW,sA}) passed as a named 
+#'  argument \code{"data"}, therefore, the function in \code{f_gstar1} must have a named argument \code{"data"} in its signature.
+#'  The interventions defined by \code{f_gstar1} can be static, dynamic or stochastic. If \code{f_gstar1} is specified as a 
+#'  vector, it must be of length \code{nrow(data)} or 1 (constant treatment assigned to all observations).
+#'  See Details below and Examples "EQUIVALENT WAYS OF SPECIFYING INTERVENTIONS \code{f_gstar1}/\code{f_gstar2}" for demonstration.
+#' @param f_gstar2 Either a function or a vector of counterfactual exposure assignments.
 #'  Used for estimating contrasts (average treatment effect) for two interventions, if omitted, only the average 
 #'  counterfactual outcome under intervention \code{f_gstar1} is estimated. The requirements for \code{f_gstar2}
-#'  are the same as for \code{f_gstar1}.
+#'  are identical to those for \code{f_gstar1}.
 # @param nFnode (Optional) Name of the variable for the number of friends each unit has, this name can then be used
 #  inside the summary measures and regression formulas \code{sW}, \code{sA}, \code{Qform}, \code{hform.g0},
 #  \code{hform.gstar} and \code{gform}. See Details.
@@ -591,7 +593,7 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #'  (of length n*n_MCsims) from \code{f_g0};
 #' }
 #'
-#' @section Specifying the counterfactual intervention functions \code{f_gstar1} and \code{f_gstar2}:
+#' @section Specifying the counterfactual intervention as functions (\code{f_gstar1} and \code{f_gstar2}):
 #' The functions \code{f_gstar1} and \code{f_gstar2} can only depend on variables specified by the combined matrix
 #'  of summary measures (\code{sW},\code{sA}), which is passed using the argument \code{data}. The functions should
 #'  return a vector of length \code{nrow(data)} of counterfactual treatments for observations in the input data.
