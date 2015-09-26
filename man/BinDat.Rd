@@ -3,13 +3,17 @@
 \docType{class}
 \name{BinDat}
 \alias{BinDat}
-\title{#}
+\title{R6 class for storing the design matrix and binary outcome for a single logistic regression}
 \format{An \code{\link{R6Class}} generator object}
 \usage{
 BinDat
 }
 \description{
-#
+This R6 class can request, store and manage the design matrix Xmat, as well as the binary outcome Bin for the
+ logistic regression P(Bin|Xmat).
+ Can also be used for converting data in wide format to long when requested,
+ e.g., when pooling across binary indicators (fitting one pooled logistic regression model for several indicators)
+ The class has methods that perform queries to data storage R6 class DatNet.sWsA to get appropriate data columns & row subsets
 }
 \details{
 \itemize{
@@ -51,66 +55,6 @@ BinDat
   \item{\code{getY}}{...}
 }
 }
-\keyword{&}
-\keyword{(fitting}
-\keyword{Bin}
-\keyword{Can}
-\keyword{DatNet.sWsA}
-\keyword{P(Bin|Xmat).}
 \keyword{R6}
-\keyword{The}
-\keyword{This}
-\keyword{Xmat,}
-\keyword{a}
-\keyword{across}
-\keyword{also}
-\keyword{and}
-\keyword{appropriate}
-\keyword{as}
-\keyword{be}
-\keyword{binary}
-\keyword{can}
 \keyword{class}
-\keyword{columns}
-\keyword{converting}
-\keyword{data}
-\keyword{design}
-\keyword{e.g.,}
-\keyword{for}
-\keyword{format}
-\keyword{get}
-\keyword{has}
-\keyword{in}
-\keyword{indicators}
-\keyword{indicators)}
-\keyword{internal}
-\keyword{logistic}
-\keyword{long}
-\keyword{manage}
-\keyword{matrix}
-\keyword{methods}
-\keyword{model}
-\keyword{one}
-\keyword{outcome}
-\keyword{perform}
-\keyword{pooled}
-\keyword{pooling}
-\keyword{queries}
-\keyword{regression}
-\keyword{request,}
-\keyword{requested,}
-\keyword{row}
-\keyword{several}
-\keyword{single}
-\keyword{storage}
-\keyword{store}
-\keyword{storing}
-\keyword{subsets}
-\keyword{that}
-\keyword{the}
-\keyword{to}
-\keyword{used}
-\keyword{well}
-\keyword{when}
-\keyword{wide}
 

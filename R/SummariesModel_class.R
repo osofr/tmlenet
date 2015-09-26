@@ -14,18 +14,18 @@
 NewSummaryModel <- function(reg, DatNet.sWsA.g0, ...) { UseMethod("NewSummaryModel") }
 # Summary model constructor for binary outcome sA[j]:
 NewSummaryModel.binary <- function(reg, ...) {
-  if (gvars$verbose) print("BinOutModel constructor called...")
+  # if (gvars$verbose) print("Calling BinOutModel constructor for binary outcome: " %+% reg$outvar)
   BinOutModel$new(reg = reg, ...)
 }
 # Summary model constructor for continuous outcome sA[j]:
 NewSummaryModel.contin <- function(reg, DatNet.sWsA.g0, ...) {
-  if (gvars$verbose) print("ContinSummaryModel constructor called...")
+  # if (gvars$verbose) print("Calling ContinSummaryModel constructor for continuous outcome:" %+% reg$outvar)
   ContinSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 }
 
 # Summary model constructor for categorical outcome sA[j]:
 NewSummaryModel.categor <- function(reg, DatNet.sWsA.g0, ...) {
-  if (gvars$verbose) print("CategorSummaryModel constructor for categorical sVar is called...")
+  # if (gvars$verbose) print("Calling CategorSummaryModel constructor for categorical outcome: " %+% reg$outvar)
   CategorSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 }
 
@@ -181,7 +181,6 @@ RegressionClass <- R6Class("RegressionClass",
         } else if (length(subset) > n_regs) {
           # ... TO FINISH ...
           if (!is.logical(subset)) stop("not implemented")
-          if (gvars$verbose) message("logical subset index length: " %+% length(subset))
           # increase n_regs to all combinations of (n_regs x subset)
         }
       } else {
@@ -213,15 +212,10 @@ RegressionClass <- R6Class("RegressionClass",
       if (is.list(reg$subset)) {
         self$subset <- reg$subset[[k_i]]
       }
-      #  else {
-      #   self$subset <- reg$subset
-      # }
       if (is.list(reg$intrvls)) {
         outvar_idx <- which(names(reg$intrvls) %in% self$outvar)
         self$intrvls <- reg$intrvls[[outvar_idx]]
       }
-      # print("reg$intrvls: "); print(reg$intrvls)
-      # print("self$intrvls: "); print(self$intrvls)
       self$S3class <- self$outvar.class # Set class on self for S3 dispatch...
       return(invisible(self))
     },
@@ -318,17 +312,17 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 
       if (reg$parfit & all.outvar.bin & (self$n_regs > 1)) self$parfit_allowed <- TRUE
 
-      # if (gvars$verbose) {
+      if (gvars$verbose) {
         print("#----------------------------------------------------------------------------------")
-        print("New SummariesModel instance:")
+        print("New instance of SummariesModel:")
         print("#----------------------------------------------------------------------------------")
-        print("Outcomes var names: " %+% paste(reg$outvar, collapse = ", "))
-        print("Predictors var names: " %+% paste(reg$predvars, collapse = ", "))
+        print("Outcomes: " %+% paste(reg$outvar, collapse = ", "))
+        print("Predictors: " %+% paste(reg$predvars, collapse = ", "))
         print("No. of regressions: " %+% self$n_regs)
-        print("All outvar binary? " %+% all.outvar.bin)
-        print("Doing parallel fit? " %+% self$parfit_allowed)
+        print("All outcomes binary? " %+% all.outvar.bin)
+        if (self$parfit_allowed) print("Performing parallel fits: " %+% self$parfit_allowed)
         print("#----------------------------------------------------------------------------------")
-      # }
+      }
 
       # factorize the joint into univariate regressions, by dimensionality of the outcome variable (sA_nms):
 			for (k_i in 1:self$n_regs) {
@@ -578,8 +572,8 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       names(self$reg$intrvls.width) <- names(self$intrvls.width) <- self$reg$bin_nms
 
       if (gvars$verbose)  {
-        print("ContinSummaryModel sA: "%+%self$outvar)
-        print("ContinSummaryModel reg$nbins: " %+% self$reg$nbins)
+        print("ContinSummaryModel outcome: "%+%self$outvar)
+        # print("ContinSummaryModel reg$nbins: " %+% self$reg$nbins)
       }
 
       bin_regs <- def_regs_subset(self = self)
@@ -590,17 +584,17 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
     # Gets passed redefined subsets that exclude degenerate Bins (prev subset is defined for names in sA - names have changed though)
     fit = function(data) {
       assert_that(is.DatNet.sWsA(data))
-      if (gvars$verbose) print("current active bin sVar: " %+% data$active.bin.sVar)
       # Binirizes & saves binned matrix inside DatNet.sWsA
       data$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
-      print("binning continuous/ordinal sA[j]: " %+% self$outvar);
-      print("freq counts by bin for binned continuous/ordinal sA[j]: "); print(table(data$ord.sVar))
+
       if (gvars$verbose) {
-        print("active bin sVar after calling binirize.sVar: " %+% data$active.bin.sVar)
-        print("binned dataset for: " %+% self$outvar); print(head(cbind(data$ord.sVar, data$dat.bin.sVar), 5))
+        print("performing fitting for continuous outcome: " %+% self$outvar)
+        print("freq counts by bin for continuous outcome: "); print(table(data$ord.sVar))
+        print("binned dataset: "); print(head(cbind(data$ord.sVar, data$dat.bin.sVar), 5))
       }
+
       super$fit(data) # call the parent class fit method
-      if (gvars$verbose) message("fit for " %+% self$outvar %+% " var succeeded...")
+      if (gvars$verbose) message("fit for outcome " %+% self$outvar %+% " succeeded...")
       data$emptydat.bin.sVar # wiping out binirized mat in data DatNet.sWsA object...
       self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
       invisible(self)
@@ -612,7 +606,9 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
         stop("must provide newdata")
       }
       assert_that(is.DatNet.sWsA(newdata))
-      if (gvars$verbose) message("predict in continuous summary...")
+
+      if (gvars$verbose) print("performing prediction for continuous outcome: " %+% self$outvar)
+
       # mat_bin doesn't need to be saved (even though its invisibly returned); mat_bin is automatically saved in datnet.sW.sA - a potentially dangerous side-effect!!!
       newdata$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
       super$predict(newdata)
@@ -622,10 +618,11 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
     # Convert contin. sA vector into matrix of binary cols, then call parent class method: super$predictAeqa()
     # Invisibly return cumm. prob P(sA=sa|sW=sw)
     predictAeqa = function(newdata) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
-      if (gvars$verbose) message("predictAeqa in continuous summary...")
       assert_that(is.DatNet.sWsA(newdata))
-      # print("current active bin sVar: " %+% newdata$active.bin.sVar)
       newdata$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
+
+      if (gvars$verbose) print("performing prediction for categorical outcome: " %+% self$outvar)
+
       bws <- newdata$get.sVar.bw(name.sVar = self$outvar, intervals = self$intrvls)
       self$bin_weights <- (1 / bws) # weight based on 1 / (sVar bin widths)
       # Option 1: ADJUST FINAL PROB by bw.j TO OBTAIN density at a point f(sa|sw) = P(sA=sa|sW=sw):
@@ -710,12 +707,13 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       self$reg$bin_nms <- DatNet.sWsA.g0$bin.nms.sVar(reg$outvar, self$reg$nbins)
 
       if (gvars$verbose)  {
-        print("CategorSummaryModel sA: "%+%self$outvar)
-        print("CategorSummaryModel levels: "); print(self$levels)
-        print("CategorSummaryModel reg$levels: "); print(self$reg$levels)
-        print("CategorSummaryModel reg$nbins: " %+% self$reg$nbins)
-        print("CategorSummaryModel reg$bin_nms: "); print(self$reg$bin_nms)
+        print("CategorSummaryModel outcome: "%+%self$outvar)
+        # print("CategorSummaryModel levels: "); print(self$levels)
+        # print("CategorSummaryModel reg$levels: "); print(self$reg$levels)
+        # print("CategorSummaryModel reg$nbins: " %+% self$reg$nbins)
+        # print("CategorSummaryModel reg$bin_nms: "); print(self$reg$bin_nms)
       }
+
       bin_regs <- def_regs_subset(self = self)
       super$initialize(reg = bin_regs, ...)
     },
@@ -725,18 +723,22 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       assert_that(is.DatNet.sWsA(data))
       # Binirizes & saves binned matrix inside DatNet.sWsA for categorical sVar
       data$binirize.cat.sVar(name.sVar = self$outvar, levels = self$levels)
-      if (gvars$verbose)  {
-        print("active bin sVar after calling binirize.sVar: " %+% data$active.bin.sVar)
-        print("binning continuous/ordinal sA[j]: " %+% self$outvar);
-        print("freq counts for ordinal sA[j]: "); print(table(data$get.sVar(self$outvar)))
-        print("binned dataset for: " %+% self$outvar); print(head(cbind(sA = data$get.sVar(self$outvar), data$dat.bin.sVar), 50))
+
+      if (gvars$verbose) {
+        print("performing fitting for categorical outcome: " %+% self$outvar)
+        print("freq counts by bin for categorical outcome: "); print(table(data$get.sVar(self$outvar)))
+        print("binned dataset: "); print(head(cbind(sA = data$get.sVar(self$outvar), data$dat.bin.sVar), 5))
       }
+
       super$fit(data) # call the parent class fit method
+
       if (gvars$verbose) message("fit for " %+% self$outvar %+% " var succeeded...")
+
       data$emptydat.bin.sVar # wiping out binirized mat in data DatNet.sWsA object...
       self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
       invisible(self)
     },
+
     # TO DO: rename to:
     # predictP_1 = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
     predict = function(newdata) {
@@ -744,16 +746,21 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
         stop("must provide newdata")
       }
       assert_that(is.DatNet.sWsA(newdata))
-      if (gvars$verbose) print("predict in CategorSummaryModel...")
+
+      if (gvars$verbose) print("performing prediction for categorical outcome: " %+% self$outvar)
+
       newdata$binirize.cat.sVar(name.sVar = self$outvar, levels = self$levels)
       super$predict(newdata)
       newdata$emptydat.bin.sVar # wiping out binirized mat in newdata DatNet.sWsA object...
       invisible(self)
     },
+
     # Invisibly return cumm. prob P(sA=sa|sW=sw)
     predictAeqa = function(newdata) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
       assert_that(is.DatNet.sWsA(newdata))
-      if (gvars$verbose) print("predictAeqa in CategorSummaryModel...")
+
+      if (gvars$verbose) print("performing prediction for categorical outcome: " %+% self$outvar)
+
       newdata$binirize.cat.sVar(name.sVar = self$outvar, levels = self$levels)
       cumprodAeqa <- super$predictAeqa(newdata = newdata)
       newdata$emptydat.bin.sVar # wiping out binirized mat in newdata object...

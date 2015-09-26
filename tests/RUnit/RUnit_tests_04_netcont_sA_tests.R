@@ -20,7 +20,7 @@ run.net.1sim.tmlenet <- function(datO, NetInd_mat, def_sW, def_sA, Kmax, Qform, 
                   f_gstar1 = f.gstar,
                   sW = def_sW, sA = def_sA,
                   Qform = Qform,
-                  hform = "sA + net.mean.sA ~ W1 + W2 + W3",
+                  hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
                   hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
                   optPars = list(n_MCsims = 1))
                   # correct Q:

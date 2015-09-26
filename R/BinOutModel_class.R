@@ -5,7 +5,7 @@ logisfit <- function(datsum_obj) UseMethod("logisfit") # Generic for fitting the
 
 # S3 method for glm binomial family fit, takes BinDat data object:
 logisfit.glmS3 <- function(datsum_obj) {
-  if (gvars$verbose) message("calling glm.fit...")
+  if (gvars$verbose) print("calling glm.fit...")
   Xmat <- datsum_obj$getXmat
   Y_vals <- datsum_obj$getY
     # Xmat has 0 rows: return NA's and avoid throwing exception:
@@ -18,7 +18,6 @@ logisfit.glmS3 <- function(datsum_obj) {
               # }, GetWarningsToSuppress())
   }
   fit <- list(coef = m.fit$coef, linkfun = "logit_linkinv", fitfunname = "glm")
-  # fit <- list(coef = m.fit$coef, linkfun = "logitlinkinv", fitfunname = "glm")
   if (gvars$verbose) print(fit$coef)
   class(fit) <- c(class(fit), c("glmS3"))
   return(fit)
@@ -26,22 +25,20 @@ logisfit.glmS3 <- function(datsum_obj) {
 
 # S3 method for speedglm binomial family fit, takes BinDat data object:
 logisfit.speedglmS3 <- function(datsum_obj) {
-  if (gvars$verbose) message("calling speedglm.wfit...")
+  if (gvars$verbose) print("calling speedglm.wfit...")
   Xmat <- datsum_obj$getXmat
   Y_vals <- datsum_obj$getY
 
   if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA's and avoid throwing exception
     m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
   } else {
-    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial()), silent=TRUE)
-    # m.fit <- speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), sparse = TRUE)
+    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial()), silent = TRUE)
     if (inherits(m.fit, "try-error")) { # if failed, fall back on stats::glm
       message("speedglm::speedglm.wfit failed, falling back on stats:glm.fit; ", m.fit)
       return(logisfit.glmS3(datsum_obj))
     }
   }
   fit <- list(coef = m.fit$coef, linkfun = "logit_linkinv", fitfunname = "speedglm")
-  # fit <- list(coef = m.fit$coef, linkfun = "logitlinkinv", fitfunname = "speedglm")
   if (gvars$verbose) print(fit$coef)
   class(fit) <- c(class(fit), c("speedglmS3"))
   return(fit)
@@ -60,11 +57,8 @@ summary.BinOutModel <- function(binoutmodel) {
   append(list(reg = binoutmodel$show()), fit)
 }
 
-# @importFrom reshape2 melt
-# @importFrom data.table `[.data.table`
-# @importFrom data.table melt.data.table
 #' @import data.table
-
+NULL
 # Convert existing Bin matrix (Bin indicators) for continuous self$outvar into long format data.table with 3 columns:
 # ID - row number; sVar_allB.j - bin indicators collapsed into one col; bin_ID - bin number identify for prev. columns
 # automatically removed all missing (degenerate) bin indicators
@@ -80,9 +74,7 @@ binirized.to.DTlong = function(BinsDat_wide, binID_seq, ID, bin_names, pooled_bi
                       variable.name = name.sVar,
                       variable.factor = FALSE,
                       na.rm = FALSE)
-  # print("sVar_melt_DT init: "); print(sVar_melt_DT)
   nbin_rep <- rep(binID_seq, each = nrow(BinsDat_wide))
-  # print("pooled_bin_name: " %+% pooled_bin_name);
   # 1) Add bin_ID; 2) remove a column with Bin names; 3) remove all rows with NA value for outcome (degenerate bins)
   if (!is.data.table(sVar_melt_DT)) {
     class(sVar_melt_DT)
@@ -100,35 +92,9 @@ join.Xmat = function(X_mat, sVar_melt_DT, ID) {
   assert_that(nIDs == nrow(X_mat))
   X_mat_DT <- data.table::as.data.table(X_mat)[, c("ID") := ID, with = FALSE]
   data.table::setkeyv(X_mat_DT, c("ID")) # sort by ID
-  # print("X_mat_DT: "); print(X_mat_DT)
   sVar_melt_DT <- sVar_melt_DT[X_mat_DT] # Merge long format (self$pooled_bin_name, binIDs) with predictors (sW)
-  # print("sVar_melt_DT[1:10,]"); print(sVar_melt_DT[1:10,])
   return(sVar_melt_DT)
 }
-
-## ---------------------------------------------------------------------
-# (NOT USED) Abstract summary measure class for P(sA[j]|sW,sA[j]) 
-# @export
-Abstract_BinDat <- R6Class(classname = "Abstract_BinDat",
-  portable = TRUE,
-  class = TRUE,
-  public = list(
-    initialize = function(...) { stop("cannot create abstract data store directly")}
-    # store = function(..., key = digest(list(...)), overwrite = FALSE,
-    #   envir = parent.frame()) {
-    #   stop("store method not implemented")
-    # },
-    # try_load = function(key, envir = parent.frame()) {
-    #   ads_try_load(self, key, envir)
-    # },
-  )
-)
-# ## ---------------------------------------------------------------------
-# USAGE:
-# #' @keywords internal
-# ads_try_load <- function(self, key, envir) {
-#   try(self$load(key, envir = envir), silent = TRUE)
-# }
 
 ## ---------------------------------------------------------------------
 #' R6 class for storing the design matrix and binary outcome for a single logistic regression
@@ -242,7 +208,7 @@ BinDat <- R6Class(classname = "BinDat",
       }
       assert_that(is.logical(subset_idx))
       if ((length(subset_idx) < self$n) && (length(subset_idx) > 1L)) {
-        message("subset_idx has smaller length than self$n; repeating subset_idx p times, for p: " %+% data$p)
+        if (gvars$verbose) message("subset_idx has smaller length than self$n; repeating subset_idx p times, for p: " %+% data$p)
         subset_idx <- rep.int(subset_idx, data$p)
         if (length(subset_idx) != self$n) stop("BinDat$define.subset_idx: self$n is not equal to nobs*p!")
       }
@@ -290,26 +256,12 @@ BinDat <- R6Class(classname = "BinDat",
       BinsDat_wide <- data$get.dat.sWsA(self$subset_idx, self$outvars_to_pool)
       self$ID <- as.integer(1:nrow(BinsDat_wide))
 
-      # print("self$pooled_bin_name: " %+% self$pooled_bin_name)
-      # print("self$bin_names: "); print(self$bin_names)
-      # print("self$nbins: " %+% self$nbins);
-      # print("binID_seq: "); print(binID_seq)
-
       # To grab bin Ind mat directly (prob a bit faster): BinsDat_wide <- data$dat.bin.sVar[self$subset_idx, ]
-      # print("self$subset_idx: "); print(head(self$subset_idx))
-      # print("class(BinsDat_wide): " %+% class(BinsDat_wide));
-      # print("head(BinsDat_wide) in BinDat: "); print(head(BinsDat_wide))
-
       BinsDat_long <- binirized.to.DTlong(BinsDat_wide = BinsDat_wide, binID_seq = binID_seq, ID = self$ID, 
                                           bin_names = self$bin_names, pooled_bin_name = self$pooled_bin_name, 
                                           name.sVar = self$outvar)
-
-      # print("BinsDat_long: "); print(BinsDat_long)
-      # print("class(BinsDat_long): "); print(class(BinsDat_long))
-      
       sVar_melt_DT <- join.Xmat(X_mat = data$get.dat.sWsA(self$subset_idx, self$predvars), 
                                 sVar_melt_DT = BinsDat_long, ID = self$ID)
-
       # prepare design matrix for modeling w/ glm.fit or speedglm.wfit:
       X_mat <- sVar_melt_DT[,c("bin_ID", self$predvars), with=FALSE][, c("Intercept") := 1] # select bin_ID + predictors, add intercept column
       setcolorder(X_mat, c("Intercept", "bin_ID", self$predvars)) # re-order columns by reference (no copy)
@@ -374,7 +326,6 @@ BinDat <- R6Class(classname = "BinDat",
       if (sum(self$subset_idx > 0)) {
         eta <- private$X_mat[,!is.na(m.fit$coef), drop = FALSE] %*% m.fit$coef[!is.na(m.fit$coef)]
         pAout[self$subset_idx] <- match.fun(FUN = m.fit$linkfun)(eta)
-        # pAout[self$subset_idx] <- m.fit$linkfun(eta)
       }
       return(pAout)
     }
@@ -453,10 +404,8 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       if (!reg$useglm) self$glmfitclass <- "speedglmS3"
       self$bindat <- BinDat$new(reg = reg, ...) # postponed adding data in BinDat until self$fit() is called
       class(self$bindat) <- c(class(self$bindat), self$glmfitclass)
-      # can also use: self$bindat <- BinDat$new(glm = self$glmfitclass, ...)
-      # or: self$bindat <- BinDat$new(self, ...) (passing self might get confusing)
       if (gvars$verbose) {
-        print("Init BinOutModel:"); print(self$show())
+        print("New BinOutModel instance:"); print(self$show())
       }
 
       # Get the bin width (interval length) for the current bin name self$getoutvarnm (for discretized continuous sA only):
@@ -475,10 +424,10 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     fit = function(overwrite = FALSE, data, ...) { # Move overwrite to a field? ... self$overwrite
       if (!overwrite) assert_that(!self$is.fitted) # do not allow overwrite of prev. fitted model unless explicitely asked
       self$bindat$newdata(newdata = data, ...) # populate bindat with X_mat & Y_vals
-      # self$bindat$newdata(newdata = data, getoutcome = TRUE, ...) # populate bindat with X_mat & Y_vals
       private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() 
       # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
+
       # **********************************************************************
       # to save RAM space when doing many stacked regressions no longer predicting in fit:
       # **********************************************************************
@@ -533,8 +482,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     # Predict the response P(Bin = b|sW = sw), which is returned invisibly;
     # Needs to know the values of b to be able to do prediction ($newdata(, getouvar = TRUE))
     # WARNING: This method cannot be chained together with methods that follow (s.a, class$predictAeqa()$fun())
-    # rename to:
-    # predict.like.P_a = function(newdata)
+    # rename to: predict.like.P_a = function(newdata)
     predictAeqa = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
       assert_that(self$is.fitted)
       assert_that(!missing(newdata))

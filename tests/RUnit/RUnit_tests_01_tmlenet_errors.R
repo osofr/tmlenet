@@ -59,10 +59,10 @@ test.tmleneterrrors <- function() {
   def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
             def.sA(netA = A[[0:Kmax]])
 
-  # Test for non-existing predictors in hform/hform.gstar:
+  # Test for non-existing predictors in hform.g0/hform.gstar:
   checkException(
     res_K6_1 <- tmlenet(data = df_netKmax6,
-                    hform = "netA ~ netW2 + netW3_sum + nF",
+                    hform.g0 = "netA ~ netW2 + netW3_sum + nF",
                     hform.gstar = "netA ~ netW3_sum",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
@@ -70,10 +70,10 @@ test.tmleneterrrors <- function() {
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
   )
-  # Test for non-existing predictors in hform/hform.gstar:
+  # Test for non-existing predictors in hform.g0/hform.gstar:
   checkException(
     res_K6_1 <- tmlenet(data = df_netKmax6,
-                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ netW3_sum",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
@@ -81,10 +81,10 @@ test.tmleneterrrors <- function() {
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
   )
-  # Test for non-existing outcomes in hform/hform.gstar:
+  # Test for non-existing outcomes in hform.g0/hform.gstar:
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
-                    hform = "sum.netW3 ~ netW2 + sum.netW3 + nF",
+                    hform.g0 = "sum.netW3 ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "sum.netW3 ~ sum.netW3 + nF",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
@@ -92,10 +92,10 @@ test.tmleneterrrors <- function() {
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
   )
-  # Test for different outcomes in hform/hform.gstar (non-existing for hform.gstar):
+  # Test for different outcomes in hform.g0/hform.gstar (non-existing for hform.gstar):
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
-                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "sum.netW3 ~ sum.netW3 + nF",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
@@ -103,10 +103,10 @@ test.tmleneterrrors <- function() {
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
   )
-  # Test for existing but different outcomes in hform/hform.gstar:
+  # Test for existing but different outcomes in hform.g0/hform.gstar:
   checkException(
        res_K6_1 <- tmlenet(data = df_netKmax6,
-                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "sum.netAW2 ~ sum.netW3 + nF",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
@@ -118,7 +118,7 @@ test.tmleneterrrors <- function() {
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
                   Qform = " blah ~ netW3_sum + sum_1mAW2_nets",
-                  hform = "netA ~ netW2 + sum.netW3 + nF",
+                  hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
 
                   Anode = "A", Ynode = "Y",
@@ -130,7 +130,7 @@ test.tmleneterrrors <- function() {
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
                   Qform = " blah ~ sum.netW3 + sum.netAW2",
-                  hform = "netA ~ netW2 + sum.netW3 + nF",
+                  hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
                   Anode = "A",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',

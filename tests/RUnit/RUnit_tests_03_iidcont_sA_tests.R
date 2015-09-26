@@ -220,7 +220,7 @@ run.1sim.tmlenet <- function(nsamp, psi0, Qform, f.gstar, trunc.const = 10, shif
                           f_gstar1 = f.gstar,
                           sW = def_sW, sA = def_sA,
                           Qform = Qform,
-                          hform = "sA ~ W1 + W2 + W3",
+                          hform.g0 = "sA ~ W1 + W2 + W3",
                           hform.gstar = "sA ~ W1 + W2 + W3",
                           optPars = list(n_MCsims = n_MCsims))
                           # correct Q:

@@ -316,7 +316,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
 
 
 #---------------------------------------------------------------------------------
-# (NEW INTERFACE FOR SPECIFYING regressions for hform & Qform)
+# (NEW INTERFACE FOR SPECIFYING regressions for hform.g0, hform.gstar & Qform)
 #---------------------------------------------------------------------------------
 get_vars_fromlist <- function(varname, sVar.map) {
   if (varname %in% names(sVar.map)) {
@@ -376,7 +376,7 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
 #'  \item \code{DatNet.ObsP0} - R6 object of class \code{\link{DatNet.sWsA}} that stores all the summary measures and the network information.
 #'    This object be passed to \code{\link{tmlenet}} as an argument, in which case the arguments already provided to \code{eval.summaries} no
 #'    longer need to be specified to \code{tmlenet}.
-#'  } 
+#'  }
 #' @seealso \code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.
 #' @example tests/examples/3_eval.summaries_examples.R
 #' @export
@@ -464,9 +464,9 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 # MAIN TMLENET FUNCTION
 #---------------------------------------------------------------------------------
 # layers of tmlenet input spec's:
-# 1) spec sW, sA, Qform => assumes hform = "sA ~ sW", hform.gstar = "sA ~ sW"
-# 2) spec sW, sA, Qform and hform => assumes hform.gstar = hform
-# 3) 2) + spec separate hform.gstar (outcome have to be the same sA for both hform & hform.gstar)
+# 1) spec sW, sA, Qform => assumes hform.g0 = "sA ~ sW", hform.gstar = "sA ~ sW"
+# 2) spec sW, sA, Qform and hform.g0 => assumes hform.gstar = hform.g0
+# 3) 2) + spec separate hform.gstar (outcome have to be the same sA for both hform.g0 & hform.gstar)
 
 #------------------------------------
 #' Estimate Average Network Effects For Arbitrary (Stochastic) Interventions
@@ -505,15 +505,15 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' @param f_gstar2 (Optional) Function for specifying another intervention of interest when estimating the treatment
 #'  effects under two interventions
 # @param nFnode (Optional) Name of the variable for the number of friends each unit has, this name can then be used
-#  inside the summary measures and regression formulas \code{sW}, \code{sA}, \code{Qform}, \code{hform},
+#  inside the summary measures and regression formulas \code{sW}, \code{sA}, \code{Qform}, \code{hform.g0},
 #  \code{hform.gstar} and \code{gform}. See Details.
 #' @param Qform Regression formula for outcome in Ynode, when omitted (\code{NULL}) Ynode is regressed on all
 #'  variables defined in \code{sW} and \code{sA}. See Details.
-#' @param hform Regression formula for estimating the conditional probability of P(sA | sW) under g0
+#' @param hform.g0 Regression formula for estimating the conditional probability of P(sA | sW) under g0
 #'  (the observed treatment mechanism), when omitted (\code{NULL}), will include all variables (columns)
 #'  in \code{sA} and in \code{sW}. See Details.
 #' @param hform.gstar Regression formula for estimating the conditional probability P(sA | sW) under gstar,
-#'  when omitted (\code{NULL}), the same regression formula as in hform will be used. See Details.
+#'  when omitted (\code{NULL}), the same regression formula as in \code{hform.g0} will be used. See Details.
 # @param gform  (Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all
 # friends treatments, P(A_i, A_{F_i} | W). See Details.
 # @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
@@ -562,16 +562,16 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #'  summary measures \code{sWmat}. The variable \code{nF} can be used in the same ways as any of the column names in
 #'  the input data frame \code{data}. In particular, the name \code{nF} can be used inside the summary measure
 #'  expressions (calls to functions \code{def.sW} and \code{def.sA}) and inside any of the regression formulas 
-#'  (\code{Qform}, \code{hform}, \code{hform.gstar}).
+#'  (\code{Qform}, \code{hform.g0}, \code{hform.gstar}).
 #' 
 # However, if the column \code{data[,nFnode]}
 # already exists in the input data it will be compared to the automatically calculated values, with an error produced
 # if the two variables do not exactly match.
 #'
-#' The formalas in \code{Qform}, \code{hform} and \code{hform.gstar} can include any summary measures defined in
+#' The formalas in \code{Qform}, \code{hform.g0} and \code{hform.gstar} can include any summary measures defined in
 #'  sW and sA, referenced by their individual variable names or by their aggregate summary measure names. 
-#'  For example, \code{hform = "netA ~ netW"} is equivalent to
-#'  \code{hform = "A + A_netF1 + A_netF2 ~ W + W_netF1 + W_netF2"} for \code{sW,sA} summary measures defined by
+#'  For example, \code{hform.g0 = "netA ~ netW"} is equivalent to
+#'  \code{hform.g0 = "A + A_netF1 + A_netF2 ~ W + W_netF1 + W_netF2"} for \code{sW,sA} summary measures defined by
 #'  \code{def.sW(netW=W[[0:2]], noname=TRUE)} and \code{def.sA(netA=A[[0:2]], noname=TRUE)}.
 #'
 #' The functions \code{f_gstar1} and \code{f_gstar2} can only depend on variables specified in the summary measures
@@ -716,7 +716,7 @@ tmlenet <- function(data, Kmax, sW, sA,
                     Anode,  AnodeDET = NULL, Ynode, YnodeDET = NULL,
                     IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL,
                     f_gstar1, f_gstar2 = NULL,
-                    Qform = NULL, hform = NULL, hform.gstar = NULL,
+                    Qform = NULL, hform.g0 = NULL, hform.gstar = NULL,
                     verbose = getOption("tmlenet.verbose"),
                     optPars = list(
                       alpha = 0.05,
@@ -857,20 +857,20 @@ tmlenet <- function(data, Kmax, sW, sA,
   # Optional regressions specs:
   #----------------------------------------------------------------------------------
   Q.sVars <- process_regform(as.formula(Qform), sW.map = c(sW$sVar.names.map, sA$sVar.names.map), sA.map = node_l$Ynode)
-  h.sVars <- process_regform(as.formula(hform), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+  h.g0.sVars <- process_regform(as.formula(hform.g0), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
   if (!is.null(hform.gstar)) {
     h.gstar.sVars <- process_regform(as.formula(hform.gstar), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
   } else {
-    h.gstar.sVars <- h.sVars
+    h.gstar.sVars <- h.g0.sVars
   }
 
   if (verbose) {
-    print("Qform: " %+% Qform)
-    print("Q.sVars"); print(str(Q.sVars))
-    print("hform: " %+% hform)
-    print("h.sVars"); print(str(h.sVars))
-    print("hform.gstar: " %+% hform.gstar)
-    print("h.gstar.sVars"); print(str(h.gstar.sVars))
+    print("Input regression Qform (E(Y|sA,sW)): " %+% Qform)
+    print("Derived regression Qform (E(Y|sA,sW)):"); str(Q.sVars)
+    print("Input regression hform.g0 (P(sA|sW) under g0): " %+% hform.g0)
+    print("Derived regression hform.g0 (P(sA|sW) under g0): "); str(h.g0.sVars)
+    print("Input regression hform.gstar (P(sA|sW) under g.star): " %+% hform.gstar)
+    print("Derived regression hform.gstar (P(sA|sW) under g.star): "); str(h.gstar.sVars)
   }
 
   #-----------------------------------------------------------
@@ -882,13 +882,20 @@ tmlenet <- function(data, Kmax, sW, sA,
   if (!all(check.Qpreds.exist)) stop("the following predictors in Qform regression could not be located among the summary measures: " %+%
                                     paste0(Q.sVars$predvars[!check.Qpreds.exist], collapse = ","))
 
+  if (verbose) {
+    message("================================================================")
+    message("fitting E(Y|sA,sW):= ", "P(" %+% node_l$Ynode %+% "=1 | " %+% paste(Q.sVars$predvars, collapse = ",") %+% ")")
+    message("================================================================")
+  }
   Qreg <- RegressionClass$new(outvar = node_l$Ynode,
                               predvars = Q.sVars$predvars,
                               subset = !determ.Q, ReplMisVal0 = TRUE)
-
   m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)$predict(newdata = DatNet.ObsP0)
-  print("m.Q.init$getoutvarnm: "); print(m.Q.init$getoutvarnm)
-  print("coef(m.Q.init): "); print(coef(m.Q.init))
+  # if (verbose) {
+  #   print("fit for E(Y|sA,sW) succeeded:")
+  #   print("coef(m.Q.init): "); print(coef(m.Q.init))
+  # }
+  
 
   # DatNet.ObsP0$YnodeVals       # visible Y's with NA for det.Y
   # DatNet.ObsP0$det.Y           # TRUE/FALSE for deterministic Y's
@@ -916,13 +923,12 @@ tmlenet <- function(data, Kmax, sW, sA,
                   sW = sW,
                   sA = sA,
                   Q.sVars = Q.sVars,
-                  h.sVars = h.sVars,
+                  h.g0.sVars = h.g0.sVars,
                   h.gstar.sVars = h.gstar.sVars,
                   nQ.MCsims = nQ.MCsims,
                   ng.MCsims = ng.MCsims,
                   h_g0_SummariesModel = optPars$h_g0_SummariesModel,
                   h_gstar_SummariesModel = optPars$h_gstar_SummariesModel,
-
                   # Cap the prop weights scaled at max_npwt (for =50 -> translates to max 10% of total weight for n=500 and 5% for n=1000):
                   max_npwt = max_npwt # NOT IMPLEMENTED  
                   # h_logit_sep_k = h_logit_sep_k, # NOT IMPLEMENTED

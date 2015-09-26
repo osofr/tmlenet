@@ -65,7 +65,7 @@ test.examples <- function() {
   # No Ynode:
  res_K6_1a <- tmlenet(data = df_netKmax6,
               Qform = "Y ~ sum.netW3 + sum.netAW2",
-              hform = "netA ~ netW2 + sum.netW3 + nF",
+              hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
               hform.gstar = "netA ~ sum.netW3",
 
               Anode = "A",
@@ -76,7 +76,7 @@ test.examples <- function() {
   # With Ynode:
   res_K6_1 <- tmlenet(data = df_netKmax6,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
-                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
 
                     Anode = "A", Ynode = "Y",
@@ -107,7 +107,7 @@ test.examples <- function() {
   #----------------------------------------------------------------------------------
   res_K6_2 <- tmlenet(data = df_netKmax6,
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
-                      hform = "netA ~ netW2 + sum.netW3 + nF",
+                      hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
 
                       Anode = "A", Ynode = "Y",
@@ -191,7 +191,7 @@ test.examples <- function() {
 
   res_K6_3 <- tmlenet(data = df_netKmax6,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
-                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
 
                     Anode = "A", Ynode = "Y",
@@ -229,7 +229,7 @@ test.examples <- function() {
 
   res_K6net <- tmlenet(data = df_netKmax6,
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
-                      hform = "netA ~ netW2 + sum.netW3 + nF",
+                      hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
 
                       Anode = "A", Ynode = "Y",

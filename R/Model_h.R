@@ -60,7 +60,6 @@ predict.hbars <- function(newdatnet = NULL, m.h.fit) {
 # fit models for m_gAi
 #---------------------------------------------------------------------------------
 fit.hbars <- function(DatNet.ObsP0, est_params_list) {
-  if (gvars$verbose) message("... running fit.hbars() ...")
   .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" "))  # defining the vector of c^A's that needs evaluation under h(c)
   #---------------------------------------------------------------------------------
   # PARAMETERS FOR LOGISTIC ESTIMATION OF h
@@ -68,20 +67,13 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # n <- nrow(data)
   O.datnetW <- DatNet.ObsP0$datnetW
   O.datnetA <- DatNet.ObsP0$datnetA
-
-  # Kmax <- DatNet.ObsP0$Kmax
-  # nodes <- DatNet.ObsP0$O.datnetW$nodes
-  # nFnode <- nodes$nFnode
-  # Anode <- nodes$Anode
-  # NetInd_k <- DatNet.ObsP0$O.datnetW$NetInd_k
-
   lbound <- est_params_list$lbound
   max_npwt <- est_params_list$max_npwt # NOT IMPLEMENTED
   ng.MCsims <- est_params_list$ng.MCsims  # replace with p adaptive to k: p <- 100*(2^k)
 
   sW <- est_params_list$sW
   sA <- est_params_list$sA
-  h.sVars <- est_params_list$h.sVars
+  h.g0.sVars <- est_params_list$h.g0.sVars
   h.gstar.sVars <- est_params_list$h.gstar.sVars
 
   f.gstar <- est_params_list$f.gstar
@@ -100,22 +92,16 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
 
   #---------------------------------------------------------------------------------
   # Getting OBSERVED sW
-  # **** TODO ******
-  # (1) RETURN A MORE INTERPRETABLE ERROR when check.sW.g0.exist or check.sW.gstar.exist fails (list vars not found in sW_g0, sW_gstar)
-  # (2) Same for check.sA.exist -> return a more interpretable error
-  # (3) Add the same check for Q model (if not already added)
-  # ****************
   #---------------------------------------------------------------------------------
-  # Summary measure names
-  sW.g0_nms <- h.sVars$predvars
+  # Summary measure names / expressions:
+  sW.g0_nms <- h.g0.sVars$predvars
   sW.gstar_nms <- h.gstar.sVars$predvars
 
   # *****
-  # CHECK THAT THESE SUMMARY MEASURES EXIST IN O.datnetW$names.sVar
+  # Check that these summary measures exist in O.datnetW$names.sVar
   check.sW.g0.exist <- unlist(lapply(sW.g0_nms, function(sWname) sWname %in% O.datnetW$names.sVar))
-  if (!all(check.sW.g0.exist)) stop("the following predictors from hform regression could not be located in sW summary measures: " %+%
+  if (!all(check.sW.g0.exist)) stop("the following predictors from hform.g0 regression could not be located in sW summary measures: " %+%
                                     paste0(sW.g0_nms[!check.sW.g0.exist], collapse = ","))
-
 
   check.sW.gstar.exist <- unlist(lapply(sW.gstar_nms, function(sWname) sWname %in% O.datnetW$names.sVar))
   if (!all(check.sW.gstar.exist)) stop("the following predictors from hform.gstar regression could not be located in sW summary measures: " %+%
@@ -124,48 +110,27 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   #---------------------------------------------------------------------------------
   # Getting OBSERVED sA
   #---------------------------------------------------------------------------------
-  # Summary measure names / expression
-  # sA_nms <- h.sVars$outvars
-  sA_nms_g0 <- h.sVars$outvars
+  # Summary measure names / expressions:
+  sA_nms_g0 <- h.g0.sVars$outvars
   sA_nms_gstar <- h.gstar.sVars$outvars
 
   # ***********
-  # CHECK THAT THE OUTCOME SUMMARY MEASURES DEFINED by h.sVars$outvars and h.gstar.sVars$outvars are equivalent:
-  # NOTE: MIGHT COMMENT OUT IN THE FUTURE AND ALLOW DIFFERENT SUMMARY MEASURES FOR sA_nms_g0 and sA_nms_gstar.
+  # Check that the outcome summary measures defined by h.g0.sVars$outvars and h.gstar.sVars$outvars are equivalent:
+  # NOTE: might comment out in the future and allow different summary measures for sA_nms_g0 and sA_nms_gstar.
   # ***********
-  if (!all(sA_nms_g0 == sA_nms_gstar)) stop("the outcome variable names defined by regressions hform & hform.gstar are not identical;" %+%
+  if (!all(sA_nms_g0 == sA_nms_gstar)) stop("the outcome variable names defined by regressions hform.g0 & hform.gstar are not identical;" %+%
                                             " current implementation requires these to be the same.")
 
   # ***********
-  # CHECK THAT THESE SUMMARY MEASURES EXIST IN O.datnetW$names.sVar
-  # ***********
+  # Check that these summary measures exist in O.datnetW$names.sVar
   check.sAg0.exist <- unlist(lapply(sA_nms_g0, function(sAname) sAname %in% O.datnetA$names.sVar))
-  if (!all(check.sAg0.exist)) stop("the following outcomes from hform regression could not be located in sA summary measures: " %+%
+  if (!all(check.sAg0.exist)) stop("the following outcomes from hform.g0 regression could not be located in sA summary measures: " %+%
                                     paste0(sA_nms_g0[!check.sAg0.exist], collapse = ","))
 
   check.sAgstar.exist <- unlist(lapply(sA_nms_gstar, function(sAname) sAname %in% O.datnetA$names.sVar))
   if (!all(check.sAgstar.exist)) stop("the following outcomes from hform.gstar regression could not be located in sA summary measures: " %+%
                                     paste0(sA_nms_gstar[!check.sAgstar.exist], collapse = ","))
-  # if (gvars$verbose) {
-  #   print("check.sA.exist"); print(check.sA.exist)
-  # }
-  # assert_that(all(check.sA.exist))
 
-  #-----------------------------------------------------------
-  # BELOW IS A BUG, all A are assigned to the same bin when trying automatic $detect.sVar.intrvls:
-  #-----------------------------------------------------------
-  # intvrls <- DatNet.sWsA.g0$detect.sVar.intrvls("A")
-  # DatNet.sWsA.g0$set.sVar.intrvls(name.sVar = "A", new.intrvls = intvrls)
-  # print("defined intvrls for A: "); print(intvrls)
-  # print("TABLE FOR A as an ordinal (all A vals got assigned to cat 2): "); print(table(DatNet.sWsA.g0$discretize.sVar("A")))
-  # print("Bins for A: "); print(head(DatNet.sWsA.g0$binirize.sVar("A")))
-  # Trying manual intervals for A:
-  # DatNet.sWsA.g0$set.sVar.intrvls(name.sVar = "A", new.intrvls = seq(0,1,by=0.1))
-  # print(DatNet.sWsA.g0$get.sVar.intrvls("A"))
-  # print("Bins for A with manual 10 continuous intervals:")
-  # print(table(DatNet.sWsA.g0$discretize.sVar("A")))
-  # print(head(DatNet.sWsA.g0$binirize.sVar("A")))
-  # print("Stats for sum_1mAW2_nets: ")
   #-----------------------------------------------------------
   # DEFINING SUBSETING EXPRESSIONS (FOR DETERMINISTIC / DEGENERATE sA)
   #-----------------------------------------------------------
@@ -180,15 +145,12 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # Summary class params:
   ##########################################
   sA_class <- O.datnetA$type.sVar[sA_nms_g0]
-  # sVartypes <- gvars$sVartypes # <- list(bin = "binary", cat = "categor", cont = "contin")
-  # sA_class <- as.list(c(sVartypes$cont, sVartypes$bin, rep_len(sVartypes$bin, length(sA_nms_g0)-2)))
-  # sA_class.alt <- lapply(sA_nms_g0, O.datnetA$get.sVar.type)
-  # names(sA_class.alt) <- sA_nms_g0
-  # print("detected sA_class for O.datnetA$sVar: "); print(sA_class)
 
-  message("================================================================")
-  message("fitting h_g0 with summary measures: ", "(" %+% paste(sA_nms_g0, collapse = ",") %+% " | " %+% paste(sW.g0_nms, collapse = ",") %+% ")")
-  message("================================================================")
+  if (gvars$verbose) {
+    message("================================================================")
+    message("fitting h_g0 with summary measures: ", "P(" %+% paste(sA_nms_g0, collapse = ",") %+% " | " %+% paste(sW.g0_nms, collapse = ",") %+% ")")
+    message("================================================================")
+  }
 
   p_h0 <- ifelse(is.null(f.g0), 1, ng.MCsims)
   if (!is.null(f.g0)) {
@@ -199,7 +161,11 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     DatNet.g0 <- DatNet.ObsP0
   }
 
-  regclass.g0 <- RegressionClass$new(outvar.class = sA_class, outvar = sA_nms_g0, predvars = sW.g0_nms, subset = subsets_expr)
+  regclass.g0 <- RegressionClass$new(outvar.class = sA_class,
+                                        outvar = sA_nms_g0,
+                                        predvars = sW.g0_nms,
+                                        subset = subsets_expr)
+
   summeas.g0 <- SummariesModel$new(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
   if (!is.null(h_g0_SummariesModel)) {
     message("user supplied model fit for h_g0 is not implemented yet")
@@ -221,14 +187,17 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   h_gN <- summeas.g0$predictAeqa(newdata = DatNet.ObsP0)
   # *********
 
-  message("================================================================")
-  message("fitting h_gstar for summary measures: ", "(" %+% paste(sA_nms_gstar, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
-  message("================================================================")
+  if (gvars$verbose) {
+    message("================================================================")
+    message("fitting h_gstar based on summary measures: ", "P(" %+% paste(sA_nms_gstar, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
+    message("================================================================")
+  }
+
   DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
   DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_name = f.gstar, f.g_args = f.g_args, sA.object = sA)
 
   if (gvars$verbose) {
-    print("DatNet.gstar stored sWsA df: "); print(class(DatNet.gstar$dat.sWsA))
+    print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): "); print(class(DatNet.gstar$dat.sWsA))
     print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));
   }
 

@@ -11,13 +11,12 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
   m.Q.init <- MC_fit_params$m.Q.init
   m.Q.star <- MC_fit_params$m.Q.star
 
-  # nQ.MCsims <- MC_fit_params$nQ.MCsims
-  # max_npwt <- MC_fit_params$max_npwt
-  # max.err_eps <- MC_fit_params$max.err_eps
+  if (gvars$verbose) {
+    message("================================================================")
+    message("running Monte Carlo evaluation of the substitution estimators...")
+    message("================================================================")
+  }
 
-  message("================================================================")
-  message("running Monte Carlo evaluation of the substitution estimators...")
-  message("================================================================")
   evaluator <- mcEvalPsi$new(DatNet.ObsP0 = DatNet.ObsP0, DatNet.gstar = DatNet.gstar)
   nOdata <- evaluator$nOdata
 
