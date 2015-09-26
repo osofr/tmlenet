@@ -27,11 +27,6 @@ f.A_0 <- function(data, ...) f.A_x(data, 0, ...)
 # Deterministically set every A=1:
 f.A_1 <- function(data, ...) f.A_x(data, 1, ...)
 
-# *************
-# TO BE REMOVED (no longer need Wnodes argument in tmlenet())
-Wnodes <- c("W1", "W2", "W3")
-# *************
-
 #***************************************************************************************
 # SUMMARY MEASURES:
 #***************************************************************************************
@@ -83,14 +78,14 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
 # ESTIMATION
 #***************************************************************************************
 options(tmlenet.verbose = FALSE)
-res_K6_1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
-                  Kmax = Kmax,
-                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                  f_gstar1 = f.A_0,
-                  sW = def_sW, sA = def_sA,
+res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax,
                   Qform = "Y ~ sum.netW3 + sum.netAW2",
                   hform = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
+                  Anode = "A", Ynode = "Y",
+                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                  f_gstar1 = f.A_0,
+                  sW = def_sW, sA = def_sA,
                   optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
 
@@ -103,14 +98,14 @@ res_K6_1$EY_gstar1$other.vars
 # Example 2. 
 # Same as above but for covariate-based TMLE.
 #***************************************************************************************
-res_K6_2 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
-                  Kmax = Kmax,
-                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                  f_gstar1 = f.A_0,
-                  sW = def_sW, sA = def_sA,
+res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax,
                   Qform = "Y ~ sum.netW3 + sum.netAW2",
                   hform = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
+                  Anode = "A", Ynode = "Y",
+                  IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                  f_gstar1 = f.A_0,
+                  sW = def_sW, sA = def_sA,
                   optPars = list(runTMLE = "tmle.covariate", n_MCsims = 10))
 
 res_K6_2$EY_gstar1$estimates
@@ -136,15 +131,14 @@ print(head(NetInd_mat))
 print(head(nF))
 print(all.equal(df_netKmax6[,"nFriends"], nF))
 
-res_K6_net1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes,
-                    Ynode = "Y",
-                    Kmax = Kmax,
-                    NETIDmat = NetInd_mat,
-                    f_gstar1 = f.A_0,
-                    sW = def_sW, sA = def_sA,
+res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
+                    Anode = "A", Ynode = "Y",
+                    NETIDmat = NetInd_mat,
+                    f_gstar1 = f.A_0,
+                    sW = def_sW, sA = def_sA,
                     optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
 
 all.equal(res_K6_net1$EY_gstar1$estimates, res_K6_1$EY_gstar1$estimates)
@@ -156,7 +150,7 @@ all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
 # Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
 # OLD. REMOVE OR MODIFY.
 #***************************************************************************************
-# tmlenet_K6out2 <- tmlenet(data=df_netKmax6, Anode="A", Wnodes=Wnodes, Ynode="Y", 
+# tmlenet_K6out2 <- tmlenet(data=df_netKmax6, Anode="A", Ynode="Y", 
 # Kmax=Kmax, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, h_form=hform,
 # f.g1.star=f.A_1, f.g1_args=NULL, n_MCsims=10, n_samp_g0gstar=10)
 
@@ -184,7 +178,7 @@ all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
 # Example 1. Mean population outcome under deterministic intervention A=0
 # OLD. REMOVE OR MODIFY.
 #***************************************************************************************
-# tmlenet_out1 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", 
+# tmlenet_out1 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y", 
 # Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, 
 # f.g1.star=f.A_0, f.g1_args=NULL)
 
@@ -208,7 +202,7 @@ all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
 # Example 2. Mean population outcome under stochastic intervention P(A=1)=0.2
 # OLD. REMOVE OR MODIFY.
 #***************************************************************************************
-# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", 
+# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y", 
 # Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
 # f.g1.star=f.A_x, f.g1_args=list(x=0.2),
 # n_MCsims=4000, n_samp_g0gstar=100)
@@ -234,7 +228,7 @@ all.equal(res_K6_net1$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars)
 # f.g1.star: A=1 vs f.g2.star: A=0
 # OLD. REMOVE OR MODIFY.
 #***************************************************************************************
-# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y", 
+# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y", 
 # Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
 # f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
 # n_MCsims=4000, n_samp_g0gstar=100)

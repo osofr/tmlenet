@@ -127,7 +127,7 @@ def.sA <- function(...) {
   return(node_evaluator)
 }
 
-# S3 method '+' for adding two Define_sVar objects
+# S3 method '+' for adding two DefineSummariesClass objects
 # Summary measure lists in both get added as c(,) into the summary measures in sVar1 object
 #' @rdname def.sW
 #' @param sVar1 An object returned by a call to \code{def.sW} or \code{def.sA} functions.
@@ -222,6 +222,7 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
 #'   \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}.}
 #'   \item{\code{add.new.exprs(NewSummaries)}}{Adds new internal summary measure expressions to the existing ones, \code{NewSummaries} 
 #'    must be an object of class \code{DefineSummariesClass} (to enable \code{Object1 + Object2} syntax).}
+#'   item{\code{remove.expr(SummaryName)}}{Remove expression by name (for removing duplicate 'nF' expressions for repeated calls with def.sW()+def.sW()).}
 #'   \item{\code{eval.nodeforms(data.df, netind_cl)}}{Evaluate the expressions one by one, standardize all names according to one naming
 #'    convention (described in \code{\link{def.sW}}), \code{cbind}ing results together into one output matrix. \code{data.df} is the input 
 #'    data.frame and \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
@@ -318,7 +319,7 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
         self$new_expr_names <- self$new_expr_names[-duplic_idx]
         self$exprs_list <- self$exprs_list[-duplic_idx]
       }
-      
+
       mat.sVar <- do.call("cbind", lapply(sVar.res_l, function(x) x[["evaled_expr"]]))
 
       # 2) remove duplicate columns, keeping the ones that were added last:
@@ -329,7 +330,7 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
                 "), all duplicates starting from first to last will be removed...")
         mat.sVar <- mat.sVar[,!duplic_idx]
       }
-      
+
       return(mat.sVar)
     },
 

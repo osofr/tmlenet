@@ -23,7 +23,7 @@ Class for evaluating and storing arbitrary summary measures sVar.
 \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
 \item{\code{Odata}} - Pointer to the input (observed) data frame.
 \item{\code{mat.sVar}} - The evaluated matrix of summary measures for \code{sW} or \code{sA}.
-\item{\code{sVar.object}} - Instance of the \code{Define_sVar} class which contains the summary measure expressions for \code{sW} or \code{sA}.
+\item{\code{sVar.object}} - Instance of the \code{\link{DefineSummariesClass}} class which contains the summary measure expressions for \code{sW} or \code{sA}.
 \item{\code{type.sVar}} - named list of length \code{ncol(mat.sVar)} with \code{sVar} variable types: "binary"/"categor"/"contin".
 \item{\code{norm.c.sVars}} - \code{flag = TRUE} if continous covariates need to be normalized.
 \item{\code{nOdata}} - number of observations in the observed data frame.

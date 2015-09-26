@@ -545,7 +545,7 @@ test.NetIndClassFromString <- function() {
 }
 
 # TESTING sVar expressions parser:
-test.Define_sVar <- function() {
+test.DefineSummariesClass <- function() {
   # ----------------------------------------------------------------------------------------
   # TEST DATA:
   # ----------------------------------------------------------------------------------------

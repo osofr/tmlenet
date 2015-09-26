@@ -15,14 +15,7 @@ test.examples <- function() {
   # EXAMPLE WITH SIMULATED DATA FOR 6 FRIENDS AND 3 W's (OLD SIMULATION 3)
   #***************************************************************************************
   tmlenet:::checkpkgs(pkgs = c("stringr"))
-  # tmlenet:::checkpkgs(pkgs = c("stringr", "bigmemory", "biganalytics"))
-  # require(tmlenet)
   require(stringr)
-  # require(bigmemory)
-  # require(biganalytics)
-  # require(plyr)
-  # "plyr"
-  # options(bigmemory.typecast.warning = FALSE)
 
   # Max number of friends in the network:
   Kmax <- 6
@@ -66,51 +59,93 @@ test.examples <- function() {
   def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
             def.sA(netA = A[[0:Kmax]])
 
-  # alternative ways to pass summary measures (NOT IMPLEMENTED):
+  # alternative ways to pass summary measures (NOT IMPLEMENTED YET):
   # sW = list("W1[[0]]", "W2[[0:Kmax]]", "W3[[0:Kmax]]", sum.netW1 = "sum(W1[[1:Kmax]]"),
             # sum.netW2 = "sum(W2[[1:Kmax]])", sumnetW3 = "sum(W3[[1:Kmax]])"),
   # sA = list("A[[0:Kmax]]", sum_1mAW2_nets = "sum((1-A[[1:Kmax]]) * W2[[1:Kmax]]))")
 
-
-  #***************************************************************************************
-  # TO DO: Should return an error since "netW1_sum", "netW2_sum", "netW3_sum" don't exist in the data!!!
-  #***************************************************************************************
-  Wnodes <- c("W1", "W2", "W3", "netW1_sum", "netW2_sum", "netW3_sum")
-
-
-  #***************************************************************************************
-  # TO DO: ADD TO TEST CASE AND MAKE A MORE INTERPRETABLE ERROR
-  #***************************************************************************************
-  # ... moved here prevous call to tmlenet w/ wrong (non-existing) summary measure names:
+  # Test for non-existing predictors in hform/hform.gstar:
   checkException(
-  res_K6_1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
-                    Kmax = Kmax,
-                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    f_gstar1 = f.A_0,
-                    # specifying regressions:
-                    sW = def_sW, sA = def_sA,
-                    Qform = "Y ~ netW3_sum + sum_1mAW2_nets",
+    res_K6_1 <- tmlenet(data = df_netKmax6,
                     hform = "netA ~ netW2 + netW3_sum + nF",
                     hform.gstar = "netA ~ netW3_sum",
-                    optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+  )
+  # Test for non-existing predictors in hform/hform.gstar:
+  checkException(
+    res_K6_1 <- tmlenet(data = df_netKmax6,
+                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "netA ~ netW3_sum",
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+  )
+  # Test for non-existing outcomes in hform/hform.gstar:
+  checkException(
+     res_K6_1 <- tmlenet(data = df_netKmax6,
+                    hform = "sum.netW3 ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "sum.netW3 ~ sum.netW3 + nF",
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+  )
+  # Test for different outcomes in hform/hform.gstar (non-existing for hform.gstar):
+  checkException(
+     res_K6_1 <- tmlenet(data = df_netKmax6,
+                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "sum.netW3 ~ sum.netW3 + nF",
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+  )
+  # Test for existing but different outcomes in hform/hform.gstar:
+  checkException(
+       res_K6_1 <- tmlenet(data = df_netKmax6,
+                    hform = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "sum.netAW2 ~ sum.netW3 + nF",
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+  )
+  #***************************************************************************************
+  # TO DO: need to throw an exception, because netW3_sum, sum_1mAW2_nets IN Qform don't exist;
+  # TO DO: need to throw an exception, because blah in Qform doesn't exist;
+  #***************************************************************************************
+  checkException(
+     res_K6_1 <- tmlenet(data = df_netKmax6,
+                  Qform = " blah ~ netW3_sum + sum_1mAW2_nets",
+                  hform = "netA ~ netW2 + sum.netW3 + nF",
+                  hform.gstar = "netA ~ sum.netW3",
+
+                  Anode = "A", Ynode = "Y",
+                  Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                  f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
   )
 
 
 
-# correct version:
-  res_K6_1 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
-                    Kmax = Kmax,
-                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    f_gstar1 = f.A_0,
-                    # specifying regressions:
-                    sW = def_sW, sA = def_sA,
+  # correct version:
+  res_K6_1 <- tmlenet(data = df_netKmax6,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    optPars = list(
-                      runTMLE = "tmle.intercept",
-                      n_MCsims = 10)
-                    )
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",n_MCsims = 10))
+
   tmle_idx <- rownames(res_K6_1$EY_gstar1$estimates)%in%"tmle"
   h_iptw_idx <- rownames(res_K6_1$EY_gstar1$estimates)%in%"h_iptw"
   gcomp_idx <- rownames(res_K6_1$EY_gstar1$estimates)%in%"gcomp"
@@ -132,18 +167,15 @@ test.examples <- function() {
   #----------------------------------------------------------------------------------
   # Example 2. Same as above but for covariate-based TMLE
   #----------------------------------------------------------------------------------
-  res_K6_2 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
-                      Kmax = Kmax,
-                      IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                      f_gstar1 = f.A_0,
-                      sW = def_sW, sA = def_sA,
+  res_K6_2 <- tmlenet(data = df_netKmax6,
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
                       hform = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
-                      optPars = list(
-                        runTMLE = "tmle.covariate",
-                        n_MCsims = 10)
-                      )
+
+                      Anode = "A", Ynode = "Y",
+                      Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                      f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
+                      optPars = list(runTMLE = "tmle.covariate",n_MCsims = 10))
 
   # Test estimates:
   checkTrue(abs(res_K6_2$EY_gstar1$estimates[tmle_idx] - 0.5053725) < 10^(-06))
@@ -181,8 +213,8 @@ test.examples <- function() {
   # iid.iptw   0.4429414 0.4429414
   # mle        0.4970377 0.4970377
 
-  #   fWi_init_A   fWi_init_B   fWi_star_A   fWi_star_B 
-  # -0.008334713 -0.008152518 -0.505372462 -0.505190268 
+  #   fWi_init_A   fWi_init_B   fWi_star_A   fWi_star_B
+  # -0.008334713 -0.008152518 -0.505372462 -0.505190268
 
   # NEW VARs:
   # gIPTW and TMLE_gIPTW AREN'T YET IMPLEMENTED
@@ -219,19 +251,14 @@ test.examples <- function() {
   def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]]) * W2[[1:Kmax]]), replaceNAw0 = TRUE) +
               def.sA(netA = A[[0:Kmax]])
 
-  res_K6_3 <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
-                    Kmax = Kmax,
-                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    f_gstar1 = f.A_0,
-                    sW = def_sW, sA = def_sA,
+  res_K6_3 <- tmlenet(data = df_netKmax6,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    optPars = list(
-                      runTMLE = "tmle.intercept",
-                      f_g0 = f.A,
-                      n_MCsims = 10)
-                    )
+
+                    Anode = "A", Ynode = "Y",
+                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
+                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",f_g0 = f.A,n_MCsims = 10))
 
   # Test estimates:
   checkTrue(abs(res_K6_3$EY_gstar1$estimates[tmle_idx] - 0.5054745) < 10^(-06))
@@ -262,32 +289,26 @@ test.examples <- function() {
   print(head(nF))
   checkTrue(all.equal(df_netKmax6[,"nFriends"], nF))
 
-  res_K6net <- tmlenet(data = df_netKmax6, Anode = "A", Wnodes = Wnodes, Ynode = "Y",
-                      Kmax = Kmax,
-                      NETIDmat = NetInd_mat,
-                      f_gstar1 = f.A_0,
-                      sW = def_sW, sA = def_sA,
+  res_K6net <- tmlenet(data = df_netKmax6,
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
                       hform = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
-                      optPars = list(
-                        runTMLE = "tmle.intercept",
-                        n_MCsims = 10)
-                      )
+
+                      Anode = "A", Ynode = "Y",
+                      Kmax = Kmax, NETIDmat = NetInd_mat,
+                      f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",n_MCsims = 10))
 
   checkTrue(all.equal(res_K6net$EY_gstar1$estimates, res_K6_1$EY_gstar1$estimates))
   checkTrue(all.equal(res_K6net$EY_gstar1$vars, res_K6_1$EY_gstar1$vars))
   checkTrue(all.equal(res_K6net$EY_gstar1$CIs, res_K6_1$EY_gstar1$CIs))
   checkTrue(all.equal(res_K6net$EY_gstar1$other.vars, res_K6_1$EY_gstar1$other.vars))
-
 }
-
 
 #----------------------------------------------------------------------------------
 # Example 2. Mean population outcome under deterministic intervention A=1 with 6 friends
 # OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-# tmlenet_K6out2 <- tmlenet(data=df_netKmax6, Anode="A", Wnodes=Wnodes, Ynode="Y",
+# tmlenet_K6out2 <- tmlenet(data=df_netKmax6, Anode="A", Ynode="Y",
 # 						Kmax=Kmax, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, h_form=hform,
 # 						f.g1.star=f.A_1, f.g1_args=NULL, n_MCsims=10, n_samp_g0gstar=10)
 
@@ -315,7 +336,7 @@ test.examples <- function() {
 # Example 1. Mean population outcome under deterministic intervention A=0
 # OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-# tmlenet_out1 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y",
+# tmlenet_out1 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
 # 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform, 
 # 						f.g1.star=f.A_0, f.g1_args=NULL)
 
@@ -339,7 +360,7 @@ test.examples <- function() {
 # Example 2. Mean population outcome under stochastic intervention P(A=1)=0.2
 # OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y",
+# tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
 # 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
 # 						f.g1.star=f.A_x, f.g1_args=list(x=0.2),
 # 						n_MCsims=4000, n_samp_g0gstar=100)
@@ -364,7 +385,7 @@ test.examples <- function() {
 # Example 3. Average treatment effect (ATE) for two interventions, f.g1.star: A=1 vs f.g2.star: A=0
 # OLD. REMOVE OR MODIFY.
 #----------------------------------------------------------------------------------
-# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Wnodes="W1", Ynode="Y",
+# tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
 # 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
 # 						f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
 # 						n_MCsims=4000, n_samp_g0gstar=100)

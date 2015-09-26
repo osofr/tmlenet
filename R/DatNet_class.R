@@ -176,12 +176,11 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms, levels = 1:nbins) {
 #' @details
 #' \itemize{
 #' \item{\code{Kmax}} - Maximum number of friends for any observation.
-# \item{\code{addnFnode}} - Flag to add number of friends as an additional vector to the matrix of existing summary measures. 
 #' \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
 #' \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
 #' \item{\code{Odata}} - Pointer to the input (observed) data frame.
 #' \item{\code{mat.sVar}} - The evaluated matrix of summary measures for \code{sW} or \code{sA}.
-#' \item{\code{sVar.object}} - Instance of the \code{Define_sVar} class which contains the summary measure expressions for \code{sW} or \code{sA}.
+#' \item{\code{sVar.object}} - Instance of the \code{\link{DefineSummariesClass}} class which contains the summary measure expressions for \code{sW} or \code{sA}.
 #' \item{\code{type.sVar}} - named list of length \code{ncol(mat.sVar)} with \code{sVar} variable types: "binary"/"categor"/"contin".
 #' \item{\code{norm.c.sVars}} - \code{flag = TRUE} if continous covariates need to be normalized.
 #' \item{\code{nOdata}} - number of observations in the observed data frame.
@@ -216,14 +215,10 @@ DatNet <- R6Class(classname = "DatNet",
   public = list(
     Kmax = integer(),          # max n of Friends in the network
     nFnode = "nF",
-    # addnFnode = FALSE,         # Flag to add Fnode to predictors mat / df output
     netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
     Odata = NULL,              # data.frame used for creating the summary measures in mat.sVar, saved each time make.sVar called
-    # mat.netVar = NULL,         # NOT DONE mat of network VarNode vals (+ VarNode itself) for each node in VarNodes
-    # dat.netVar = NULL,       # (MOVED TO ACT BIND) df of network node values (+ node column itself) for all nodes in VarNodes
     mat.sVar = NULL,           # Matrix storing all evaluated sVars, with named columns
-    # dat.sVar = NULL,         # (MOVED TO ACT BIND) Matrix of summary meaure values for each summary measure expression in sVar
-    sVar.object = NULL,        # Define_sVar object that contains / evaluates sVar expressions    
+    sVar.object = NULL,        # DefineSummariesClass object that contains / evaluates sVar expressions    
     type.sVar = NULL,          # named list with sVar types: list(names.sVar[i] = "binary"/"categor"/"contin"), can be overridden
     norm.c.sVars = FALSE,      # flag = TRUE if want to normalize continous covariates
 
@@ -232,12 +227,9 @@ DatNet <- R6Class(classname = "DatNet",
     nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
 
     initialize = function(netind_cl, nodes, nFnode, ...) {
-    # initialize = function(netind_cl, nodes, nFnode, addnFnode = FALSE, ...) {
-      # assert_that(is.flag(addnFnode))
       self$netind_cl <- netind_cl
       self$Kmax <- netind_cl$Kmax
       if (!missing(nFnode)) self$nFnode <- nFnode
-      # self$addnFnode <- addnFnode
       if (!missing(nodes)) self$nodes <- nodes
       invisible(self)
     },
@@ -245,24 +237,17 @@ DatNet <- R6Class(classname = "DatNet",
     # **********************
     # Define summary measures sVar
     # **********************
-    # type.sVar acts as a flag: only detect types when !is.null, addnFnode = TRUE
     make.sVar = function(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE) {
       assert_that(is.data.frame(Odata))
       self$nOdata <- nrow(Odata)
       self$Odata <- Odata
-
       if (is.null(sVar.object)) {
         stop("Not Implemented. To Be replaced with netVar construction when sVar.object is null...")
       }
-
       self$sVar.object <- sVar.object
       self$mat.sVar <- sVar.object$eval.nodeforms(data.df = Odata, netind_cl = self$netind_cl)
-      # if (self$addnFnode) { nFnode <- self$nFnode } else { nFnode <- NULL }
-      # self$mat.sVar <- sVar.object$get.mat.sVar(data.df = Odata, netind_cl = self$netind_cl, addnFnode = nFnode)
-
       # MAKE def_types_sVar an active binding? calling self$def_types_sVar <- type.sVar assigns, calling self$def_types_sVar defines.
       self$def_types_sVar(type.sVar) # Define the type of each sVar[i]: bin, cat or cont
-
       # normalize continuous and non-missing sVars, overwrite their columns in mat.sVar with normalized [0,1] vals
       if (norm.c.sVars) {
         self$norm.c.sVars <- norm.c.sVars
@@ -633,7 +618,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         Odata <- datnetW$Odata
         # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping a old pointer to O.datnetA)
         datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes)
-        # datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes, VarNodes = self$nodes$Anode)
         df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
         colnames(df.sWsA) <- self$names.sWsA
         for (i in seq_len(p)) {

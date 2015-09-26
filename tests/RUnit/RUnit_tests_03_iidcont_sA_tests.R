@@ -214,7 +214,7 @@ run.1sim.tmlenet <- function(nsamp, psi0, Qform, f.gstar, trunc.const = 10, shif
   Kmax <- 1
   def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
   def_sA <- def.sA(sA = "sA")
-  tmlenet_res <- tmlenet(data = datO, Anode = "sA", Wnodes = c("W1", "W2", "W3"), Ynode = "Y",
+  tmlenet_res <- tmlenet(data = datO, Anode = "sA", Ynode = "Y",
                           Kmax = Kmax,
                           # nFnode = NULL,
                           f_gstar1 = f.gstar,

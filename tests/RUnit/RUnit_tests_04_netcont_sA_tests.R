@@ -14,7 +14,7 @@
 `%+%` <- function(a, b) paste0(a, b)
 run.net.1sim.tmlenet <- function(datO, NetInd_mat, def_sW, def_sA, Kmax, Qform, f.gstar, psi0) {
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Anode = "sA", Wnodes = c("W1", "W2", "W3"), Ynode = "Y",
+  res <- tmlenet(data = datO_input, Anode = "sA", Ynode = "Y",
                   Kmax = Kmax,
                   NETIDmat = NetInd_mat,
                   f_gstar1 = f.gstar,

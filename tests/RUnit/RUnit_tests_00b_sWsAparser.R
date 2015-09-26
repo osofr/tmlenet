@@ -1,7 +1,7 @@
 `%+%` <- function(a, b) paste0(a, b)
 
 #***************************************************************************************
-# Testing new parser Define_sVar_tmlenet:
+# Testing new parser DefineSummariesClass:
 #***************************************************************************************
 data(df_netKmax6) # load observed data
 head(df_netKmax6)

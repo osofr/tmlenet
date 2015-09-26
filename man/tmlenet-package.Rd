@@ -57,8 +57,8 @@ The following routines will be generally invoked, in the same order as presented
 \item{\code{\link{def.sA}}}{Defines treatment summary measures \code{sA} that can be functions of each unit's exposure & baseline covariates,
    as well the exposures and baseline covariates of unit's friends.
    This is the second part of the two part specification of the structural equation model for the outcome \code{Y}.
-   The syntax is identical to \code{def.sW} function, except that \code{def.sA} can contain functions of \code{Wnodes}
-   as well as \code{Anode}.}
+   The syntax is identical to \code{def.sW} function, except that \code{def.sA} can consists of functions of baseline covariates
+   as well as the exposure \code{Anode}.}
 \item{\code{\link{eval.summaries}}}{A convenience function that may be used for checking and validating the user-defined summary measures.
    Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \code{def.sW} and \code{def.sA}.
    Note that this function is automatically executed by \code{tmlenet} and does not need to be called by the user prior to calling \code{tmlenet}.}

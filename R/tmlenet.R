@@ -1,8 +1,7 @@
 # @title tmlenet-package
 # @docType package
 # @author Oleg Sofrygin, Mark J. van der Laan
-# @description ...TO BE COMPLETED...
-# @name tmlenet-package
+
 #' @useDynLib tmlenet
 #' @import R6
 #' @importFrom Rcpp sourceCpp
@@ -28,16 +27,15 @@
 #----------------------------------------------------------------------------------
 # todo 58 (tmlenet, Q.sVars, g.sVars) +0: Check that outvars & predvars in Q.sVars & g.sVars actually exist in sW, sA
 # Currently, if sW,sA doesn't exist it will not be included, without any warning/message.
-#todo 8 (tmlenet) +0: check all names exist in data (Anode, Wnodes, Ynode, etc...)
-#todo 11 (tmlenet) +0: Wnodes & Anode are no longer needed if sW, sA are provided, give a warning that Wnodes, Anodes will be ignored?
+#todo 8 (tmlenet) +0: check all names exist in data (Anode, Ynode, etc...)
 #----------------------------------------------------------------------------------
 #todo 52 (tmlenet) +0: Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
-  # When sW / sA are just lists of character vectors need to capture the calling env and call Define_sVar constructor:
+  # When sW / sA are just lists of character vectors need to capture the calling env and call DefineSummariesClass constructor:
     # user.env <- parent.frame()
     # user.env_l <- list(user.env = user.env)
-    # sW <- do.call(Define_sVar$new, c(sW, list(type = "sW"), user.env_l))
-    # sW.gstar <- do.call(Define_sVar$new, c(sW.gstar, list(type = "sW.gstar"), user.env_l))
-    # sA <- do.call(Define_sVar$new, c(sA, list(type = "sA"), user.env_l))  
+    # sW <- do.call(DefineSummariesClass$new, c(sW, list(type = "sW"), user.env_l))
+    # sW.gstar <- do.call(DefineSummariesClass$new, c(sW.gstar, list(type = "sW.gstar"), user.env_l))
+    # sA <- do.call(DefineSummariesClass$new, c(sA, list(type = "sA"), user.env_l))  
 #todo 53 (tmlenet) +0: If no sVars were defined (default), use netW (Wnode[[0:Kmax]]) and netA for sVars (Anode[[0:Kmax]])
 #todo 54 (tmlenet) +0: Check all sVar names are unique
 #---------------------------------------------------------------------------------
@@ -435,7 +433,7 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
   }
 
   #----------------------------------------------------------------------------------
-  # Test parsing and evaluating the summary measures (in class Define_sVar):
+  # Test parsing and evaluating the summary measures (in class DefineSummariesClass):
   #----------------------------------------------------------------------------------
   # Testing the evaluation of summary measures:
   sW.matrix <- sW$eval.nodeforms(data.df = data, netind_cl = netind_cl)
@@ -465,12 +463,11 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #---------------------------------------------------------------------------------
 # MAIN TMLENET FUNCTION
 #---------------------------------------------------------------------------------
-# 4 layers of model spec's:
-# 1) spec only Anode & Wnodes => assumes sW = W[[0:Kmax]] & sA = A[[0:Kmax]]
-# 2) spec sW & sA => assumes hform = "sA ~ sW", Qform = "Y ~ sW + sA"
-# 3) spec sW & sA and spec either of hform & Qform => assumes hform.gstar = hform
-# 4) 3 + spec separate hform.gstar (outcome have to be the same sA for both hform & hform.gstar)
-# *) Note: sA & sW can be character vectors consisting of R expressions
+# layers of tmlenet input spec's:
+# 1) spec sW, sA, Qform => assumes hform = "sA ~ sW", hform.gstar = "sA ~ sW"
+# 2) spec sW, sA, Qform and hform => assumes hform.gstar = hform
+# 3) 2) + spec separate hform.gstar (outcome have to be the same sA for both hform & hform.gstar)
+
 #------------------------------------
 #' Estimate Average Network Effects For Arbitrary (Stochastic) Interventions
 #'
@@ -481,20 +478,17 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' @param data Input observed data as a \code{data.frame}, with named columns for baseline covariates (W),
 #'  assigned treatment (A), the outcome (Y) and network of friends (F)
 # @param estimators (NOT IMPLEMENTED) Character vector with estimator names.
-#' @param Kmax Absolute maximum number of friends (connected units) for any observation in the input \code{data}
-#' @param Wnodes (Optional) Vector of baseline covariate names (column names in \code{data})
+#' @param Kmax Maximal number of friends (connected units) for any observation in the input \code{data} data.frame.
 #' @param Anode Treatment variable name (column name in \code{data}), can be either binary, categorical or continuous
 #' @param AnodeDET (Optional) Column name for indicators of deterministic values of A, coded as (TRUE/FALSE) or (1/0),
 #'  the observations with AnodeDET=TRUE/1 are assumed to have constant value for their Anode
 #' @param Ynode  Outcome variable name (column name in \code{data}), assumed normalized 0 to 1
-#' @param YnodeDET (Optional) Column name for indicators of deterministic values of Y, coded as (TRUE/FALSE) or (1/0),
+#' @param YnodeDET (Optional) Column name for indicators of deterministic values of outcome Y, coded as (TRUE/FALSE) or (1/0),
 #'  the observations with YnodeDET=TRUE/1 are assumed to have constant value for their Ynode
 #' @param sW Summary measures constructed from baseline covariates alone. This must be an object of class
-#'  \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED:
-#'  See Details for default sW when it is left missing)
+#'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.
 #' @param sA Summary measures constructed from \code{Anode} and baseline covariates. This must be an object of class
-#'  \code{Define_sVar} that is returned by calling the function \code{\link{def.sW}}. (NOT IMPLEMENTED: See Details for
-#'  default sA when its missing)
+#'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.
 #' @param IDnode (Optional) Subject identifier variable in the input data, if not supplied the network string in
 #'  NETIDnode is assumed to be indexing the row numbers in the input \code{data}
 #' @param NETIDnode Network specification, a column name in data consisting of strings that identify the unit's friends
@@ -721,8 +715,8 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' @export
 tmlenet <- function(data, Kmax, sW, sA,
                     # estimators = c("tmle", "iptw", "gcomp"),
-                    Wnodes = NULL, # no longer needed to be specified (WILL BE REMOVED)
-                    Anode, AnodeDET = NULL, Ynode, YnodeDET = NULL, 
+                    Anode, 
+                    AnodeDET = NULL, Ynode, YnodeDET = NULL, 
                     IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL,
                     f_gstar1, f_gstar2 = NULL,
                     Qform = NULL, hform = NULL, hform.gstar = NULL,
@@ -817,7 +811,7 @@ tmlenet <- function(data, Kmax, sW, sA,
   # node_l <- list(IDnode = IDnode, NETIDnode = NETIDnode, nFnode = nFnode)
   # new version of nodes:
   node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anode = Anode, AnodeDET = AnodeDET,
-                  Wnodes = Wnodes, Ynode = Ynode, YnodeDET = YnodeDET)
+                  Ynode = Ynode, YnodeDET = YnodeDET)
   DatNet.ObsP0$nodes <- node_l
 
   #----------------------------------------------------------------------------------
@@ -864,14 +858,14 @@ tmlenet <- function(data, Kmax, sW, sA,
     h.gstar.sVars <- h.sVars
   }
 
-  if (verbose) {
+  # if (verbose) {
     print("Qform: " %+% Qform)
     print("Q.sVars"); print(str(Q.sVars))
     print("hform: " %+% hform)
     print("h.sVars"); print(str(h.sVars))
     print("hform.gstar: " %+% hform.gstar)
     print("h.gstar.sVars"); print(str(h.gstar.sVars))
-  }
+  # }
 
   #-----------------------------------------------------------
   # Defining and fitting regression for Y ~ sW + sA:
@@ -883,6 +877,9 @@ tmlenet <- function(data, Kmax, sW, sA,
                               subset = !determ.Q,
                               ReplMisVal0 = TRUE)
   m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)$predict(newdata = DatNet.ObsP0)
+  print("m.Q.init$getoutvarnm: "); print(m.Q.init$getoutvarnm)
+  print("coef(m.Q.init): "); print(coef(m.Q.init))
+
   # DatNet.ObsP0$YnodeVals       # visible Y's with NA for det.Y
   # DatNet.ObsP0$det.Y           # TRUE/FALSE for deterministic Y's
   # DatNet.ObsP0$noNA.Ynodevals  # actual observed Y's
