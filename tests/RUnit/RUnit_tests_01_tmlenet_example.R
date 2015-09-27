@@ -29,8 +29,8 @@ test.examples <- function() {
   # Max number of friends in the network:
   Kmax <- 6
   # Load simulation function:
-  # source("./datgen_nets/sim3_datgen_k6.R")  # to load from inside run-time test dir
-  source("../datgen_nets/sim3_datgen_k6.R") # to load from current file dir
+  source("./datgen_nets/sim3_datgen_k6.R")  # to load from inside run-time test dir
+  # source("../datgen_nets/sim3_datgen_k6.R") # to load from current file dir
   # Simulate network data:
   # set.seed(543)
   n <- 1000
