@@ -67,12 +67,12 @@ Qform3 <- "blah ~ netA + netW + nF"
 # Note that Ynode is optional when Qform is specified;
 options(tmlenet.verbose = FALSE) # set to TRUE to print status messages
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                    Anode = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", f_gstar1 = 0L,
-                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    optPars = list(n_MCsims = 10))
+                    IDnode = "IDs", NETIDnode = "Net_str",
+                    optPars = list(n_MCsims = 1))
 
 res_K6_1$EY_gstar1$estimates
 res_K6_1$EY_gstar1$vars
@@ -83,11 +83,11 @@ res_K6_1$EY_gstar1$CIs
 # but using the output "DatNet.ObsP0" of eval.summaries as input to tmlenet:
 #***************************************************************************************
 res_K6_1b <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
+                    Anode = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", f_gstar1 = 0L,
-                    optPars = list(n_MCsims = 10))
+                    optPars = list(n_MCsims = 1))
 
 res_K6_1b$EY_gstar1$estimates
 res_K6_1b$EY_gstar1$vars
@@ -97,12 +97,12 @@ res_K6_1b$EY_gstar1$CIs
 # Same as above but for covariate-based TMLE.
 #***************************************************************************************
 res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                    Anode = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", f_gstar1 = 0L,
-                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    optPars = list(runTMLE = "tmle.covariate", n_MCsims = 10))
+                    IDnode = "IDs", NETIDnode = "Net_str",
+                    optPars = list(runTMLE = "tmle.covariate", n_MCsims = 1))
 
 res_K6_2$EY_gstar1$estimates
 res_K6_2$EY_gstar1$vars
@@ -114,8 +114,7 @@ res_K6_2$EY_gstar1$CIs
 net_ind_obj <- simcausal::NetIndClass$new(nobs = nrow(df_netKmax6), Kmax = Kmax)
 # generating the network matrix from input data:
 NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax6[, "Net_str"],
-                                              IDs_str = df_netKmax6[, "IDs"],
-                                              sep = ' ')$NetInd
+                                              IDs_str = df_netKmax6[, "IDs"])$NetInd
 nF <- net_ind_obj$nF # number of friends
 
 data(NetInd_mat_Kmax6)
@@ -126,12 +125,12 @@ print(head(nF))
 print(all.equal(df_netKmax6[,"nFriends"], nF))
 
 res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                        Anode = "A", f_gstar1 = f.A_0,
                         Qform = "Y ~ sum.netW3 + sum.netAW2",
                         hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                         hform.gstar = "netA ~ sum.netW3",
-                        Anode = "A", f_gstar1 = f.A_0,
                         NETIDmat = NetInd_mat,
-                        optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+                        optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
 
 all.equal(res_K6_net1$EY_gstar1$estimates, res_K6_1$EY_gstar1$estimates)
 all.equal(res_K6_net1$EY_gstar1$vars, res_K6_1$EY_gstar1$vars)
@@ -147,19 +146,19 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
 # can define intervention by function f.A_0 that sets everyone's A to constant 0:
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
-                    IDnode = "IDs", NETIDnode = "Net_str")
+                    NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # equivalent way to define intervention f.A_0 is to just set f_gstar1 to 0:
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     Anode = "A", Ynode = "Y", f_gstar1 = 0L,
-                    IDnode = "IDs", NETIDnode = "Net_str")
+                    NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # or set f_gstar1 to a vector of 0's of length nrow(data):
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     Anode = "A", Ynode = "Y", f_gstar1 = rep_len(0L, nrow(df_netKmax6)),
-                    IDnode = "IDs", NETIDnode = "Net_str")
+                    NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 #***************************************************************************************
@@ -195,8 +194,10 @@ res_K2_1$EY_gstar1$CIs
 # f_gstar1 sets everyone A=1 vs f_gstar2 sets everyone A=0;
 #***************************************************************************************
 res_K2_2 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", Ynode = "Y", f_gstar1 = 1, f_gstar2 = 0,
-                    NETIDmat = NetInd_mat, optPars = list(n_MCsims = 10))
+                    Anode = "A", Ynode = "Y",
+                    f_gstar1 = 1,
+                    NETIDmat = NetInd_mat,
+                    optPars = list(f_gstar2 = 0, n_MCsims = 1))
 names(res_K2_2)
 
 # Estimates under f_gstar1:

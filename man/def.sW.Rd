@@ -252,11 +252,11 @@ res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = 6, data = df_netKmax6,
 # Contents of the list returned by eval.summaries():
 names(res)
 # matrix of sW summary measures:
-res$sW.matrix
+head(res$sW.matrix)
 # matrix of sA summary measures:
-res$sA.matrix
+head(res$sA.matrix)
 # matrix of network IDs:
-res$NETIDmat
+head(res$NETIDmat)
 # Observed data (sW,sA) stored as "DatNet.sWsA" R6 class object:
 res$DatNet.ObsP0
 class(res$DatNet.ObsP0)

@@ -4,23 +4,25 @@
 \alias{tmlenet}
 \title{Estimate Average Network Effects For Arbitrary (Stochastic) Interventions}
 \usage{
-tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, YnodeDET = NULL,
-  IDnode = NULL, NETIDnode = NULL, sep = " ", NETIDmat = NULL, f_gstar1,
-  f_gstar2 = NULL, Qform = NULL, hform.g0 = NULL, hform.gstar = NULL,
-  verbose = getOption("tmlenet.verbose"), optPars = list(alpha = 0.05,
-  lbound = 0.005, family = "binomial", n_MCsims = ifelse(!missing(data),
-  ceiling(sqrt(nrow(data))), 10), runTMLE = c("tmle.intercept",
-  "tmle.covariate"), f_g0 = NULL, h_g0_SummariesModel = NULL,
+tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
+  Qform = NULL, hform.g0 = NULL, hform.gstar = NULL, NETIDmat = NULL,
+  IDnode = NULL, NETIDnode = NULL, verbose = getOption("tmlenet.verbose"),
+  optPars = list(alpha = 0.05, lbound = 0.005, family = "binomial", n_MCsims =
+  10, runTMLE = c("tmle.intercept", "tmle.covariate"), YnodeDET = NULL, f_gstar2
+  = NULL, sep = " ", f_g0 = NULL, h_g0_SummariesModel = NULL,
   h_gstar_SummariesModel = NULL))
 }
 \arguments{
 \item{DatNet.ObsP0}{Instance of class \code{\link{DatNet.sWsA}} returned under the same name by the \code{\link{eval.summaries}} function.
-Stores all the summary measure and the network information. If specified, the arguments
-\code{data}, \code{Kmax}, \code{sW}, \code{sA}, \code{IDnode}, \code{NETIDnode}, \code{sep}, \code{NETIDmat} no longer need to be specified.}
+Stores the evaluated summary measures (\code{sW},\code{sA}) for the observed data, along with the network information.
+When this argument is specified, the
+following arguments no longer need to be provided: \code{data}, \code{Kmax}, \code{sW}, \code{sA},
+\code{IDnode}, \code{NETIDnode}, \code{optPars$sep}, \code{NETIDmat}.}
 
 \item{data}{Observed data, a \code{data.frame} with named columns, containing the baseline covariates,
-exposures (\code{Anode}), the outcomes (\code{Ynode}) and possibly the network column (\code{NETIDnode}), specified
-as a vector of strings of friend IDs, each string using \code{sep} character to separate different friend IDs.}
+exposures (\code{Anode}), the outcomes (\code{Ynode}) and possibly the network column (\code{NETIDnode}), where
+network is specified by a vector of strings of friend IDs, each string using \code{optPars$sep} character to separate different friend IDs
+(default is \code{optPars$sep=' '}).}
 
 \item{Kmax}{Integer constant specifying the maximal number of friends for any observation in the input \code{data} data.frame.}
 
@@ -35,34 +37,12 @@ as a vector of strings of friend IDs, each string using \code{sep} character to 
 \item{Ynode}{Outcome variable name (column name in \code{data}), assumed normalized between 0 and 1. This can instead be specified
 on the left-side of the regression formula in argument \code{Qform}.}
 
-\item{YnodeDET}{Optional column name for indicators of deterministic values of outcome \code{Ynode},
-coded as (\code{TRUE}/\code{FALSE}) or
-(\code{1}/\code{0}); observations with \code{YnodeDET}=\code{TRUE}/\code{1} are assumed to have constant value for their \code{Ynode}.}
-
-\item{IDnode}{Subject identifier variable in the input data, if not supplied the network string in
-\code{NETIDnode} is assumed to be indexing the row numbers in the input \code{data}}
-
-\item{NETIDnode}{Network specification, a column name in data consisting of strings that identify the unit's friends
-by their IDs or their row numbers (two friends are separated by space, e.g., \code{"1 2"}; unit with no friends should have
-an empty \code{""} string). See Details.}
-
-\item{sep}{A character separating friend indices for the same observation in \code{NETIDnode}.}
-
-\item{NETIDmat}{Alternative method for network specification, ths must be a matrix (\code{ncol=Kmax},
-\code{nrow=nrow(data)}), where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row
-numbers in \code{data} if \code{IDnode=NULL}. See Details.}
-
 \item{f_gstar1}{Either a function or a vector of counterfactual exposures. If a function, must return
 a vector of counterfactual exposures evaluated based on the summary measures matrix (\code{sW,sA}) passed as a named
 argument \code{"data"}, therefore, the function in \code{f_gstar1} must have a named argument \code{"data"} in its signature.
 The interventions defined by \code{f_gstar1} can be static, dynamic or stochastic. If \code{f_gstar1} is specified as a
 vector, it must be of length \code{nrow(data)} or 1 (constant treatment assigned to all observations).
-See Details below and Examples "EQUIVALENT WAYS OF SPECIFYING INTERVENTIONS \code{f_gstar1}/\code{f_gstar2}" for demonstration.}
-
-\item{f_gstar2}{Either a function or a vector of counterfactual exposure assignments.
-Used for estimating contrasts (average treatment effect) for two interventions, if omitted, only the average
-counterfactual outcome under intervention \code{f_gstar1} is estimated. The requirements for \code{f_gstar2}
-are identical to those for \code{f_gstar1}.}
+See Details below and Examples in "EQUIVALENT WAYS OF SPECIFYING INTERVENTION \code{f_gstar1}" for demonstration.}
 
 \item{Qform}{Regression formula for outcome in \code{Ynode}, when omitted (\code{Ynode}=\code{NULL}), the outcome variable is
 regressed on all variables defined in \code{sW} and \code{sA}. See Details.}
@@ -75,20 +55,32 @@ are all summary measures defined by argument \code{sA} and \code{sW} are all bas
 \code{f_gstar1} or \code{f_gstar2}.
 When omitted, the same regression formula as in \code{hform.g0} will be used for \code{hform.gstar}. See Details.}
 
+\item{NETIDmat}{Network specification via matrix of friend IDs (\code{ncol=Kmax}, \code{nrow=nrow(data)}),
+where each row \code{i} is a vector of \code{i}'s friends IDs or \code{i}'s friends row
+numbers in \code{data} if \code{IDnode=NULL}. See Details.}
+
+\item{IDnode}{Subject identifier variable in the input data, if not supplied the network string in
+\code{NETIDnode} is assumed to be indexing the row numbers in the input \code{data}}
+
+\item{NETIDnode}{Network specification by a column name in input \code{data} consisting of strings that identify the unit's friends
+by their IDs or their row numbers (two friends are separated by space, e.g., \code{"1 2"}; unit with no friends should have
+an empty \code{""} string). See Details.}
+
 \item{verbose}{Set to \code{TRUE} to print messages on status and information to the console.
 Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.}
 
 \item{optPars}{A named list of additional optional parameters to be passed to \code{tmlenet}, such as
- \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{f_g0}, \code{h_g0_SummariesModel} and
- \code{h_gstar_SummariesModel}. See Details.}
+ \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{runTMLE}, \code{YnodeDET}, \code{f_gstar2}, \code{sep},
+ \code{f_g0}, \code{h_g0_SummariesModel} and
+ \code{h_gstar_SummariesModel}. See Details below for the description of each parameter.}
 }
 \value{
 A named list with 3 items containing the estimation results for:
  \itemize{
- \item \code{EY_gstar1} - estimates under (stochastic) intervention function \code{f_gstar1} \eqn{(E_{f_gstar1}[Y])}.
- \item \code{EY_gstar2} - estimates under (stochastic) intervention function \code{f_gstar2} \eqn{(E_{f_gstar2}[Y])},
+ \item \code{EY_gstar1} - estimates of the mean counterfactual outcome under (stochastic) intervention function \code{f_gstar1} \eqn{(E_{g^*_1}[Y])}.
+ \item \code{EY_gstar2} - estimates of the mean counterfactual outcome under (stochastic) intervention function \code{f_gstar2} \eqn{(E_{g^*_2}[Y])},
    \code{NULL} if \code{f_gstar2} not specified.
- \item \code{ATE} - additive treatment effect (\eqn{E_{f_gstar1}[Y]} - \eqn{E_{f_gstar2}[Y]}) under interventions \code{f_gstar1}
+ \item \code{ATE} - additive treatment effect (\eqn{E_{g^*_1}[Y]} - \eqn{E_{g^*_2}[Y]}) under interventions \code{f_gstar1}
    vs. in \code{f_gstar2}, \code{NULL} if \code{f_gstar2} not specified.
 }
 
@@ -127,7 +119,7 @@ Estimate the average network effect among dependent units with known network str
 Note that in case when both arguments \code{NETIDnode} and \code{NETIDmat} are left unspecified the input data are
  assumed independent, i.e., no network dependency between the observations.
  All inference will be performed based on the i.i.d. efficient influence curve for the target
- parameter \eqn{(E_{f_gstar1}[Y])}.
+ parameter \eqn{(E_{g^*_1}[Y])}.
 
 Also note that the ordering of the friends IDs in \code{NETIDnode} or \code{NETIDmat} is unimportant.
 
@@ -150,33 +142,55 @@ The regression formalas in \code{Qform}, \code{hform.g0} and \code{hform.gstar} 
 
 
 Some of the parameters that control the estimation in \code{tmlenet} can be set by calling the function
- \code{\link{tmlenet_options}}. Additional parameters can be also specified as a named list \code{optPars} argument of the
- \code{tmlenet} function. The items that can be specified in \code{optPars} are:
- \itemize{
- \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs);
- \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
- \item \code{n_MCsims} - Number of Monte-Carlo simulations performed, each of sample size \code{nrow(data)},
+ \code{\link{tmlenet_options}}.
+
+Additional parameters can be also specified as a named list \code{optPars} argument of the
+\code{tmlenet} function. The items that can be specified in \code{optPars} are:
+\itemize{
+
+\item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs);
+
+\item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
+
+\item \code{family} - Family specification for regression models, defaults to binomial (CURRENTLY ONLY BINOMIAL
+ FAMILY IS IMPLEMENTED).
+
+\item \code{n_MCsims} - Number of Monte-Carlo simulations performed, each of sample size \code{nrow(data)},
    for generating new exposures under \code{f_gstar1} or \code{f_gstar2} (if specified) or \code{f_g0} (if specified).
    These newly generated exposures are utilized when fitting the conditional densities P(\code{sA}|\code{sW})
    and when evaluating the substitution estimators \strong{GCOMP} and \strong{TMLE}
-   under stochastic interventions \code{f_gstar1} or \code{f_gstar2};
-   \item \code{family} - Family specification for regression models, defaults to binomial (CURRENTLY ONLY BINOMIAL
- FAMILY IS IMPLEMENTED).
+   under stochastic interventions \code{f_gstar1} or \code{f_gstar2}.
+
+\item \code{runTMLE} - Choose which of the two TMLEs to run, "tmle.intercept" or "tmle.covariate". The default is "tmle.intercept".
+
+\item \code{YnodeDET} - Optional column name for indicators of deterministic values of outcome \code{Ynode},
+   coded as (\code{TRUE}/\code{FALSE}) or
+   (\code{1}/\code{0}); observations with \code{YnodeDET}=\code{TRUE}/\code{1} are assumed to have constant value for their \code{Ynode}.
+
+\item \code{f_gstar2} - Either a function or a vector of counterfactual exposure assignments.
+   Used for estimating contrasts (average treatment effect) for two interventions, if omitted, only the average
+   counterfactual outcome under intervention \code{f_gstar1} is estimated. The requirements for \code{f_gstar2}
+   are identical to those for \code{f_gstar1}.
+
+\item \code{sep} - A character separating friend indices for the same observation in \code{NETIDnode}.
+
 \item \code{f_g0} - A function for generating true treatment mechanism under observed \code{Anode}, if known (for example in a
- randomized trial). This is used for estimating P(\code{sA}|\code{sW}) under \code{g0} by sampling large vector of \code{Anode}
- (of length \code{nrow(data)*n_MCsims}) from \code{f_g0} function;
- \item \code{h_g0_SummariesModel} - Previously fitted model for P(\code{sA}|\code{sW}) under observed exposure mechanism \code{g0},
+   randomized trial). This is used for estimating P(\code{sA}|\code{sW}) under \code{g0} by sampling large vector of \code{Anode}
+   (of length \code{nrow(data)*n_MCsims}) from \code{f_g0} function;
+
+\item \code{h_g0_SummariesModel} - Previously fitted model for P(\code{sA}|\code{sW}) under observed exposure mechanism \code{g0},
    returned by the previous runs of the \code{tmlenet} function.
    This has to be an object of \code{SummariesModel} \pkg{R6} class. When this argument is specified, all predictions
    P(\code{sA}=\code{sa}|\code{sW}=\code{sw}) under \code{g0} will be based on the model fits provided by this argument.
- \item \code{h_gstar_SummariesModel} - Previously fitted model for P(\code{sA}|\code{sW}) under (stochastic) intervention
+
+\item \code{h_gstar_SummariesModel} - Previously fitted model for P(\code{sA}|\code{sW}) under (stochastic) intervention
    specified by \code{f_gstar1} or \code{f_gstar2}. Also an object of \code{SummariesModel} \pkg{R6} class.
    When this argument is specified, the predictions P(\code{sA}=\code{sa}|\code{sW}=\code{sw})
    under \code{f_gstar1} or \code{f_gstar2} will be based on the model fits provided by this argument.
 }
 }
 
-\section{Specifying the counterfactual intervention as functions (\code{f_gstar1} and \code{f_gstar2})}{
+\section{Specifying the counterfactual intervention function (\code{f_gstar1} and \code{optPars$f_gstar2})}{
 
 
 The functions \code{f_gstar1} and \code{f_gstar2} can only depend on variables specified by the combined matrix
@@ -206,30 +220,69 @@ The network of friends (connections) for observations in the input \code{data} c
 **********************************************************************
 
 \itemize{
-\item Fit one density for P_{g_0}(\code{sA} | \code{sW}) implied by (\code{A},\code{W})~g_0(\code{A}|\code{W})Q_0(\code{W})
-   and another density for P_{g_star}(\code{sA^*} | \code{sW^*}) that is implied by (\code{A^*},\code{W})~g_star(\code{A}|\code{W})Q_0(\code{W}).
+\item As described in the following section, the first step is to construct an estimator \eqn{P_{g_N}(sA | sW)}
+   for the common (in \code{i}) conditional density \eqn{P_{g_0}(sA | sW)} for common (in \code{i}) unit-level summary
+   measures (\code{sA},\code{sW}).
 
-\item Same algorithm is used for estimating P_{g_0}(\code{sA} | \code{sW}) and P_{\code{f_gstar}}(\code{sA^*} | \code{sW}) (see below).
+\item The same fitting algorithm is applied to construct an estimator \eqn{P_{g^*_N}(sA^* | sW^*)} of the common (in \code{i})
+   conditional density \eqn{P_{g^*}(sA^* | sW^*)} for common (in \code{i}) unit-level summary measures (\code{sA^*},\code{sW^*})
+   implied by the user-supplied stochastic intervention \code{f_gstar1} or \code{f_gstar2} and the observed distribution of \code{W}.
 
-\item These two density estimates form the basis of the IPTW estimator,
-   which is evaluated at the observed N data points \code{o_i}=(\code{y_i}, \code{sa_i}, \code{sw_i}), i=1,...,N.
-   The IPTW is then given by \code{psi_n} = \\sum_i={1,...,N} {\code{Y_i} *
-   P_{\code{f_gstar}}(\code{sA^*} = \code{sa_i} | \code{sW}=\code{sw_i}) / P_{\code{g_N}}(\code{sA}=\code{sa_i} | \code{sW}=\code{sw_i})}.
+\item These two density estimators form the basis of the IPTW estimator,
+   which is evaluated at the observed N data points \eqn{O_i=(sW_i, sA_i, Y_i), i=1,...,N} and is given by
+   \deqn{\psi^{IPTW}_n = \sum_{i=1,...,N}{Y_i \frac{P_{g^*_N}(sA^*=sA_i | sW=sW_i)}{P_{g_N}(sA=sA_i | sW=sW_i)}}.}
 }
 }
 
-\section{Algorithm for estimating P(\code{sA} | \code{sW}) for continuous one-dimenstional summary measure \code{sA}}{
+\section{GCOMP estimator}{
+
+**********************************************************************
+}
+
+\section{TMLE estimator}{
+
+**********************************************************************
+}
+
+\section{Modeling \code{P(sA|sW)} for summary measures \code{(sA,sW)}}{
 
 **********************************************************************
 
-For simplicity, suppose \code{sA} is continuous and univariate and we describe here an algorithm for fitting P_{\code{g_0}}(\code{sA} | \code{sW}) (the algorithm
- for fitting P_{\code{f_gstar}}(\code{sA^*} | \code{sW^*}) is eqivalent, except that exposure \code{A} is replaced with exposure \code{A^*} generated under \code{f_gstar} and
- the predictors \code{sW} from the regression formula \code{hform.g0} are replaced with predictors \code{sW^*} specified by the regression formula \code{hform.gstar}).
+Non-parametric
+ estimation of the common \strong{unit-level} multivariate joint conditional probability model \code{P_g0(sA|sW)},
+ for unit-level summary measures \code{(sA,sW)} generated from the observed exposures and baseline covariates
+ \eqn{(A,W)=(A_i,W_i : i=1,...,N)} (their joint density given by \eqn{g_0(A|W)Q(W)}), is performed by first
+ constructing the dataset of N summary measures, \eqn{(sA_i,sW_i : i=1,...,N)}, and then fitting the usual i.i.d. MLE
+ for the common density \code{P_g0(sA|sW)} based on the pooled N sample of these summary measures.
+
+ Note that \code{sA} can be multivariate and any of its components \code{sA[j]} can be either binary, categorical
+ or continuous.
+ The joint probability model for \code{P(sA|sA)} = \code{P(sA[1],...,sA[k]|sA)} can be factorized as
+ \code{P(sA[1]|sA)} * \code{P(sA[2]|sA, sA[1])} * ... * \code{P(sA[k]|sA, sA[1],...,sA[k-1])},
+ where each of these conditional probability models is fit separately, depending on the type of the outcome variable
+ \code{sA[j]}.
+
+ If \code{sA[j]} is binary, the conditional probability \code{P(sA[j]|sW,sA[1],...,sA[j-1])} is evaluated via logistic
+ regression model.
+ When \code{sA[j]} is continuous (or categorical), its range will be fist partitioned into \code{K} bins and the
+ corresponding \code{K}
+ bin indicators (\code{B_1,...,B_K}), where each bin indicator \code{B_j} is then used as an outcome in a
+ separate logistic regression model with predictors given by \code{sW, sA[1],...,sA[k-1]}.
+ Thus, the joint probability \code{P(sA|sW)} is defined by such a tree of binary logistic regressions.
+
+For simplicity, we now suppose \code{sA} is continuous and univariate and we describe here an algorithm for fitting
+ \eqn{P_{g_0}(sA | sW)} (the algorithm
+ for fitting \eqn{P_{g^*}(sA^* | sW^*)} is equivalent, except that exposure \code{A} is replaced with exposure \code{A^*}
+ generated under \code{f_gstar1} or \code{f_gstar2} and
+ the predictors \code{sW} from the regression formula \code{hform.g0} are replaced with predictors \code{sW^*}
+ specified by the regression formula \code{hform.gstar}).
 
 \enumerate{
-\item Generate a dataset of N observed continuous summary measures (\code{sa_i}:i=1,...,N) from observed ((\code{a_i},\code{w_i}):i=1,...,N). Let \code{sa}\\in{\code{sa_i}:i=1,...,M}.
+\item Generate a dataset of N observed continuous summary measures (\code{sa_i}:i=1,...,N) from observed
+ ((\code{a_i},\code{w_i}):i=1,...,N). Let \code{sa}\\in{\code{sa_i}:i=1,...,M}.
 
-\item Divide the range of \code{sA} values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point \code{sa_i} belongs to one interval in S, namely,
+\item Divide the range of \code{sA} values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point
+   \code{sa_i} belongs to one interval in S, namely,
    for each possible value sa of \code{sA} there is k\\in{1,...,M}, such that, i_k < \code{sa} <= i_{k+1}.
    Let the mapping B(sa)\\in{1,...,M} denote a unique interval in S for sa, such that, i_{B(sa)} < sa <= i_{B(sa)+1}.
    Let bw_{B(sa)}:=i_{B(sa)+1}-i_{B(sa)} be the length of the interval (bandwidth) (i_{B(sa)},i_{B(sa)+1}).
@@ -373,12 +426,12 @@ Qform3 <- "blah ~ netA + netW + nF"
 # Note that Ynode is optional when Qform is specified;
 options(tmlenet.verbose = FALSE) # set to TRUE to print status messages
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                    Anode = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", f_gstar1 = 0L,
-                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    optPars = list(n_MCsims = 10))
+                    IDnode = "IDs", NETIDnode = "Net_str",
+                    optPars = list(n_MCsims = 1))
 
 res_K6_1$EY_gstar1$estimates
 res_K6_1$EY_gstar1$vars
@@ -389,11 +442,11 @@ res_K6_1$EY_gstar1$CIs
 # but using the output "DatNet.ObsP0" of eval.summaries as input to tmlenet:
 #***************************************************************************************
 res_K6_1b <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
+                    Anode = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", f_gstar1 = 0L,
-                    optPars = list(n_MCsims = 10))
+                    optPars = list(n_MCsims = 1))
 
 res_K6_1b$EY_gstar1$estimates
 res_K6_1b$EY_gstar1$vars
@@ -403,12 +456,12 @@ res_K6_1b$EY_gstar1$CIs
 # Same as above but for covariate-based TMLE.
 #***************************************************************************************
 res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                    Anode = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", f_gstar1 = 0L,
-                    IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    optPars = list(runTMLE = "tmle.covariate", n_MCsims = 10))
+                    IDnode = "IDs", NETIDnode = "Net_str",
+                    optPars = list(runTMLE = "tmle.covariate", n_MCsims = 1))
 
 res_K6_2$EY_gstar1$estimates
 res_K6_2$EY_gstar1$vars
@@ -420,8 +473,7 @@ res_K6_2$EY_gstar1$CIs
 net_ind_obj <- simcausal::NetIndClass$new(nobs = nrow(df_netKmax6), Kmax = Kmax)
 # generating the network matrix from input data:
 NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax6[, "Net_str"],
-                                              IDs_str = df_netKmax6[, "IDs"],
-                                              sep = ' ')$NetInd
+                                              IDs_str = df_netKmax6[, "IDs"])$NetInd
 nF <- net_ind_obj$nF # number of friends
 
 data(NetInd_mat_Kmax6)
@@ -432,12 +484,12 @@ print(head(nF))
 print(all.equal(df_netKmax6[,"nFriends"], nF))
 
 res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                        Anode = "A", f_gstar1 = f.A_0,
                         Qform = "Y ~ sum.netW3 + sum.netAW2",
                         hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                         hform.gstar = "netA ~ sum.netW3",
-                        Anode = "A", f_gstar1 = f.A_0,
                         NETIDmat = NetInd_mat,
-                        optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+                        optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
 
 all.equal(res_K6_net1$EY_gstar1$estimates, res_K6_1$EY_gstar1$estimates)
 all.equal(res_K6_net1$EY_gstar1$vars, res_K6_1$EY_gstar1$vars)
@@ -453,19 +505,19 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
 # can define intervention by function f.A_0 that sets everyone's A to constant 0:
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
-                    IDnode = "IDs", NETIDnode = "Net_str")
+                    NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # equivalent way to define intervention f.A_0 is to just set f_gstar1 to 0:
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     Anode = "A", Ynode = "Y", f_gstar1 = 0L,
-                    IDnode = "IDs", NETIDnode = "Net_str")
+                    NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # or set f_gstar1 to a vector of 0's of length nrow(data):
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     Anode = "A", Ynode = "Y", f_gstar1 = rep_len(0L, nrow(df_netKmax6)),
-                    IDnode = "IDs", NETIDnode = "Net_str")
+                    NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 #***************************************************************************************
@@ -501,8 +553,10 @@ res_K2_1$EY_gstar1$CIs
 # f_gstar1 sets everyone A=1 vs f_gstar2 sets everyone A=0;
 #***************************************************************************************
 res_K2_2 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", Ynode = "Y", f_gstar1 = 1, f_gstar2 = 0,
-                    NETIDmat = NetInd_mat, optPars = list(n_MCsims = 10))
+                    Anode = "A", Ynode = "Y",
+                    f_gstar1 = 1,
+                    NETIDmat = NetInd_mat,
+                    optPars = list(f_gstar2 = 0, n_MCsims = 1))
 names(res_K2_2)
 
 # Estimates under f_gstar1:

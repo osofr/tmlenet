@@ -112,7 +112,6 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 5, shift 
 }
 
 test.catnet.fit.density.iptw <- function() {
-# catnet.fit.density.iptw <- function() {
   def.nodeojb.net <- function(Kmax, datO, NetInd_mat, gstar = FALSE) {
     if (gstar) {
       Anode <- "sA.gstar"
@@ -141,7 +140,7 @@ test.catnet.fit.density.iptw <- function() {
 
   # -------------------------------------------------------------------------------------------
   # simulation parameters:
-  nsamp <- 50000
+  nsamp <- 10000
   shift <- 1
   Kmax <- 5
   sAmax <- 7
@@ -194,21 +193,33 @@ test.catnet.fit.density.iptw <- function() {
   summeas.g0 <- SummariesModel$new(reg = regclass.obj, DatNet.sWsA.g0 = nodeobjs.g0$datNetObs)
   summeas.g0$fit(data = nodeobjs.g0$datNetObs)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs.g0$datNetObs)
+  print("mean(h_gN): " %+% round(mean(h_gN), 5)) # [1] 0.07417"
   # -------------------------------------------------------------------------------------------
   # estimating h_gstar (cont sVar intervals based on observed sA under g0):
   summeas.gstar <- SummariesModel$new(reg = regclass.obj, DatNet.sWsA.g0 = nodeobjs.g0$datNetObs)
   summeas.gstar$fit(data = nodeobjs.gstar$datNetObs)
   h_gstar_obs.sA <- summeas.gstar$predictAeqa(newdata = nodeobjs.g0$datNetObs)
+  print("mean(h_gstar_obs.sA): " %+% round(mean(h_gstar_obs.sA), 5)) # 0.0524
+
   # -------------------------------------------------------------------------------------------
   # IPTW:
-  max(h_gN); min(h_gN)
-  max(h_gstar_obs.sA); min(h_gstar_obs.sA);
+  print(max(h_gN)); print(min(h_gN))
+  # [1] 0.287992
+  # [1] 0.0001123328
+  print(max(h_gstar_obs.sA)); print(min(h_gstar_obs.sA));
+  # [1] 0.4795622
+  # [1] 8.330761e-24
+
   trim_wt <- 130
   wts <- h_gstar_obs.sA / h_gN
   wts[is.nan(wts)] <- 0
   wts[wts > trim_wt] <- trim_wt
-  summary(h_gstar_obs.sA/h_gN)
-  summary(wts)
+  print(summary(h_gstar_obs.sA/h_gN))
+   #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+   # 0.0000  0.1112  0.4062  1.0080  1.1100 26.9200
+  print(summary(wts))
+ #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+ # 0.0000  0.1112  0.4062  1.0080  1.1100 26.9200
   iptw_untrimmed <- mean(datO[,"Y"] * (h_gstar_obs.sA/h_gN))
   iptw_trimmed <- mean(datO[,"Y"] * (wts))
 
@@ -218,9 +229,9 @@ test.catnet.fit.density.iptw <- function() {
   print("iptw (wts trimmed by " %+% trim_wt %+% "): " %+% round(iptw_trimmed, 6))
 
   # TESTS (For 50K w/ rndseed = 12345):
-  checkTrue(abs(psi0 - 0.2901) < 10^-6)
-  checkTrue(abs(iptw_untrimmed - 0.291111) < 10^-6)
-  checkTrue(abs(iptw_trimmed - 0.291111) < 10^-6)
+  checkTrue(abs(psi0 - 0.2819) < 10^-6)
+  checkTrue(abs(iptw_untrimmed - 0.292515) < 10^-6)
+  checkTrue(abs(iptw_trimmed - 0.292515) < 10^-6)
 
   # ------------------------------------------------------
   # Benchmark for 50K:

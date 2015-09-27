@@ -69,7 +69,11 @@ test.simple.fit.density.sA <- function() {
   sA_class <- nodeobjs$datNetObs$datnetA$type.sVar[reg.sVars$outvars]
 
   # Put all est_params in RegressionClass (regression with speedglm package)
-  regclass <- RegressionClass$new(outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
+  print("fitting h_gN based equal.len intervals (default) and speedglm (default): ")
+  regclass <- RegressionClass$new(outvar.class = sA_class,
+                                  outvar = reg.sVars$outvars,
+                                  predvars = reg.sVars$predvars,
+                                  subset = subset_vars)
   summeas.g0 <- SummariesModel$new(reg = regclass, DatNet.sWsA.g0 = nodeobjs$datNetObs)
   summeas.g0$fit(data = nodeobjs$datNetObs)
 
@@ -78,6 +82,9 @@ test.simple.fit.density.sA <- function() {
   out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
   print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
   print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
+  # print(tmlenet:::summary.BinOutModel(out_BinModels[[3]]))
+  # print(tmlenet:::summary.BinOutModel(out_BinModels[[4]]))
+  # print(tmlenet:::summary.BinOutModel(out_BinModels[[5]]))
 
   # (intrvls <- out_ContinSummaryModel$intrvls)
   # (intrvls.width <- diff(intrvls))
@@ -93,8 +100,9 @@ test.simple.fit.density.sA <- function() {
   # Get P(sA|W) for the observed data (W,sA):
   # SHOULD BE SIMILAR TO THE OBSERVED DENSITY OF s.A (but discretized)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
-  mean(h_gN) # [1] 0.2718823
-  checkTrue(abs(mean(h_gN)-0.2718823) < 10^-6)
+  
+  print("h_gN fit under speedglm: " %+% mean(h_gN)) # [1] 0.2718823
+  checkTrue(abs(mean(h_gN)-0.2718823) < 10^-4)
   # ---------------------------------------------------------------------------------------------------------
   # Plot predicted discretized probs conditional on some values of W's
   # ---------------------------------------------------------------------------------------------------------
@@ -116,48 +124,82 @@ test.simple.fit.density.sA <- function() {
   # ---------------------------------------------------------------------------------------------------------
   # **** Same fit as before but doing regressions with stats::glm.fit ****
   # ---------------------------------------------------------------------------------------------------------
-  regclass.gml <- RegressionClass$new(useglm = TRUE, outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
+  print("fitting h_gN based equal.len intervals (default) and glm.fit: ")
+  regclass.gml <- RegressionClass$new(useglm = TRUE, outvar.class = sA_class,
+                                      outvar = reg.sVars$outvars,
+                                      predvars = reg.sVars$predvars,
+                                      subset = subset_vars)
   summeas.g0.glm <- SummariesModel$new(reg = regclass.gml, DatNet.sWsA.g0 = nodeobjs$datNetObs)
   summeas.g0.glm$fit(data = nodeobjs$datNetObs)
-  summeas.g0.glm$predict(newdata = nodeobjs$datNetObs)
-  h_gN.glm <- summeas.g0.glm$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
-  mean(h_gN.glm) # [1] 0.2718823
-  checkTrue(abs(mean(h_gN.glm)-0.2718823) < 10^-6)
 
   # Test the coef and summary functions for binoutmodel class:
   out_ContinSummaryModel <- summeas.g0.glm$getPsAsW.models()$`P(sA|sW).1`
   out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
   print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
   print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
+  # print(tmlenet:::summary.BinOutModel(out_BinModels[[3]]))
+  # print(tmlenet:::summary.BinOutModel(out_BinModels[[4]]))
+  # print(tmlenet:::summary.BinOutModel(out_BinModels[[5]]))
+
+  summeas.g0.glm$predict(newdata = nodeobjs$datNetObs)
+  h_gN.glm <- summeas.g0.glm$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
+
+  print("h_gN fit under glm: " %+% mean(h_gN.glm)) # [1] 0.2718823
+  checkTrue(abs(mean(h_gN.glm)-0.2718823) < 10^-4)
+
 
   # ---------------------------------------------------------------------------------------------------------
   # **** Same fit as before but doing binnning by mass intervals & regressions with speedglm ****
   # ---------------------------------------------------------------------------------------------------------
+  print("fitting h_gN based on bin_bymass = TRUE and speedglm (default): ")
   regclass.binmass <- RegressionClass$new(useglm = FALSE,
-                                      bin_bymass = TRUE,
-                                      max_nperbin = 1000,
-                                      outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
+                                          bin_bymass = TRUE,
+                                          max_nperbin = 1000,
+                                          outvar.class = sA_class,
+                                          outvar = reg.sVars$outvars,
+                                          predvars = reg.sVars$predvars,
+                                          subset = subset_vars)
   summeas.g0 <- SummariesModel$new(reg = regclass.binmass, DatNet.sWsA.g0 = nodeobjs$datNetObs)
   summeas.g0$fit(data = nodeobjs$datNetObs)
   summeas.g0$predict(newdata = nodeobjs$datNetObs)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
   mean(h_gN) # [1] 0.2668144
-  checkTrue(abs(mean(h_gN)-0.2668144) < 10^-6)
+  checkTrue(abs(mean(h_gN)-0.2668144) < 10^-4)
 
   # ---------------------------------------------------------------------------------------------------------
   # **** Same fit as before but binning using "dhist" function & regressions with speedglm ****
   # ---------------------------------------------------------------------------------------------------------
+  print("fitting h_gN based on dhist intervals and speedglm (default): ")
   regclass.bidhist <- RegressionClass$new(useglm = FALSE,
-                                      bin_bymass = FALSE,
-                                      bin_bydhist = TRUE,
-                                      max_nperbin = 1000,
-                                      outvar.class = sA_class, outvar = reg.sVars$outvars, predvars = reg.sVars$predvars, subset = subset_vars)
+                                          bin_bymass = FALSE,
+                                          bin_bydhist = TRUE,
+                                          max_nperbin = 1000,
+                                          outvar.class = sA_class,
+                                          outvar = reg.sVars$outvars,
+                                          predvars = reg.sVars$predvars,
+                                          subset = subset_vars)
   summeas.g0 <- SummariesModel$new(reg = regclass.bidhist, DatNet.sWsA.g0 = nodeobjs$datNetObs)
   summeas.g0$fit(data = nodeobjs$datNetObs)
+
+  out_ContinSummaryModel <- summeas.g0$getPsAsW.models()$`P(sA|sW).1`
+  print("Intervals for dhist: ")
+  print(out_ContinSummaryModel$intrvls)
+  # [1] -1003.5240566    -3.5240566    -1.9562682    -0.8766233    -0.2052710     0.2963970     0.7404754     1.2078705
+  # [9]     1.6959939     2.3455552     3.3931981     4.9362651  1004.9362651
+
+  out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
+  print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
+  print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
+  print(tmlenet:::summary.BinOutModel(out_BinModels[[3]]))
+  print(tmlenet:::summary.BinOutModel(out_BinModels[[4]]))
+  print(tmlenet:::summary.BinOutModel(out_BinModels[[5]]))
+
   summeas.g0$predict(newdata = nodeobjs$datNetObs)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
-  mean(h_gN) # [1] 0.276875
-  checkTrue(abs(mean(h_gN)-0.276875) < 10^-6)
+  print("regclass.bidhist mean(h_gN) under speedglm: " %+% mean(h_gN))
+  # [1] 0.276875
+  # [1] 0.27687500785635
+  checkTrue(abs(mean(h_gN)-0.276875) < 10^-4)
 }
 
 
@@ -293,11 +335,11 @@ test.onesim.iid.tmlefit <- function() {
   # h_IPTW 0.2441800
   # MLE    0.2131320
   # test 1:
-  checkTrue(abs(res$est["tmle"]-0.2360305) < 10^-6)
+  checkTrue(abs(res$est["tmle"]-0.2360305) < 10^-4)
   # test 2:
-  checkTrue(abs(res$est["h_iptw"]-0.2441800) < 10^-6)
+  checkTrue(abs(res$est["h_iptw"]-0.2441800) < 10^-4)
   # test 3:
-  checkTrue(abs(res$est["gcomp"]-0.2131320) < 10^-6)
+  checkTrue(abs(res$est["gcomp"]-0.2131320) < 10^-4)
 
   # ---------------------------------------------------------------------------------------------------------
   # Correct Q:
@@ -316,11 +358,11 @@ test.onesim.iid.tmlefit <- function() {
   #      tmle    h_iptw     gcomp
   # 0.2391396 0.2443753 0.2428439
   # test 1:
-  checkTrue(abs(res2$est["tmle"]-0.2391396) < 10^-6)
+  checkTrue(abs(res2$est["tmle"]-0.2391396) < 10^-4)
   # test 2:
-  checkTrue(abs(res2$est["h_iptw"]-0.2443753) < 10^-6)
+  checkTrue(abs(res2$est["h_iptw"]-0.2443753) < 10^-4)
   # test 3:
-  checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-6)
+  checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-4)
 
 
 
@@ -343,11 +385,11 @@ test.onesim.iid.tmlefit <- function() {
   #      tmle    h_iptw     gcomp
   # 0.2391396 0.2443753 0.2428439
   # test 1:
-  checkTrue(abs(res2$est["tmle"]-0.2391396) < 10^-6)
+  checkTrue(abs(res2$est["tmle"]-0.2391396) < 10^-4)
   # test 2:
-  checkTrue(abs(res2$est["h_iptw"]-0.2443753) < 10^-6)
+  checkTrue(abs(res2$est["h_iptw"]-0.2443753) < 10^-4)
   # test 3:
-  checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-6)
+  checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-4)
 
 
 

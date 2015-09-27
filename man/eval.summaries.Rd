@@ -20,7 +20,8 @@ eval.summaries(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL,
 
 \item{NETIDnode}{(Optional) Same as \code{\link{tmlenet}} input argument.}
 
-\item{sep}{(Optional) Same as \code{\link{tmlenet}} input argument.}
+\item{sep}{Optional friend ID character separator for friends listed in \code{NETIDnode} column of \code{data}, default is \code{' '};
+same as \code{\link{tmlenet}} input argument \code{optPars$sep}.}
 
 \item{NETIDmat}{(Optional) Same as \code{\link{tmlenet}} input argument.}
 
@@ -78,11 +79,11 @@ res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
 #***************************************************************************************
 names(res)
 # matrix of sW summary measures:
-res$sW.matrix
+head(res$sW.matrix)
 # matrix of sA summary measures:
-res$sA.matrix
+head(res$sA.matrix)
 # matrix of network IDs:
-res$NETIDmat
+head(res$NETIDmat)
 # Observed data summary measures (sW,sA) and network 
 # stored as "DatNet.sWsA" R6 class object:
 res$DatNet.ObsP0

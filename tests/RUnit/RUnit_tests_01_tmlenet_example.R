@@ -71,13 +71,12 @@ test.examples <- function() {
   # # correct version(s):
   #***************************************************************************************
   # No Ynode:
- res_K6_1a <- tmlenet(data = df_netKmax6,
-              Qform = "Y ~ sum.netW3 + sum.netAW2",
-              hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
-              hform.gstar = "netA ~ sum.netW3",
-              Anode = "A",
-              Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-              f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+ res_K6_1a <- tmlenet(data = df_netKmax6, Kmax = Kmax, Anode = "A", f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
+                      Qform = "Y ~ sum.netW3 + sum.netAW2",
+                      hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
+                      hform.gstar = "netA ~ sum.netW3",
+                      IDnode = "IDs", NETIDnode = "Net_str",
+                      optPars = list(n_MCsims = 1))
 
   tmle_idx <- rownames(res_K6_1a$EY_gstar1$estimates)%in%"tmle"
   h_iptw_idx <- rownames(res_K6_1a$EY_gstar1$estimates)%in%"h_iptw"
@@ -100,14 +99,12 @@ test.examples <- function() {
   #----------------------------------------------------------------------------------
   # Example 2. Same as above but for covariate-based TMLE
   #----------------------------------------------------------------------------------
-  res_K6_2 <- tmlenet(data = df_netKmax6,
+  res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax, Anode = "A", Ynode = "Y", f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
                       hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
-                      Anode = "A", Ynode = "Y",
-                      Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                      f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
-                      optPars = list(runTMLE = "tmle.covariate",n_MCsims = 10))
+                      IDnode = "IDs", NETIDnode = "Net_str",
+                      optPars = list(runTMLE = "tmle.covariate",n_MCsims = 1))
 
   # Test estimates:
   checkTrue(abs(res_K6_2$EY_gstar1$estimates[tmle_idx] - 0.5053725) < 10^(-06))
@@ -187,13 +184,13 @@ test.examples <- function() {
   print(head(nF))
   checkTrue(all.equal(df_netKmax6[,"nFriends"], nF))
 
-  res_K6net <- tmlenet(data = df_netKmax6,
+  res_K6net <- tmlenet(data = df_netKmax6, Kmax = Kmax, f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
                       hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",
                       Anode = "A", Ynode = "Y",
-                      Kmax = Kmax, NETIDmat = NetInd_mat,
-                      f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept",n_MCsims = 10))
+                      NETIDmat = NetInd_mat,
+                      optPars = list(runTMLE = "tmle.intercept",n_MCsims = 1))
 
   checkTrue(all.equal(res_K6net$EY_gstar1$estimates, res_K6_1a$EY_gstar1$estimates))
   checkTrue(all.equal(res_K6net$EY_gstar1$vars, res_K6_1a$EY_gstar1$vars))
@@ -204,12 +201,11 @@ test.examples <- function() {
   # Same as Example 1, but using results of eval.summaries() as input to tmlenet
   #----------------------------------------------------------------------------------
   res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = Kmax, data = df_netKmax6, NETIDmat = NetInd_mat)
-
   res_K6_alteval <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0, Anode = "A",
                             Qform = "Y ~ sum.netW3 + sum.netAW2",
                             hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                             hform.gstar = "netA ~ sum.netW3",
-                            f_gstar1 = f.A_0, optPars = list(n_MCsims = 10))
+                            f_gstar1 = f.A_0, optPars = list(n_MCsims = 1))
 
   checkTrue(all.equal(res_K6_alteval$EY_gstar1$estimates, res_K6_1a$EY_gstar1$estimates))
   checkTrue(all.equal(res_K6_alteval$EY_gstar1$vars, res_K6_1a$EY_gstar1$vars))
@@ -235,13 +231,13 @@ test.examples <- function() {
   }
 
   set.seed(seed=12345)
-  res_K6_3 <- tmlenet(data = df_netKmax6,
+  res_K6_3 <- tmlenet(data = df_netKmax6, Kmax = Kmax, f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
                     Anode = "A", Ynode = "Y",
-                    Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", f_g0 = f.A_g0, n_MCsims = 10))
+                    NETIDmat = NetInd_mat,
+                    optPars = list(f_g0 = f.A_g0, n_MCsims = 10))
 
   # Test estimates:
   checkTrue(abs(res_K6_3$EY_gstar1$estimates[tmle_idx] - 0.5049234) < 10^(-06))
@@ -267,7 +263,7 @@ test.examples <- function() {
   # can define intervention by function f.A_0 that sets everyone's A to constant 0:
   res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                       Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
-                      IDnode = "IDs", NETIDnode = "Net_str")
+                      NETIDmat = NetInd_mat, optPars = list(n_MCsims = 1))
 
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[tmle_idx] - 0.4955328) < 10^(-06))
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[h_iptw_idx] - 0.5010294) < 10^(-06))
@@ -276,7 +272,8 @@ test.examples <- function() {
   # equivalent way to define intervention f.A_0 is to just set f_gstar1 to 0:
   res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                       Anode = "A", Ynode = "Y", f_gstar1 = 0L,
-                      IDnode = "IDs", NETIDnode = "Net_str")
+                      NETIDmat = NetInd_mat, optPars = list(n_MCsims = 1))
+
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[tmle_idx] - 0.4955328) < 10^(-06))
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[h_iptw_idx] - 0.5010294) < 10^(-06))
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[gcomp_idx] - 0.4966022) < 10^(-06))
@@ -284,7 +281,8 @@ test.examples <- function() {
   # or set f_gstar1 to a vector of 0's of length nrow(data):
   res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                       Anode = "A", Ynode = "Y", f_gstar1 = rep_len(0L, nrow(df_netKmax6)),
-                      IDnode = "IDs", NETIDnode = "Net_str")
+                      NETIDmat = NetInd_mat, optPars = list(n_MCsims = 1))
+
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[tmle_idx] - 0.4955328) < 10^(-06))
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[h_iptw_idx] - 0.5010294) < 10^(-06))
   checkTrue(abs(res_K6_1$EY_gstar1$estimates[gcomp_idx] - 0.4966022) < 10^(-06))
@@ -306,11 +304,13 @@ test.examples <- function() {
   net_ind_obj <- simcausal::NetIndClass$new(nobs = nrow(df_netKmax2), Kmax = Kmax)
   NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax2[, "Net_str"],
                                 IDs_str = df_netKmax2[, "IDs"])$NetInd
+
   options(tmlenet.verbose = FALSE)
   set.seed(seed=123456)
   res_K2_1 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
                       Anode = "A", Ynode = "Y", f_gstar1 = f.A_.2,
                       NETIDmat = NetInd_mat, optPars = list(n_MCsims = 100))
+
   res_K2_1$EY_gstar1$estimates
   checkTrue(abs(res_K2_1$EY_gstar1$estimates[tmle_idx] - 0.2933030) < 10^(-06))
   checkTrue(abs(res_K2_1$EY_gstar1$estimates[h_iptw_idx] - 0.2829228) < 10^(-06))
@@ -320,8 +320,9 @@ test.examples <- function() {
   # Average treatment effect (ATE) for two interventions, A=1 vs A=0
   #----------------------------------------------------------------------------------
   res_K2_2 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                      Anode = "A", Ynode = "Y", f_gstar1 = 1, f_gstar2 = 0,
-                      NETIDmat = NetInd_mat, optPars = list(n_MCsims = 10))
+                      Anode = "A", Ynode = "Y", f_gstar1 = 1,
+                      NETIDmat = NetInd_mat, 
+                      optPars = list(f_gstar2 = 0, n_MCsims = 1))
   # names(res_K2_2)
   # Estimates under f_gstar1:
   # res_K2_2$EY_gstar1$estimates
