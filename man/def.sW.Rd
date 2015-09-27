@@ -58,9 +58,16 @@ Define and store summary measures \code{sW} and \code{sA} that can be later proc
 }
 \section{Details}{
 
+
 The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or
  \code{\link{eval.summaries}} functions,
- using the environment of the input data frame, which is also enclosed within the user-calling environment.
+ using the environment of the input data frame, which is enclosed within the user-calling environment.
+
+Note that when observation \code{i} has only \code{j-1} friends, the \code{i}'s value of \code{"W_netFj"} is
+ automatically set to \code{NA}.
+ This can be an undersirable behavior in some circumstances, in which case one can automatically replace all such
+ \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling functions
+ \code{def.sW} or \code{def.sA}, i.e., \code{def.sW(W[[1]], replaceMisVal0 = TRUE)}.
 }
 
 \section{Naming conventions}{

@@ -1,9 +1,4 @@
 #***************************************************************************************
-# TO DO: 
-# (1) ADD AN EXAMPLE WITH STOCHASTIC INTERVENTION
-# (2) ADD AN EXAMPLE WITH CONTINUOUS EXPOSURE
-
-#***************************************************************************************
 data(df_netKmax6) # Load the network data
 Kmax <- 6 # Max number of friends in the network
 #***************************************************************************************
@@ -36,7 +31,7 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
           def.sA(netA = A[[0:Kmax]])
 
 #***************************************************************************************
-# EVALUATING SUMMARY MEASURES FROM INPUT DATA
+# EVALUATING SUMMARY MEASURES BASED ON INPUT DATA:
 #***************************************************************************************
 # A helper function that can pre-evaluate the summary measures on (O)bserved data:
 res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
@@ -55,7 +50,7 @@ hform.g02 <- "netA + sum.netAW2 ~ netW2 + sum.netW3 + nF"
 hform.g03 <- "sum.netAW2 ~ netW2 + sum.netW3"
 
 #***************************************************************************************
-# SPECIFYING the outcome regression Qform:
+# Specifying the outcome regression Qform:
 # Left side is ignored (with a warning if not equal to Ynode)
 # Right side can by any summary names defined by def.sW, def.sA & 'nF'
 #***************************************************************************************
@@ -65,7 +60,7 @@ Qform3 <- "blah ~ netA + netW + nF"
 
 #***************************************************************************************
 # Estimate mean population outcome under deterministic intervention A=0 with 6 friends:
-# ESTIMATION WITH regression formulas
+# Estimation with regression formulas.
 #***************************************************************************************
 # Note that Ynode is optional when Qform is specified;
 options(tmlenet.verbose = FALSE) # set to TRUE to print status messages
@@ -100,7 +95,6 @@ res_K6_2$EY_gstar1$CIs
 # SPECIFYING THE NETWORK AS A MATRIX OF FRIEND ROW NUMBERS:
 #***************************************************************************************
 net_ind_obj <- simcausal::NetIndClass$new(nobs = nrow(df_netKmax6), Kmax = Kmax)
-
 # generating the network matrix from input data:
 NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax6[, "Net_str"],
                                               IDs_str = df_netKmax6[, "IDs"],
@@ -127,8 +121,8 @@ all.equal(res_K6_net1$EY_gstar1$vars, res_K6_1$EY_gstar1$vars)
 all.equal(res_K6_net1$EY_gstar1$CIs, res_K6_1$EY_gstar1$CIs)
 
 #***************************************************************************************
-# (*) EQUIVALENT WAYS OF SPECIFYING INTERVENTIONS f_gstar1/f_gstar2.
-# (*) LOWERING THE DIMENSIONALITY OF THE SUMMARY MEASURES.
+# EQUIVALENT WAYS OF SPECIFYING INTERVENTIONS f_gstar1/f_gstar2.
+# LOWERING THE DIMENSIONALITY OF THE SUMMARY MEASURES.
 #***************************************************************************************
 def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
@@ -152,7 +146,7 @@ res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
 res_K6_1$EY_gstar1$estimates
 
 #***************************************************************************************
-# EXAMPLE WITH SIMULATED DATA FOR 2 FRIENDS AND 1 COVARIATE W1 (SIMULATION 1)
+# EXAMPLE WITH SIMULATED DATA FOR AT MOST 2 FRIENDS AND 1 BASELINE COVARIATE W1
 #***************************************************************************************
 data(df_netKmax2)
 head(df_netKmax2)
