@@ -357,12 +357,11 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
 #'  The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
 #'  \code{tmlenet} function.
 #'  When \code{DatNet.ObsP0} is used as an input to \code{tmlenet}, the rest of the input arguments already provided to 
-#'  function \code{eval.summaries} can be omitted from the \code{tmlenet} function call.
+#'  this function can be omitted from the \code{tmlenet} function call.
+#' @param data Same as \code{\link{tmlenet}} input argument.
+#' @param Kmax Same as \code{\link{tmlenet}} input argument.
 #' @param sW Same as \code{\link{tmlenet}} input argument.
 #' @param sA Same as \code{\link{tmlenet}} input argument.
-#' @param Kmax Same as \code{\link{tmlenet}} input argument.
-#' @param data Same as \code{\link{tmlenet}} input argument.
-#@param nFnode (Optional) Same as \code{\link{tmlenet}} input argument.
 #' @param IDnode (Optional) Same as \code{\link{tmlenet}} input argument.
 #' @param NETIDnode (Optional) Same as \code{\link{tmlenet}} input argument.
 #' @param sep (Optional) Same as \code{\link{tmlenet}} input argument.
@@ -381,8 +380,7 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
 #' @seealso \code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.
 #' @example tests/examples/3_eval.summaries_examples.R
 #' @export
-#todo 80 (eval.summaries, inputs) +0: add data checks: 1) test Anode is binary or contin; 2) no missing data among A,W,Y
-eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
+eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
                             verbose = getOption("tmlenet.verbose")) {
   iid_data_flag <- FALSE  # set to true if no network is provided (will run iid TMLE)
   nFnode = "nF"
@@ -475,7 +473,9 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #' Estimate the average network effect among dependent units with known network structure (in presence of
 #'  interference and/or spillover) using \strong{TMLE} (targeted maximum likelihood estimation), \strong{IPTW}
 #'  (Horvitz-Thompson or the inverse-probability-of-treatment) and \strong{GCOMP} (parametric G-computation formula).
-# Arguments:
+#' @param DatNet.ObsP0 Instance of class \code{\link{DatNet.sWsA}} returned under the same name by the \code{\link{eval.summaries}} function. 
+#'  Stores all the summary measure and the network information. If specified, the arguments 
+#'  \code{data}, \code{Kmax}, \code{sW}, \code{sA}, \code{IDnode}, \code{NETIDnode}, \code{sep}, \code{NETIDmat} no longer need to be specified.
 #' @param data Observed data, a \code{data.frame} with named columns, containing the baseline covariates, 
 #'  exposures (\code{Anode}), the outcomes (\code{Ynode}) and possibly the network column (\code{NETIDnode}), specified 
 #'  as a vector of strings of friend IDs, each string using \code{sep} character to separate different friend IDs.
@@ -682,9 +682,9 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #'    to any of the intervals 1 to k-1, conditional on sW. 
 #'  }
 #'
-#'    The evaluation above utilizes a discretization of the fact that any continuous density f of random variable X can be written as f_X(x)=S_X(x)*h_X(x), 
-#'    for a continuous density f of X where S_X(x):=P(X>x) is the survival function for X, h_X=P(X>x|X>=x) is the hazard function for X; as well as the fact that
-#'    the discretized survival function S_X(x) can be written as a of the hazards for s<x: S_X(x)=\\prod{s<x}h_X(x).
+#' The evaluation above utilizes a discretization of the fact that any continuous density f of random variable X can be written as f_X(x)=S_X(x)*h_X(x), 
+#'  for a continuous density f of X where S_X(x):=P(X>x) is the survival function for X, h_X=P(X>x|X>=x) is the hazard function for X; as well as the fact that
+#'  the discretized survival function S_X(x) can be written as a of the hazards for s<x: S_X(x)=\\prod{s<x}h_X(x).
 #'
 #' @section Three methods for defining bin (interval) cuttoffs for a continuous one-dimenstional summary measure \code{sA[j]}:
 #' **********************************************************************
@@ -766,7 +766,7 @@ eval.summaries <- function( sW, sA, Kmax, data, IDnode = NULL, NETIDnode = NULL,
 #'  for examples of network datasets.
 #' @example tests/examples/1_tmlenet_example.R
 #' @export
-tmlenet <- function(data, Kmax, sW, sA,
+tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
                     # estimators = c("tmle", "iptw", "gcomp"),
                     Anode,  
                     # AnodeDET = NULL, 
@@ -779,7 +779,7 @@ tmlenet <- function(data, Kmax, sW, sA,
                       alpha = 0.05,
                       lbound = 0.005,
                       family = "binomial", # NOT YET IMPLEMENTED
-                      n_MCsims = ceiling(sqrt(nrow(data))),
+                      n_MCsims = ifelse(!missing(data),ceiling(sqrt(nrow(data))),10),
                       runTMLE = c("tmle.intercept", "tmle.covariate"),
                       f_g0 = NULL,
                       h_g0_SummariesModel = NULL,
@@ -791,19 +791,8 @@ tmlenet <- function(data, Kmax, sW, sA,
   gvars$verbose <- verbose
   message("Running tmlenet with the following settings: "); str(gvars$opts)
 
-  if (missing(Ynode)) Ynode <- NULL
-  if (is.null(Ynode) && is.null(Qform)) stop("Either Qform or Ynode must be specified")
-  if (!is.null(Qform) && !is.null(Ynode)) {
-    message("Since both Ynode and Qform are specified, the left-hand side of Qform will be ignored, with outcome being set to Ynode: " %+%
-      Ynode)
-  }
-  if (!is.null(Qform) && is.null(Ynode)) {
-    Ynode <- LhsVars(Qform)[1]
-    message("Setting the Ynode to: " %+% Ynode)
-  }
-
   #----------------------------------------------------------------------------------
-  # ADDITIONAL ARGUMENTS (Removed from input args of tmlenet())
+  # ADDITIONAL ARGUMENTS (removed from input args of tmlenet())
   #----------------------------------------------------------------------------------
   AnodeDET <- NULL # removed from the input, since this is not implemented
   iid_data_flag <- FALSE  # set to true if no network is provided (usual iid TMLE)
@@ -811,12 +800,10 @@ tmlenet <- function(data, Kmax, sW, sA,
   g.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction") # NOT USED
   max_npwt <- 50 # NOT USED YET
   h_logit_sep_k <- FALSE # NOT USED YET
-  # args_f_g1star = NULL # NO LONGER USED, REMOVED FROM tmlenet input
-  # args_f_g2star = NULL # NO LONGER USED, REMOVED FROM tmlenet input
   alpha <- ifelse(is.null(optPars$alpha), 0.05, optPars$alpha)
   lbound <- ifelse(is.null(optPars$lbound), 0.005, optPars$lbound)
   family <- ifelse(is.null(optPars$family), "binomial", optPars$family)
-  n_MCsims <- ifelse(is.null(optPars$n_MCsims), ceiling(sqrt(nrow(data))), optPars$n_MCsims)
+  n_MCsims <- ifelse(is.null(optPars$n_MCsims), ifelse(!missing(data),ceiling(sqrt(nrow(data))),10), optPars$n_MCsims)
   f_g0 <- NULL 
   if(!is.null(optPars$f_g0)) f_g0 <- optPars$f_g0
 
@@ -868,16 +855,35 @@ tmlenet <- function(data, Kmax, sW, sA,
   # Create an object with data & network information that is passed on to estimation algorithm(s)
   # Build observed sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
   #----------------------------------------------------------------------------------
-  DatNet.ObsP0 <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, IDnode = IDnode, NETIDnode = NETIDnode, 
-                                  sep = sep, NETIDmat = NETIDmat, verbose = FALSE)$DatNet.ObsP0
-  nobs <- DatNet.ObsP0$nobs
+  if (missing(Ynode)) Ynode <- NULL
+  if (is.null(Ynode) && is.null(Qform)) stop("Either Qform or Ynode must be specified")
+  if (!is.null(Qform) && !is.null(Ynode)) {
+    message("Since both Ynode and Qform are specified, the left-hand side of Qform will be ignored, with outcome being set to Ynode: " %+%
+      Ynode)
+  }
+  if (!is.null(Qform) && is.null(Ynode)) {
+    Ynode <- LhsVars(Qform)[1]
+    message("Setting the Ynode to: " %+% Ynode)
+  }
+
+  if (missing(DatNet.ObsP0)) {
+    DatNet.ObsP0 <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, 
+                                    IDnode = IDnode, NETIDnode = NETIDnode, 
+                                    sep = sep, NETIDmat = NETIDmat, verbose = FALSE)$DatNet.ObsP0
+  } else {
+    data <- DatNet.ObsP0$datnetW$Odata
+    Kmax <- DatNet.ObsP0$Kmax
+    sW <- DatNet.ObsP0$datnetW$sVar.object
+    sA <- DatNet.ObsP0$datnetA$sVar.object
+  }
+
   # variables that will only be available to eval.summaries:
   # node_l <- list(IDnode = IDnode, NETIDnode = NETIDnode, nFnode = nFnode)
   # new version of nodes:
   node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anode = Anode, AnodeDET = AnodeDET,
                   Ynode = Ynode, YnodeDET = YnodeDET)
+  nobs <- DatNet.ObsP0$nobs
   DatNet.ObsP0$nodes <- node_l
-
   #----------------------------------------------------------------------------------
   # Defining (and checking) Deterministic Y and A node flags:
   #----------------------------------------------------------------------------------
@@ -895,13 +901,14 @@ tmlenet <- function(data, Kmax, sW, sA,
   }
   CheckVarNameExists(data, node_l$Anode)
   CheckVarNameExists(data, node_l$Ynode)
-
   #----------------------------------------------------------------------------------
   # NOTE: YnodeVals = obsYvals, det.Y = determ.Q need to be added to DatNet.ObsP0 after returned its eval.summaries()
   #----------------------------------------------------------------------------------
   obsYvals <- data[,node_l$Ynode]
   DatNet.ObsP0$addYnode(YnodeVals = obsYvals, det.Y = determ.Q)
+  #----------------------------------------------------------------------------------
   # (OPTIONAL) ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO sA:
+  #----------------------------------------------------------------------------------
     # cancelled adding DET nodes to sVar since all sVar are automatically get added to A ~ predictors + DETnodes...
     # obsdat.sW <- O.datnetW$add_deterministic(Odata = data, userDETcol = "determ.g")$dat.sVar
   # Testing NA for visible det.Y and true observed Y as protected:
@@ -998,7 +1005,6 @@ tmlenet <- function(data, Kmax, sW, sA,
   est_obj_g1 <- append(est_obj,
                       list(
                         f.gstar = f_gstar1
-                        # f.g_args = args_f_g1star #REMOVE, args no longer used
                         )
                       )
 
@@ -1006,7 +1012,6 @@ tmlenet <- function(data, Kmax, sW, sA,
     est_obj_g2 <- append(est_obj,
                       list(
                         f.gstar = f_gstar2
-                        # f.g_args = args_f_g2star #REMOVE, args no longer used
                         )
                       )
   }

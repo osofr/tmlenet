@@ -1,5 +1,6 @@
 #***************************************************************************************
-data(df_netKmax6) # Load the network data
+data(df_netKmax6) # Load observed data
+data(NetInd_mat_Kmax6) # Load the network ID matrix
 Kmax <- 6 # Max number of friends in the network
 #***************************************************************************************
 
@@ -33,9 +34,10 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
 #***************************************************************************************
 # EVALUATING SUMMARY MEASURES BASED ON INPUT DATA:
 #***************************************************************************************
-# A helper function that can pre-evaluate the summary measures on (O)bserved data:
+# A helper function that can pre-evaluate the summary measures on (O)bserved data, 
+# given one of two ways of specifying the network:
 res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
-  NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
+                      NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 
 #***************************************************************************************
 # Specifying the clever covariate regressions hform.g0 and hform.gstar:
@@ -70,11 +72,26 @@ res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     hform.gstar = "netA ~ sum.netW3",
                     Anode = "A", f_gstar1 = 0L,
                     IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+                    optPars = list(n_MCsims = 10))
 
 res_K6_1$EY_gstar1$estimates
 res_K6_1$EY_gstar1$vars
 res_K6_1$EY_gstar1$CIs
+
+#***************************************************************************************
+# Run exactly the same estimators as above, 
+# but using the output "DatNet.ObsP0" of eval.summaries as input to tmlenet:
+#***************************************************************************************
+res_K6_1b <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "netA ~ sum.netW3",
+                    Anode = "A", f_gstar1 = 0L,
+                    optPars = list(n_MCsims = 10))
+
+res_K6_1b$EY_gstar1$estimates
+res_K6_1b$EY_gstar1$vars
+res_K6_1b$EY_gstar1$CIs
 
 #***************************************************************************************
 # Same as above but for covariate-based TMLE.

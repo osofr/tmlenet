@@ -29,8 +29,8 @@ test.examples <- function() {
   # Max number of friends in the network:
   Kmax <- 6
   # Load simulation function:
-  source("./datgen_nets/sim3_datgen_k6.R")  # to load from inside run-time test dir
-  # source("../datgen_nets/sim3_datgen_k6.R") # to load from current file dir
+  # source("./datgen_nets/sim3_datgen_k6.R")  # to load from inside run-time test dir
+  source("../datgen_nets/sim3_datgen_k6.R") # to load from current file dir
   # Simulate network data:
   # set.seed(543)
   n <- 1000
@@ -201,6 +201,22 @@ test.examples <- function() {
   checkTrue(all.equal(res_K6net$EY_gstar1$other.vars, res_K6_1a$EY_gstar1$other.vars))
 
   #----------------------------------------------------------------------------------
+  # Same as Example 1, but using results of eval.summaries() as input to tmlenet
+  #----------------------------------------------------------------------------------
+  res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = Kmax, data = df_netKmax6, NETIDmat = NetInd_mat)
+
+  res_K6_alteval <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0, Anode = "A",
+                            Qform = "Y ~ sum.netW3 + sum.netAW2",
+                            hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
+                            hform.gstar = "netA ~ sum.netW3",
+                            f_gstar1 = f.A_0, optPars = list(n_MCsims = 10))
+
+  checkTrue(all.equal(res_K6_alteval$EY_gstar1$estimates, res_K6_1a$EY_gstar1$estimates))
+  checkTrue(all.equal(res_K6_alteval$EY_gstar1$vars, res_K6_1a$EY_gstar1$vars))
+  checkTrue(all.equal(res_K6_alteval$EY_gstar1$CIs, res_K6_1a$EY_gstar1$CIs))
+  checkTrue(all.equal(res_K6_alteval$EY_gstar1$other.vars, res_K6_1a$EY_gstar1$other.vars))
+
+  #----------------------------------------------------------------------------------
   # Example 3. Same as Example 1 but with with true f_g0
   # *** Note that since f_g0 depends on (W1, netW1, netW2, netW3), these covariates also need to be added to sW summary measure ***
   #----------------------------------------------------------------------------------
@@ -243,8 +259,8 @@ test.examples <- function() {
 
 
   #***************************************************************************************
-  # (*) EQUIVALENT WAYS TO SPECIFY INTERVENTIONS f_gstar1/f_gstar2.
-  # (*) LOWERING THE DIMENSIONALITY OF THE SUMMARY MEASURES.
+  # EQUIVALENT WAYS TO SPECIFY INTERVENTIONS f_gstar1/f_gstar2.
+  # LOWERING THE DIMENSIONALITY OF THE SUMMARY MEASURES.
   #***************************************************************************************
   def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
   def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)

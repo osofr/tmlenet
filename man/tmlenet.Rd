@@ -4,15 +4,20 @@
 \alias{tmlenet}
 \title{Estimate Average Network Effects For Arbitrary (Stochastic) Interventions}
 \usage{
-tmlenet(data, Kmax, sW, sA, Anode, Ynode, YnodeDET = NULL, IDnode = NULL,
-  NETIDnode = NULL, sep = " ", NETIDmat = NULL, f_gstar1,
+tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, YnodeDET = NULL,
+  IDnode = NULL, NETIDnode = NULL, sep = " ", NETIDmat = NULL, f_gstar1,
   f_gstar2 = NULL, Qform = NULL, hform.g0 = NULL, hform.gstar = NULL,
   verbose = getOption("tmlenet.verbose"), optPars = list(alpha = 0.05,
-  lbound = 0.005, family = "binomial", n_MCsims = ceiling(sqrt(nrow(data))),
-  runTMLE = c("tmle.intercept", "tmle.covariate"), f_g0 = NULL,
-  h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
+  lbound = 0.005, family = "binomial", n_MCsims = ifelse(!missing(data),
+  ceiling(sqrt(nrow(data))), 10), runTMLE = c("tmle.intercept",
+  "tmle.covariate"), f_g0 = NULL, h_g0_SummariesModel = NULL,
+  h_gstar_SummariesModel = NULL))
 }
 \arguments{
+\item{DatNet.ObsP0}{Instance of class \code{\link{DatNet.sWsA}} returned under the same name by the \code{\link{eval.summaries}} function.
+Stores all the summary measure and the network information. If specified, the arguments
+\code{data}, \code{Kmax}, \code{sW}, \code{sA}, \code{IDnode}, \code{NETIDnode}, \code{sep}, \code{NETIDmat} no longer need to be specified.}
+
 \item{data}{Observed data, a \code{data.frame} with named columns, containing the baseline covariates,
 exposures (\code{Anode}), the outcomes (\code{Ynode}) and possibly the network column (\code{NETIDnode}), specified
 as a vector of strings of friend IDs, each string using \code{sep} character to separate different friend IDs.}
@@ -250,9 +255,9 @@ For simplicity, suppose \code{sA} is continuous and univariate and we describe h
    to any of the intervals 1 to k-1, conditional on sW.
  }
 
-   The evaluation above utilizes a discretization of the fact that any continuous density f of random variable X can be written as f_X(x)=S_X(x)*h_X(x),
-   for a continuous density f of X where S_X(x):=P(X>x) is the survival function for X, h_X=P(X>x|X>=x) is the hazard function for X; as well as the fact that
-   the discretized survival function S_X(x) can be written as a of the hazards for s<x: S_X(x)=\\prod{s<x}h_X(x).
+The evaluation above utilizes a discretization of the fact that any continuous density f of random variable X can be written as f_X(x)=S_X(x)*h_X(x),
+ for a continuous density f of X where S_X(x):=P(X>x) is the survival function for X, h_X=P(X>x|X>=x) is the hazard function for X; as well as the fact that
+ the discretized survival function S_X(x) can be written as a of the hazards for s<x: S_X(x)=\\prod{s<x}h_X(x).
 }
 
 \section{Three methods for defining bin (interval) cuttoffs for a continuous one-dimenstional summary measure \code{sA[j]}}{
@@ -300,7 +305,8 @@ The data-adaptive approach dhist is a mix of Approaches 1 & 2. See Denby and Mal
 }
 \examples{
 #***************************************************************************************
-data(df_netKmax6) # Load the network data
+data(df_netKmax6) # Load observed data
+data(NetInd_mat_Kmax6) # Load the network ID matrix
 Kmax <- 6 # Max number of friends in the network
 #***************************************************************************************
 
@@ -334,9 +340,10 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
 #***************************************************************************************
 # EVALUATING SUMMARY MEASURES BASED ON INPUT DATA:
 #***************************************************************************************
-# A helper function that can pre-evaluate the summary measures on (O)bserved data:
+# A helper function that can pre-evaluate the summary measures on (O)bserved data, 
+# given one of two ways of specifying the network:
 res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
-  NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
+                      NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 
 #***************************************************************************************
 # Specifying the clever covariate regressions hform.g0 and hform.gstar:
@@ -371,11 +378,26 @@ res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
                     hform.gstar = "netA ~ sum.netW3",
                     Anode = "A", f_gstar1 = 0L,
                     IDnode = "IDs", NETIDnode = "Net_str", sep = ' ',
-                    optPars = list(runTMLE = "tmle.intercept", n_MCsims = 10))
+                    optPars = list(n_MCsims = 10))
 
 res_K6_1$EY_gstar1$estimates
 res_K6_1$EY_gstar1$vars
 res_K6_1$EY_gstar1$CIs
+
+#***************************************************************************************
+# Run exactly the same estimators as above, 
+# but using the output "DatNet.ObsP0" of eval.summaries as input to tmlenet:
+#***************************************************************************************
+res_K6_1b <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
+                    Qform = "Y ~ sum.netW3 + sum.netAW2",
+                    hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
+                    hform.gstar = "netA ~ sum.netW3",
+                    Anode = "A", f_gstar1 = 0L,
+                    optPars = list(n_MCsims = 10))
+
+res_K6_1b$EY_gstar1$estimates
+res_K6_1b$EY_gstar1$vars
+res_K6_1b$EY_gstar1$CIs
 
 #***************************************************************************************
 # Same as above but for covariate-based TMLE.
