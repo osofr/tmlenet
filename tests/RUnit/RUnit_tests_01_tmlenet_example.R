@@ -243,7 +243,7 @@ test.examples <- function() {
 
 
   #***************************************************************************************
-  # (*) EQUIVALENT WAYS OF SPECIFYING INTERVENTIONS f_gstar1/f_gstar2.
+  # (*) EQUIVALENT WAYS TO SPECIFY INTERVENTIONS f_gstar1/f_gstar2.
   # (*) LOWERING THE DIMENSIONALITY OF THE SUMMARY MEASURES.
   #***************************************************************************************
   def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
@@ -277,66 +277,45 @@ test.examples <- function() {
   #***************************************************************************************
   # EXAMPLE WITH SIMULATED DATA FOR 2 FRIENDS AND 1 COVARIATE W1 (SIMULATION 1)
   #***************************************************************************************
-  # data(sample_network_k2)
-  # load(file="./sample_network_k2.RData")
-  # head(sample_network_k2)
-
-  #--------------------------------------------------------
-  # Define regression formulas for Q and g
-  # ****IMPORTANT****: 
-  #	use notation netVAR_1 to refer to covariate VAR of the 1st friend
-  # 	netVAR_2 to refer to covariate VAR of the 2nd friend and so on...
-  #--------------------------------------------------------
-  # Qform <- "Y ~  W1 + A + netW1_1 + netW1_2 + netA_1 + netA_2 + nF"
-  # gform <- "A ~  W1 + netW1_1 + netW1_2 + nF"
+  #----------------------------------------------------------------------------------
+  # Mean population outcome under stochastic intervention P(A=1)=0.2
+  #----------------------------------------------------------------------------------
+  data(df_netKmax2)
+  head(df_netKmax2)
+  Kmax <- 2
+  # Define the summary measures:
+  def_sW <- def.sW(W1[[0:Kmax]])
+  def_sA <- def.sA(A[[0:Kmax]])
+  # Define the network matrix:
+  net_ind_obj <- simcausal::NetIndClass$new(nobs = nrow(df_netKmax2), Kmax = Kmax)
+  NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax2[, "Net_str"],
+                                IDs_str = df_netKmax2[, "IDs"])$NetInd
+  options(tmlenet.verbose = FALSE)
+  set.seed(seed=123456)
+  res_K2_1 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                      Anode = "A", Ynode = "Y", f_gstar1 = f.A_.2,
+                      NETIDmat = NetInd_mat, optPars = list(n_MCsims = 100))
+  res_K2_1$EY_gstar1$estimates
+  checkTrue(abs(res_K2_1$EY_gstar1$estimates[tmle_idx] - 0.2933030) < 10^(-06))
+  checkTrue(abs(res_K2_1$EY_gstar1$estimates[h_iptw_idx] - 0.2829228) < 10^(-06))
+  checkTrue(abs(res_K2_1$EY_gstar1$estimates[gcomp_idx] - 0.2845043) < 10^(-06))
 
   #----------------------------------------------------------------------------------
-  # Example 2. Mean population outcome under stochastic intervention P(A=1)=0.2
-  # OLD. REMOVE OR MODIFY.
+  # Average treatment effect (ATE) for two interventions, A=1 vs A=0
   #----------------------------------------------------------------------------------
-  # tmlenet_out2 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
-  # 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-  # 						f.g1.star=f.A_x, f.g1_args=list(x=0.2),
-  # 						n_MCsims=4000, n_samp_g0gstar=100)
+  res_K2_2 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
+                      Anode = "A", Ynode = "Y", f_gstar1 = 1, f_gstar2 = 0,
+                      NETIDmat = NetInd_mat, optPars = list(n_MCsims = 10))
+  # names(res_K2_2)
+  # Estimates under f_gstar1:
+  # res_K2_2$EY_gstar1$estimates
+  # Estimates under f_gstar2:
+  # res_K2_2$EY_gstar2$estimates
+  # ATE estimates for f_gstar1-f_gstar2:
+  # res_K2_2$ATE$estimates
+  # (f_gstar1 = 1) - (f_gstar1 = 0):
+  checkTrue(abs(res_K2_2$ATE$estimates[tmle_idx] - (0.6611584-0.1997903)) < 10^(-06))
+  checkTrue(abs(res_K2_2$ATE$estimates[h_iptw_idx] - (0.6866785-0.1739867)) < 10^(-06))
+  checkTrue(abs(res_K2_2$ATE$estimates[gcomp_idx] - (0.5901202-0.2015410)) < 10^(-06))
 
-  # # TMLE estimate and iid IC-based 95% CI:
-  # tmlenet_out2$estimates$EY_g1.star$tmle_B
-  # tmlenet_out2$estimates$EY_g1.star$CI_tmle_B_iidIC
-
-  # # Efficient IPTW (h) and iid IC-based 95% CI:
-  # tmlenet_out2$estimates$EY_g1.star$iptw_h
-  # tmlenet_out2$estimates$EY_g1.star$CI_iptw_h_iidIC
-
-  # # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-  # tmlenet_out2$estimates$EY_g1.star$iptw
-  # tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_1stO
-  # tmlenet_out2$estimates$EY_g1.star$CI_iptw_iidIC_2ndO
-
-  # # MLE
-  # tmlenet_out2$estimates$EY_g1.star$mle
-
-  #----------------------------------------------------------------------------------
-  # Example 3. Average treatment effect (ATE) for two interventions, f.g1.star: A=1 vs f.g2.star: A=0
-  # OLD. REMOVE OR MODIFY.
-  #----------------------------------------------------------------------------------
-  # tmlenet_out3 <- tmlenet(data=sample_network_k2, Anode="A", Ynode="Y",
-  # 						Kmax=2, IDnode="IDs", NETIDnode="Net_str", Qform=Qform, gform=gform,
-  # 						f.g1.star=f.A_1, f.g1_args=NULL, f.g2.star=f.A_0, f.g2_args=NULL,
-  # 						n_MCsims=4000, n_samp_g0gstar=100)
-
-  # # TMLE estimate for ATE + 95% CI
-  # tmlenet_out3$estimates$ATE$tmle_B
-  # tmlenet_out3$estimates$ATE$CI_tmle_B_iidIC
-
-  # # Efficient IPTW (h) and iid IC-based 95% CI:
-  # tmlenet_out3$estimates$ATE$iptw_h
-  # tmlenet_out3$estimates$ATE$CI_iptw_h_iidIC
-
-  # # Inefficient IPTW (g) + (two CIs, less conservative and more conservative)
-  # tmlenet_out3$estimates$ATE$iptw
-  # tmlenet_out3$estimates$ATE$CI_iptw_iidIC_1stO
-  # tmlenet_out3$estimates$ATE$CI_iptw_iidIC_2ndO
-
-  # # MLE
-  # tmlenet_out3$estimates$ATE$mle
 }

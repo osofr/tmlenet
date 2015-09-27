@@ -189,8 +189,9 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   Y <- DatNet.ObsP0$noNA.Ynodevals # actual observed Y's
   determ.Q <- DatNet.ObsP0$det.Y
   m.Q.init <- est_params_list$m.Q.init
-  QY.init <- DatNet.ObsP0$noNA.Ynodevals # getting all node vals, inc. deterministic
-  QY.init[!DatNet.ObsP0$det.Y] <- m.Q.init$getprobA1[!DatNet.ObsP0$det.Y] # getting predictions P(Y=1) for non-DET Y
+
+  QY.init <- DatNet.ObsP0$noNA.Ynodevals # getting all node vals, inc. deterministic  
+  QY.init[!DatNet.ObsP0$det.Y] <- m.Q.init$predict(newdata = DatNet.ObsP0)$getprobA1[!DatNet.ObsP0$det.Y] # getting predictions P(Y=1) for non-DET Y
   off <- qlogis(QY.init)  # offset
 
   #************************************************
@@ -903,7 +904,8 @@ tmlenet <- function(data, Kmax, sW, sA,
   Qreg <- RegressionClass$new(outvar = node_l$Ynode,
                               predvars = Q.sVars$predvars,
                               subset = !determ.Q, ReplMisVal0 = TRUE)
-  m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)$predict(newdata = DatNet.ObsP0)
+  m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)
+  # m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)$predict(newdata = DatNet.ObsP0)
   # if (verbose) {
   #   print("fit for E(Y|sA,sW) succeeded:")
   #   print("coef(m.Q.init): "); print(coef(m.Q.init))
