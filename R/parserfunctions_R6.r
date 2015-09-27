@@ -9,10 +9,8 @@
   # x) => This will allow avoiding declaration of node attributes as nodes, will save a ton of memory
 # ************************************************************************************
 
-
 opts <- new.env(parent = emptyenv())
 opts$NoChangeFunCalls <- TRUE # Flag, if TRUE will not modify any unknown node formula functions while parsing
-
 opts$vecfun <- NULL           # character vector of user-defined vectorized function names
 opts$debug <- FALSE            # debug mode, when TRUE print all calls to dprint()
 

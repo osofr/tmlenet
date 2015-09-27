@@ -170,9 +170,7 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
   # -------------------------------------------------------
   # flag TRUE if user did not provide an argument name for self$exprs_list[expr.idx]:
   expr_noname <- (names(self$exprs_list)[expr.idx] %in% "")
-  # message(expr_char %+% " expr_noname? " %+% expr_noname);
   if (expr_noname && (length(expr_parents)>1)) {
-    # as an alternative, can use a name paste0(expr_parents, collapse=".")
     stop("must name complex expressions that involve more than one variable: " %+% expr_char)
   } else if (expr_noname && !is.null(expr_parents) && is.character(expr_parents)) {
     message("assigning a name '" %+% expr_parents %+% "' to expression: " %+% expr_char)
@@ -184,7 +182,6 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
   # evaluation result:
   # if result a vector: convert to one-col matrix assign a name: names(self$exprs_list)[expr.idx] = expr_parents
   if (is.vector(evalres[["evaled_expr"]])) {
-     # print(expr_char %+% ": expression result is a vector, converting to 1 col matrix and assigning a col name, " %+% expr_nm)
      expr_res <- matrix(data = evalres[["evaled_expr"]], ncol = 1)
      colnames(expr_res) <- expr_nm
      return(list(new_expr_name = expr_nm, evaled_expr = expr_res, par.nodes = evalres[["par.nodes"]]))
@@ -193,7 +190,6 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
   } else if (is.matrix(evalres[["evaled_expr"]])) {
     if (is.null(colnames(evalres[["evaled_expr"]])) || (any(colnames(evalres[["evaled_expr"]])%in%"")) || (length(expr_parents)>1)) {
       # assign names by convention: <- expr_nm%+%"."%+%c(1:ncol(expr_res))
-      # message(expr_char %+% ": assigning new column names to the evaluation result")
       colnames(evalres[["evaled_expr"]]) <- expr_nm%+%"."%+%c(1:ncol(evalres[["evaled_expr"]]))
     }
     return(list(new_expr_name = expr_nm, evaled_expr = evalres[["evaled_expr"]], par.nodes = evalres[["par.nodes"]]))
@@ -282,7 +278,6 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       assert_that(is.character(SummaryName) && (length(SummaryName)==1L) && (!SummaryName%in%""))
       if (any(names(self$exprs_list) %in% SummaryName)) {
         remove_idx <- which(names(self$exprs_list)%in% SummaryName)
-        # print("removing summaries: "); print(self$exprs_list[remove_idx])
         self$exprs_list <- self$exprs_list[-remove_idx]
         self$asis.flags <- self$asis.flags[-remove_idx]
         self$ReplMisVal0 <- self$ReplMisVal0[-remove_idx]
@@ -312,11 +307,6 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       self$sVar.names.map <- lapply(sVar.res_l, function(x) colnames(x[["evaled_expr"]]))
       names(self$sVar.names.map) <- names(self$new_expr_names)
 
-      # print("old names(self$exprs_list): "); print(names(self$exprs_list))
-      # print("new names self$new_expr_names: "); print(names(self$new_expr_names))
-      # print("self$sVar.names.map: "); print(str(self$sVar.names.map))
-      # print("eval result mat after standardizing: "); print(head(mat.sVar))
-
       # 1) remove all duplicate summary measures (by name), keeping the ones that were added last:
       if (length(unique(names(self$new_expr_names))) < length(names(self$new_expr_names))) {
         duplic_idx <- duplicated(self$new_expr_names, fromLast = TRUE)
@@ -339,7 +329,6 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
                 "), all duplicates starting from first to last will be removed...")
         mat.sVar <- mat.sVar[,!duplic_idx]
       }
-
       return(mat.sVar)
     },
 

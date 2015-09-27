@@ -130,15 +130,12 @@ normalize_matsVar <- function(sVar_mat) apply(sVar_mat, 2, normalize_sVar)
 define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
   x <- x[!gvars$misfun(x)]  # remove missing vals
   nvals <- length(unique(x))
-
   if (is.na(nbins)) nbins <- as.integer(length(x) / max_nperbin)
-
   # if nbins is too high, for ordinal, set nbins to n unique obs and cancel quantile based interval defns
-  if (nvals < nbins) { 
+  if (nvals < nbins) {
     nbins <- nvals
     bin_bymass <- FALSE
   }
-
   if (abs(max(x) - min(x)) > gvars$tolerr) {  # when x is not constant
     if ((bin_bymass) & !is.null(max_nperbin)) {
       if ((length(x) / max_nperbin) > nbins) nbins <- as.integer(length(x) / max_nperbin)
@@ -148,7 +145,6 @@ define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
   } else {  # when x is constant, force the smallest possible interval to be at least [0,1]
     intvec <- seq.int(from = min(0L, min(x)), to = max(1L, max(x)), length.out = (nbins + 1))
   }
-
   if (bin_bymass) {
     intvec <- quantile(x = x, probs = normalize(intvec)) # interval type 2: bin x by mass (quantiles of 0-1 intvec as probs)
     intvec[1] <- intvec[1] - 0.01
@@ -158,7 +154,6 @@ define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
     intvec[1] <- intvec[1] - 0.01
     intvec[length(intvec)] <- intvec[length(intvec)] + 0.01
   }
-
   # adding -Inf & +Inf as leftmost & rightmost cutoff points to make sure all future data points end up in one of the intervals:
   # intvec <- c(-Inf, min(intvec)-0.01, intvec)
   # intvec <- c(min(intvec) - 0.1, intvec)
@@ -168,6 +163,7 @@ define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
 }
 # Turn any x into ordinal (1, 2, 3, ..., nbins) for a given interval cutoffs (length(intervals)=nbins+1)
 make.ordinal <- function(x, intervals) findInterval(x = x, vec = intervals, rightmost.closed = TRUE)
+
 # # Make dummy indicators for ordinal x (sA[j])
 # # Approach: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
 # make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms) {
@@ -258,12 +254,9 @@ DatNet <- R6Class(classname = "DatNet",
     netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
     Odata = NULL,              # data.frame used for creating the summary measures in mat.sVar, saved each time make.sVar called
     mat.sVar = NULL,           # Matrix storing all evaluated sVars, with named columns
-    sVar.object = NULL,        # DefineSummariesClass object that contains / evaluates sVar expressions    
+    sVar.object = NULL,        # DefineSummariesClass object that contains / evaluates sVar expressions
     type.sVar = NULL,          # named list with sVar types: list(names.sVar[i] = "binary"/"categor"/"contin"), can be overridden
     norm.c.sVars = FALSE,      # flag = TRUE if want to normalize continous covariates
-
-    # #todo 37 (DatNet) +0: NEED TO SORT OUT WHEN nOdata is needed....
-    # nobs = NA_integer_,      # n of samples in the OBSERVED (original) data
     nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
 
     initialize = function(netind_cl, nodes, nFnode, ...) {
@@ -273,7 +266,6 @@ DatNet <- R6Class(classname = "DatNet",
       if (!missing(nodes)) self$nodes <- nodes
       invisible(self)
     },
-
     # **********************
     # Define summary measures sVar
     # **********************
@@ -361,7 +353,6 @@ DatNet <- R6Class(classname = "DatNet",
       self$mat.sVar[gvars$misfun(self$mat.sVar)] <- gvars$misXreplace
       invisible(self)
     },
-
     # --------------------------------------------------
     # Methods for directly handling one continous/categorical sVar in self$mat.sVar;
     # No checking of incorrect input is performed, use at your own risk!
@@ -488,7 +479,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       self$Kmax <- self$netind_cl$Kmax
       # re-assign nodes object if it already exists in datnetW
       if (length(datnetW$nodes) > 0) self$nodes <- datnetW$nodes
-      # self$nodes <- datnetW$nodes
       if (!missing(YnodeVals)) self$addYnode(YnodeVals = YnodeVals, det.Y = det.Y)
       invisible(self)
     },
@@ -501,14 +491,13 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         self$det.Y <- det.Y
     },
 
-    # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):      
-    # Could also do evaluation in a special env with a custom subsetting fun '[' that will dynamically find the correct dataset that contains 
+    # Eval the expression (in the environment of the data.frame "data" + global constants "gvars"):
+    # Could also do evaluation in a special env with a custom subsetting fun '[' that will dynamically find the correct dataset that contains
     # sVar.name (dat.sVar or dat.bin.sVar) and will return sVar vector
-    evalsubst = function(subsetexpr, subsetvars) { 
+    evalsubst = function(subsetexpr, subsetvars) {
       if (missing(subsetexpr)) {
         assert_that(!missing(subsetvars))
         res <- rep.int(TRUE, self$nobs)
-
         for (subsetvar in subsetvars) {
           # *) find the var of interest (in self$dat.sWsA or self$dat.bin.sVar), give error if not found
           sVar.vec <- self$get.outvar(var = subsetvar)
@@ -517,14 +506,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           res <- res & (!gvars$misfun(sVar.vec))
         }
         return(res)
-
       } else {
         if (is.logical(subsetexpr)) {
           return(subsetexpr)
         } else {
           # ******************************************************
-          # THIS WAS A BOTTLENECK
-          # for 500K w/ 1000 bins: 4-5sec
+          # THIS WAS A BOTTLENECK: for 500K w/ 1000 bins: 4-5sec
           # REPLACING WITH env that is made of data.frames instead of matrices
           # ******************************************************
           eval.env <- c(data.frame(self$dat.sWsA), data.frame(self$dat.bin.sVar), as.list(gvars))
@@ -536,7 +523,8 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
 
     # WARNING: no checks for non-existance of a particular var in covars;
     # if covar[j] doesn't exist, it just wont be included with no warning;
-    get.dat.sWsA = function(rowsubset = TRUE, covars) { # return a data.frame with covars (predictors)
+    # return a data.frame with covars (predictors):
+    get.dat.sWsA = function(rowsubset = TRUE, covars) {
       dat.bin.sVar <- self$dat.bin.sVar
       sel.sWsA <- TRUE
       sel.binsA = NULL # columns to select from binned continuos var matrix (if it was previously constructed)
@@ -575,12 +563,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     # ------------------------------------------------------------------------------------------------------------
     # Need to find a way to over-ride nbins for categorical vars (allowing it to be set to more than gvars$maxncats)!
     # Return names of bin indicators for sVar:
-    bin.nms.sVar = function(name.sVar, nbins) { name.sVar%+%"_"%+%"B."%+%(1L:nbins) }, 
+    bin.nms.sVar = function(name.sVar, nbins) { name.sVar%+%"_"%+%"B."%+%(1L:nbins) },
     pooled.bin.nm.sVar = function(name.sVar) { name.sVar %+% "_allB.j" },
     detect.sVar.intrvls = function(name.sVar, nbins, bin_bymass, bin_bydhist, max_nperbin) {
       int <- define.intervals(x = self$get.sVar(name.sVar), nbins = nbins, bin_bymass = bin_bymass, bin_bydhist = bin_bydhist, max_nperbin = max_nperbin)
       if (length(unique(int)) < length(int)) {
-        message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+% 
+        message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+%
                 (length(int)-1) %+% " to " %+% (length(unique(int))-1) %+% " due to too few obs.")
         print("old intervals: "); print(int)
         int <- unique(int)
@@ -626,11 +614,8 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     get.sVar.bwdiff = function(name.sVar, intervals) {
       if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")
       if (is.null(self$ord.sVar)) stop("sVar hasn't been discretized yet")
-      # intrvls.width <- diff(intervals)
-      # intrvls.width[intrvls.width <= gvars$tolerr] <- 1
       ord.sVar_leftint <- intervals[self$ord.sVar]
       diff_bw <- self$get.sVar(name.sVar) - ord.sVar_leftint
-      # diff_bw <- self$dat.sVar[, name.sVar] - ord.sVar_leftint      
       return(diff_bw)
     },
 
@@ -640,7 +625,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     # When is.null(f.g_fun), returns combined cbind(sW, sA) for observed O.datnetW, O.datnetA;
     # TO ADD: Consider passing ahead a total number of sA that will be created by DatNet class (need it to pre-allocate self$dat.sWsA);
     make.dat.sWsA = function(p = 1, f.g_fun = NULL, sA.object = NULL)  {
-    # make.dat.sWsA = function(p = 1, f.g_fun = NULL, f.g_args = NULL, sA.object = NULL)  {
       datnetW <- self$datnetW
       datnetA <- self$datnetA
       assert_that(is.count(p))
@@ -648,9 +632,11 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       nobs <- datnetW$nOdata
       # Copy variable detected types (bin, cat or contin) from the observed data classes (datnetW, datnetA) to self:
       self$copy.sVar.types()
-      if (is.null(f.g_fun)) {  # set df.sWsA to observed data (sW,sA) if g.fun is.null
+      # set df.sWsA to observed data (sW,sA) if g.fun is.null:
+      if (is.null(f.g_fun)) {
         df.sWsA <- cbind(datnetW$dat.sVar, datnetA$dat.sVar) # assigning summary measures as data.frames:
-      } else {  # need to sample A under f.g_fun (gstar or known g0), possibly re-evaluate sW from O.datnetW
+      # need to sample A under f.g_fun (gstar or known g0), possibly re-evaluate sW from O.datnetW
+      } else {
         if (is.null(self$nodes$Anode)) stop("Anode was not appropriately specified and is null; can't replace observed Anode with that sampled under g_star")
         Odata <- datnetW$Odata
         # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping a old pointer to O.datnetA)
@@ -658,13 +644,8 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
         colnames(df.sWsA) <- self$names.sWsA
         for (i in seq_len(p)) {
-          # *** f.g_fun can only depend on covariates in datnetW$dat.sVar ***
           # if Anode is continuous, just call f.gen.probA.star:
-
           A.gstar <- f.gen.A.star(data = cbind(datnetW$dat.sVar,datnetA$dat.sVar), f.g_fun = f.g_fun)
-          # A.gstar <- f.gen.A.star(k = self$Kmax, df_AllW = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_fun)
-          # A.gstar <- f.gen.A.star.cont(k = self$Kmax, df_AllW = cbind(datnetW$dat.sVar,datnetA$dat.sVar), fcn_name = f.g_fun, f_args = f.g_args)
-
           Odata[, self$nodes$Anode] <- A.gstar # replace A under g0 in Odata with A^* under g.star:
           datnetA.gstar$make.sVar(Odata = Odata, sVar.object = sA.object) # create new summary measures sA (under g.star)
           # Assigning the summary measures to one output data matrix:
@@ -687,10 +668,10 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       }
     },
     # wipe out binirized mat.sVar:
-    emptydat.bin.sVar = function() { 
+    emptydat.bin.sVar = function() {
       self$mat.bin.sVar <- NULL
       self$active.bin.sVar <- NULL
-    }, 
+    },
     names.sWsA = function() { c(self$datnetW$names.sVar, self$datnetA$names.sVar) },
     nobs = function() { nrow(self$dat.sVar) },
     noNA.Ynodevals = function(noNA.Yvals) {

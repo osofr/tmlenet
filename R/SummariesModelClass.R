@@ -11,20 +11,20 @@
 
 
 # Generic S3 constructor for the summary model classes:
-NewSummaryModel <- function(reg, DatNet.sWsA.g0, ...) { UseMethod("NewSummaryModel") }
+newsummarymodel <- function(reg, DatNet.sWsA.g0, ...) { UseMethod("newsummarymodel") }
 # Summary model constructor for binary outcome sA[j]:
-NewSummaryModel.binary <- function(reg, ...) {
+newsummarymodel.binary <- function(reg, ...) {
   # if (gvars$verbose) print("Calling BinOutModel constructor for binary outcome: " %+% reg$outvar)
   BinOutModel$new(reg = reg, ...)
 }
 # Summary model constructor for continuous outcome sA[j]:
-NewSummaryModel.contin <- function(reg, DatNet.sWsA.g0, ...) {
+newsummarymodel.contin <- function(reg, DatNet.sWsA.g0, ...) {
   # if (gvars$verbose) print("Calling ContinSummaryModel constructor for continuous outcome:" %+% reg$outvar)
   ContinSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 }
 
 # Summary model constructor for categorical outcome sA[j]:
-NewSummaryModel.categor <- function(reg, DatNet.sWsA.g0, ...) {
+newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) {
   # if (gvars$verbose) print("Calling CategorSummaryModel constructor for categorical outcome: " %+% reg$outvar)
   CategorSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 }
@@ -200,14 +200,14 @@ RegressionClass <- R6Class("RegressionClass",
       self$outvar.class <- reg$outvar.class[[k_i]] # Class of the outcome var: binary, categorical, continuous:
       self$outvar <- reg$outvar[[k_i]] # An outcome variable that is being modeled:
 
-      if (self$reg_hazard) { 
+      if (self$reg_hazard) {
         # when modeling bin hazard indicators, no need to condition on previous outcomes as they will all be degenerate
-        self$predvars <- reg$predvars # Regression covars (predictors):  
+        self$predvars <- reg$predvars # Regression covars (predictors):
       } else {
-        self$predvars <- c(reg$outvar[-c(k_i:n_regs)], reg$predvars) # Regression covars (predictors):  
+        self$predvars <- c(reg$outvar[-c(k_i:n_regs)], reg$predvars) # Regression covars (predictors):
       }
 
-      # the subset is a list when RegressionClass specifies several regression models at once, 
+      # the subset is a list when RegressionClass specifies several regression models at once,
       # obtain the appropriate subset for this regression k_i and set it to self
       if (is.list(reg$subset)) {
         self$subset <- reg$subset[[k_i]]
@@ -235,7 +235,7 @@ RegressionClass <- R6Class("RegressionClass",
   ),
 
   active = list(
-    # For S3 dispatch on NewSummaryModel():
+    # For S3 dispatch on newsummarymodel():
     S3class = function(newclass) {
       if (!missing(newclass)) {
         if (length(newclass) > 1) stop("cannot set S3 class on RegressionClass with more than one outvar variable")
@@ -298,7 +298,6 @@ RegressionClass <- R6Class("RegressionClass",
 #' \describe{
 #'   \item{\code{wipe.alldat}}{...}
 #' }
-#@importFrom foreach foreach
 #' @export
 SummariesModel <- R6Class(classname = "SummariesModel",
 	portable = TRUE,
@@ -329,7 +328,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         reg_i <- reg$clone()
         reg_i$ChangeManyToOneRegresssion(k_i, reg)
         # Calling the constructor for the summary model P(sA[j]|\bar{sA}[j-1], sW}), dispatching on reg_i class
-        PsAsW.model <- NewSummaryModel(reg = reg_i, ...)
+        PsAsW.model <- newsummarymodel(reg = reg_i, ...)
 				private$PsAsW.models <- append(private$PsAsW.models, list(PsAsW.model))
 				names(private$PsAsW.models)[k_i] <- "P(sA|sW)."%+%k_i
 			}
@@ -356,7 +355,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       } else if (self$parfit_allowed) {
         val <- checkpkgs(pkgs=c("foreach", "doParallel", "matrixStats"))
         mcoptions <- list(preschedule = FALSE)
-        # NOTE: Each fitRes[[k_i]] will contain a copy of every single R6 object that was passed by reference -> 
+        # NOTE: Each fitRes[[k_i]] will contain a copy of every single R6 object that was passed by reference ->
         # *** the size of fitRes is 100x the size of private$PsAsW.models ***
         fitRes <- foreach::foreach(k_i = seq_along(private$PsAsW.models), .options.multicore = mcoptions) %dopar% {
           private$PsAsW.models[[k_i]]$fit(data = data)
@@ -373,7 +372,6 @@ SummariesModel <- R6Class(classname = "SummariesModel",
     # predictP_1 = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
 		predict = function(newdata) {
 		  if (missing(newdata)) {
-		    # return(invisible(self))
         stop("must provide newdata")
 		  }
       assert_that(is.DatNet.sWsA(newdata))
@@ -402,8 +400,8 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		# WARNING: This method cannot be chained together with other methods (s.a, class$predictAeqa()$fun())
 		# Uses daughter objects (stored from prev call to fit()) to get predictions for P(sA=obsdat.sA|sW=sw)
 		# Invisibly returns the joint probability P(sA=sa|sW=sw), also saves it as a private field "cumprodAeqa"
-    predictAeqa = function(newdata, ...) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
-		# predictAeqa = function(obs.DatNet.sWsA, ...) {
+    # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's):
+    predictAeqa = function(newdata, ...) {
 			assert_that(!missing(newdata))
       assert_that(is.DatNet.sWsA(newdata))
 			n <- newdata$nobs
@@ -453,7 +451,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 # same code in ContinSummaryModel$new and CategorSummaryModel$new replaced with outside function:
 # Define subset evaluation for new bins:
 # -------------------------------------------------------------------------------------------
-def_regs_subset <- function(self) {  
+def_regs_subset <- function(self) {
   bin_regs <- self$reg$clone() # instead of defining new RegressionClass now cloning parent reg object and then ADDING new SETTINGS
   bin_regs$reg_hazard <- TRUE # don't add degenerate bins as predictors in each binary regression
   if (!self$reg$pool_cont) {
@@ -562,7 +560,6 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       } else {
         self$intrvls <- self$reg$intrvls
       }
-
       self$reg$nbins <- length(self$intrvls) - 1
       self$reg$bin_nms <- DatNet.sWsA.g0$bin.nms.sVar(reg$outvar, self$reg$nbins)
       # Save bin widths in reg class (naming the vector entries by bin names):
@@ -570,12 +567,10 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       self$intrvls.width[self$intrvls.width <= gvars$tolerr] <- 1
       self$reg$intrvls.width <- self$intrvls.width
       names(self$reg$intrvls.width) <- names(self$intrvls.width) <- self$reg$bin_nms
-
       if (gvars$verbose)  {
         print("ContinSummaryModel outcome: "%+%self$outvar)
         # print("ContinSummaryModel reg$nbins: " %+% self$reg$nbins)
       }
-
       bin_regs <- def_regs_subset(self = self)
       super$initialize(reg = bin_regs, ...)
     },
@@ -586,13 +581,11 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       assert_that(is.DatNet.sWsA(data))
       # Binirizes & saves binned matrix inside DatNet.sWsA
       data$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
-
       if (gvars$verbose) {
         print("performing fitting for continuous outcome: " %+% self$outvar)
         print("freq counts by bin for continuous outcome: "); print(table(data$ord.sVar))
         print("binned dataset: "); print(head(cbind(data$ord.sVar, data$dat.bin.sVar), 5))
       }
-
       super$fit(data) # call the parent class fit method
       if (gvars$verbose) message("fit for outcome " %+% self$outvar %+% " succeeded...")
       data$emptydat.bin.sVar # wiping out binirized mat in data DatNet.sWsA object...
@@ -606,9 +599,7 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
         stop("must provide newdata")
       }
       assert_that(is.DatNet.sWsA(newdata))
-
       if (gvars$verbose) print("performing prediction for continuous outcome: " %+% self$outvar)
-
       # mat_bin doesn't need to be saved (even though its invisibly returned); mat_bin is automatically saved in datnet.sW.sA - a potentially dangerous side-effect!!!
       newdata$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
       super$predict(newdata)
@@ -620,9 +611,7 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
     predictAeqa = function(newdata) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
       assert_that(is.DatNet.sWsA(newdata))
       newdata$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
-
       if (gvars$verbose) print("performing prediction for categorical outcome: " %+% self$outvar)
-
       bws <- newdata$get.sVar.bw(name.sVar = self$outvar, intervals = self$intrvls)
       self$bin_weights <- (1 / bws) # weight based on 1 / (sVar bin widths)
       # Option 1: ADJUST FINAL PROB by bw.j TO OBTAIN density at a point f(sa|sw) = P(sA=sa|sW=sw):
@@ -705,15 +694,11 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       }
       self$nbins <- self$reg$nbins <- length(self$levels)
       self$reg$bin_nms <- DatNet.sWsA.g0$bin.nms.sVar(reg$outvar, self$reg$nbins)
-
       if (gvars$verbose)  {
         print("CategorSummaryModel outcome: "%+%self$outvar)
-        # print("CategorSummaryModel levels: "); print(self$levels)
         # print("CategorSummaryModel reg$levels: "); print(self$reg$levels)
         # print("CategorSummaryModel reg$nbins: " %+% self$reg$nbins)
-        # print("CategorSummaryModel reg$bin_nms: "); print(self$reg$bin_nms)
       }
-
       bin_regs <- def_regs_subset(self = self)
       super$initialize(reg = bin_regs, ...)
     },
@@ -723,17 +708,13 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       assert_that(is.DatNet.sWsA(data))
       # Binirizes & saves binned matrix inside DatNet.sWsA for categorical sVar
       data$binirize.cat.sVar(name.sVar = self$outvar, levels = self$levels)
-
       if (gvars$verbose) {
         print("performing fitting for categorical outcome: " %+% self$outvar)
         print("freq counts by bin for categorical outcome: "); print(table(data$get.sVar(self$outvar)))
         print("binned dataset: "); print(head(cbind(sA = data$get.sVar(self$outvar), data$dat.bin.sVar), 5))
       }
-
       super$fit(data) # call the parent class fit method
-
       if (gvars$verbose) message("fit for " %+% self$outvar %+% " var succeeded...")
-
       data$emptydat.bin.sVar # wiping out binirized mat in data DatNet.sWsA object...
       self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
       invisible(self)
@@ -746,9 +727,7 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
         stop("must provide newdata")
       }
       assert_that(is.DatNet.sWsA(newdata))
-
       if (gvars$verbose) print("performing prediction for categorical outcome: " %+% self$outvar)
-
       newdata$binirize.cat.sVar(name.sVar = self$outvar, levels = self$levels)
       super$predict(newdata)
       newdata$emptydat.bin.sVar # wiping out binirized mat in newdata DatNet.sWsA object...
@@ -756,11 +735,10 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
     },
 
     # Invisibly return cumm. prob P(sA=sa|sW=sw)
-    predictAeqa = function(newdata) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
+    # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's):
+    predictAeqa = function(newdata) {
       assert_that(is.DatNet.sWsA(newdata))
-
       if (gvars$verbose) print("performing prediction for categorical outcome: " %+% self$outvar)
-
       newdata$binirize.cat.sVar(name.sVar = self$outvar, levels = self$levels)
       cumprodAeqa <- super$predictAeqa(newdata = newdata)
       newdata$emptydat.bin.sVar # wiping out binirized mat in newdata object...

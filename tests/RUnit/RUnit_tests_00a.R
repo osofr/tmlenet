@@ -364,7 +364,7 @@ test.intervals <- function() {
   checkEquals(nettest$NetInd, NetInd_k)
 
   ## ---------------------------------------------------------------------
-  # TESTING ContinSummaryModel class and NewSummaryModel.contin constructor
+  # TESTING ContinSummaryModel class and newsummarymodel.contin constructor
   ## ---------------------------------------------------------------------
   # TEST 1: Binary outvar (treated as continuous). Testing that results match with binary class prediction.
   ## ---------------------------------------------------------------------
