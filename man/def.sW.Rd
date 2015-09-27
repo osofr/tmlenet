@@ -52,9 +52,12 @@ Define and store summary measures \code{sW} and \code{sA} that can be later proc
  }
  One can then test the evaluation of these summary measures by either passing the returned
  \code{\link{DefineSummariesClass}} object to function \code{\link{eval.summaries}} or by calling the
- internal method \code{eval.nodeforms(data.df, netind_cl)} on the returned object.
- The summary expressions defined here don't always need to be named, in which case the summary measure names
- will be automatically assigned (see Details, Naming Conventions and Examples below).
+ internal method \code{eval.nodeforms(data.df, netind_cl)} on the result returned by \code{def.sW} or \code{def.sA}.
+ Each separate argument to \code{def.sW} or \code{def.sA} represents a new summary measure.
+ The user-specified argument name defines the name of the corresponding summary measure
+ (where the summary measure represents the result of the evaluation of the corresponding R expression specified by the argument).
+ When a particular argument is unnamed, the summary measure name
+ will be generated automatically (see Details, Naming Conventions and Examples below).
 }
 \section{Details}{
 
