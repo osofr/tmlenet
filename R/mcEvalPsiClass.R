@@ -1,11 +1,12 @@
 #---------------------------------------------------------------------------------
+# Monte-Carlo simulation sampling from stochastic g^* and evaluting G-Comp & TMLEs:
+#---------------------------------------------------------------------------------
+
+#---------------------------------------------------------------------------------
 # unified estimator naming used throughout the package:
 # c("TMLE", "h_IPTW", "MLE")
 #---------------------------------------------------------------------------------
 
-#---------------------------------------------------------------------------------
-# G-Comp & TMLEs: Use Monte-Carlo to estimate psi under stochastic g^* 
-#---------------------------------------------------------------------------------
 get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
   estnames <- MC_fit_params$estnames
   m.Q.init <- MC_fit_params$m.Q.init

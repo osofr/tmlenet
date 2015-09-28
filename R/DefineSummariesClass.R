@@ -2,6 +2,7 @@
 # Class for defining, parsing and evaluating the summary measures.
 # Expressions sVar.exprs are evaluated in the environment of a given data.frame.
 #----------------------------------------------------------------------------------
+
   # **********************************************************************
   # TODO: Consider adding argument Anode to def.sA function
   # **********************************************************************
@@ -11,6 +12,7 @@
     # (i.e., pre-allocating sVar.mat); perform benchmarks to see if there is any noticable benefit
   #todo 42 ('+..DefineSummariesClass') +0: Allow adding character vector summary measures for sVar2, s.a., 
   # def.sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
+
 
 is.DefineSummariesClass <- function(obj) "DefineSummariesClass" %in% class(obj)
 # Useful function for testing if a name is a valid R object name:

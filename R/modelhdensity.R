@@ -8,12 +8,12 @@
 # @export
 # fit models for m_gAi
 predict.hbars <- function(newdatnet = NULL, m.h.fit) {
-# pred.hbars <- function(newdatnet = NULL, m.h.fit) { 
+# pred.hbars <- function(newdatnet = NULL, m.h.fit) {
     lbound <- m.h.fit$lbound
     # netA_names <- m.h.fit$m.gAi_vec_g$sA_nms
     # determ_cols_Friend <- m.h.fit$determ_cols_Friend # Should this be saved in m.gAi_vec_g and m.gAi_vec_gstar objects instead?
     # if (!is.null(newdatnet)) {
-    #   NetInd_k <- newdatnet$netind_cl$NetInd_k      
+    #   NetInd_k <- newdatnet$netind_cl$NetInd_k
     #   determ.g_user <- newdatnet$determ.g
     #   determ_cols_user <- .f.allCovars(k, NetInd_k, determ.g_user, "determ.g_true")
     #   determ_cols <- (determ_cols_user | determ_cols_Friend)
@@ -27,9 +27,7 @@ predict.hbars <- function(newdatnet = NULL, m.h.fit) {
     # PASS ENTIRE newdatnet which will get subset, rather than constructing cY_mtx...
     # if (h_user==FALSE) {
     h_gN <- m.h.fit$summeas.g0$predictAeqa(newdata = newdatnet)
-    # h_gN <- m.h.fit$summeas.g0$predict(newdata = newdatnet)$predictAeqa(newdata = newdatnet)
     h_gstar <- m.h.fit$summeas.gstar$predictAeqa(newdata = newdatnet)
-    # h_gstar <- m.h.fit$summeas.gstar$predict(newdata = newdatnet)$predictAeqa(newdata = newdatnet)
     # }
     h_gstar_h_gN <- h_gstar / h_gN
     h_gstar_h_gN[is.nan(h_gstar_h_gN)] <- 0     # 0/0 detection
@@ -48,7 +46,6 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   #---------------------------------------------------------------------------------
   # PARAMETERS FOR LOGISTIC ESTIMATION OF h
   #---------------------------------------------------------------------------------
-  # n <- nrow(data)
   O.datnetW <- DatNet.ObsP0$datnetW
   O.datnetA <- DatNet.ObsP0$datnetA
   lbound <- est_params_list$lbound
@@ -63,13 +60,16 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   f.gstar <- est_params_list$f.gstar
   f.g0 <- est_params_list$f.g0
 
-  # f.g_args <- est_params_list$f.g_args # (HAVE BEEN DISABLED)
-  # f.g0_args <- est_params_list$f.g0_args # (HAVE BEEN DISABLED)
-
   h_g0_SummariesModel <- est_params_list$h_g0_SummariesModel
-  if (!is.null(h_g0_SummariesModel)) message("h_g0 will not be fit, predicting h_g0 based on the existing fit supplied in h_g0_SummariesModel object")
+  if (!is.null(h_g0_SummariesModel)) {
+    message("NOTE: Predictions for P(sA|sW) under g0 will be based on the model fit in h_g0_SummariesModel," %+%
+            "all modeling settings will be ignored")
+  }
   h_gstar_SummariesModel <- est_params_list$h_gstar_SummariesModel
-  if (!is.null(h_gstar_SummariesModel)) message("h_gstar will not be fit, predicting h_gstar based on the existing fit supplied in h_gstar_SummariesModel object")
+  if (!is.null(h_gstar_SummariesModel)) {
+    message("NOTE: Predictions for P(sA^*|sW^*) under f_gstar will be based on the model fit in h_g0_SummariesModel," %+%
+      " all modeling settings will be ignored")
+  }
 
   h_logit_sep_k <- est_params_list$h_logit_sep_k # NOT IMPLEMENTED
   # h_user=est_params_list$h_user; h_user_fcn=est_params_list$h_user_fcn; NOT IMPLEMENTED
@@ -120,8 +120,10 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   #-----------------------------------------------------------
   # (1 subset expr per regression P(sA[j]|sA[j-1:0], sW))
   # Old examples of subsetting expressions:
-  # subset_exprs <- lapply(netvar("determ.g_Friend", c(0:Kmax)), function(var) {var%+%" != "%+%"misval"}) # based on the variable of gvars$misval (requires passing gvars envir for eval)
-  # subset_exprs <- lapply(netvar("determ.g_true", c(0:Kmax)), function(var) {var%+%" != "%+%TRUE}) # based on existing logical determ_g columns (TRUE = degenerate/determ):
+  # based on the variable of gvars$misval (requires passing gvars envir for eval)
+  # subset_exprs <- lapply(netvar("determ.g_Friend", c(0:Kmax)), function(var) {var%+%" != "%+%"misval"})
+  # based on existing logical determ_g columns (TRUE = degenerate/determ):
+  # subset_exprs <- lapply(netvar("determ.g_true", c(0:Kmax)), function(var) {var%+%" != "%+%TRUE})
   #-----------------------------------------------------------
   subsets_expr <- lapply(sA_nms_g0, function(var) {var})  # subsetting by !gvars$misval on sA:
 
@@ -154,11 +156,10 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
 
   summeas.g0 <- SummariesModel$new(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
   if (!is.null(h_g0_SummariesModel)) {
-    message("user supplied model fit for h_g0 is not implemented yet")
-    # ...
     # 1) verify h_g0_SummariesModel is consistent with summeas.g0
-    # 2) copy model fits in h_g0_SummariesModel to summeas.g0
-    # ...
+    assert_that(inherits(h_g0_SummariesModel, "SummariesModel"))
+    # 2) deep copy model fits in h_g0_SummariesModel to summeas.g0
+    summeas.g0 <- h_g0_SummariesModel$clone(deep=TRUE)
   } else {
     summeas.g0$fit(data = DatNet.g0)
   }
@@ -181,7 +182,6 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
 
   DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
   DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA)
-  # DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, f.g_args = f.g_args, sA.object = sA)
 
   if (gvars$verbose) {
     print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): "); print(class(DatNet.gstar$dat.sWsA))
@@ -192,9 +192,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
                                         outvar = sA_nms_gstar,
                                         predvars = sW.gstar_nms,
                                         subset = subsets_expr
-                                        # max_nperbin = as.integer(getopt("maxNperBin")*ng.MCsims)
                                         )
-
   # Define Intervals Under g_star to Be The Same as under g0:
   summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0)
   # Define Intervals Under g_star Based on Summary Measures Generated under g_star:
@@ -203,16 +201,13 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0, datnet.gstar = DatNet.gstar)
 
   if (!is.null(h_gstar_SummariesModel)) {
-    message("user supplied model fit for h_gstar is not implemented yet")
-    # ...
     # 1) verify h_gstar_SummariesModel is consistent with summeas.gstar
-    # 2) copy model fits in h_gstar_SummariesModel to summeas.gstar
-    # ...
+    assert_that(inherits(h_gstar_SummariesModel, "SummariesModel"))
+    # 2) deep copy the object with model fits to summeas.gstar
+    summeas.gstar <- h_gstar_SummariesModel$clone(deep=TRUE)
   } else {
     summeas.gstar$fit(data = DatNet.gstar)
   }
-
-  # summeas.gstar$predict(newdata = DatNet.ObsP0)
   h_gstar <- summeas.gstar$predictAeqa(newdata = DatNet.ObsP0)
 
   ###########################################

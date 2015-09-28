@@ -1,5 +1,6 @@
-#' @importFrom assertthat assert_that
-
+#----------------------------------------------------------------------------------
+# Classes that control modelling of the multivariate joint probability model P(sA|sW).
+#----------------------------------------------------------------------------------
 # **********
 # TO DO (ContinSummaryModel)
 # x) (low priority) see how to generalize to pooled fits, k-specific fits, etc (use subset definitions + ?)
@@ -8,6 +9,10 @@
 # * (***BUG***) Currently make.bins_mtx_1 fails on binary A with automatic bin detection (all values are placed in last (2nd) bin)
 # * Implement regression for categorical outvar: the process is identical to contin, except that normalize, define.intervals() & discretize() is skipped
 # * Need to test that make.bins_mtx_1 will do the right thing when x_cat is (0, ..., ncats) instead of (1, ..., ncats) (IT SHOULD WORK)
+
+
+
+#' @importFrom assertthat assert_that
 
 
 # Generic S3 constructor for the summary model classes:
@@ -339,10 +344,10 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		getPsAsW.models = function() { private$PsAsW.models },  # get all summary model objects (one model object per outcome var sA[j])
 		getcumprodAeqa = function() { private$cumprodAeqa },  # get joint prob as a vector of the cumulative prod over j for P(sA[j]=a[j]|sW)
 
-    # **********************************************************************
-    # TO DO: Add $copy.fit(SummariesModel) method that will propagate copy all the model fits down the line
-    copy.fit = function(SummariesModel) {},
-    # **********************************************************************
+    # # **********************************************************************
+    # # TO DO: Add $copy.fit(SummariesModel) method that will propagate copy all the model fits down the line
+    # copy.fit = function(SummariesModel) {},
+    # # **********************************************************************
 
     fit = function(data) {
       assert_that(is.DatNet.sWsA(data))
@@ -417,12 +422,12 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         probAeqa_list <- foreach::foreach(k_i = seq_along(private$PsAsW.models), .options.multicore = mcoptions) %dopar% {
           private$PsAsW.models[[k_i]]$predictAeqa(newdata = newdata, ...)
         }
-        cbind_t <- system.time(
+        # cbind_t <- system.time(
           probAeqa_mat <- do.call('cbind', probAeqa_list)
-          )
-        rowProds_t <- system.time(
+          # )
+        # rowProds_t <- system.time(
           cumprodAeqa <- matrixStats::rowProds(probAeqa_mat)
-          )
+          # )
       }
       private$cumprodAeqa <- cumprodAeqa
 			return(cumprodAeqa)
@@ -440,6 +445,20 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 	),
 
 	private = list(
+    deep_clone = function(name, value) {
+      # if value is is an environment, quick way to copy:
+      # list2env(as.list.environment(value, all.names = TRUE), parent = emptyenv())
+      # if a list of R6 objects, make a deep copy of each:
+      if (name == "PsAsW.models") {
+        lapply(value, function(PsAsW.model) PsAsW.model$clone(deep=TRUE))
+      # to check the value is an R6 object:
+      } else if (inherits(value, "R6")) {
+        value$clone(deep=TRUE)
+      } else {
+        # For all other fields, just return the value
+        value
+      }
+    },
 		PsAsW.models = list(),
 		fitted.pbins = list(),
 		cumprodAeqa = NULL
@@ -480,7 +499,7 @@ def_regs_subset <- function(self) {
       print("bin_regs$subset: "); print(bin_regs$subset)
     }
   }
-  bin_regs$resetS3class()  
+  bin_regs$resetS3class()
   return(bin_regs)
 }
 

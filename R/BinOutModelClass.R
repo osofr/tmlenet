@@ -1,6 +1,12 @@
+#----------------------------------------------------------------------------------
+# Classes for modelling regression models with binary outcome Bin ~ Xmat
+#----------------------------------------------------------------------------------
+
+
 #-----------------------------------------------------------------------------
 # TO DO:  (Low priority) Consider merging these two classes into one (BinDat & BinOutModel)
 #-----------------------------------------------------------------------------
+
 logisfit <- function(datsum_obj) UseMethod("logisfit") # Generic for fitting the logistic model
 
 # S3 method for glm binomial family fit, takes BinDat data object:
@@ -147,7 +153,8 @@ join.Xmat = function(X_mat, sVar_melt_DT, ID) {
 #' @importFrom assertthat assert_that is.count is.string is.flag
 #' @export
 BinDat <- R6Class(classname = "BinDat",
-  cloneable = FALSE,
+  cloneable = TRUE, # changing to TRUE to make it easy to clone input h_g0/h_gstar model fits
+  # cloneable = FALSE,
   portable = TRUE,
   class = TRUE,
   public = list(
@@ -391,7 +398,8 @@ BinDat <- R6Class(classname = "BinDat",
 #' @importFrom assertthat assert_that is.flag
 #' @export
 BinOutModel  <- R6Class(classname = "BinOutModel",
-  cloneable = FALSE,
+  # cloneable = FALSE,
+  cloneable = TRUE, # changing to TRUE to make it easy to clone input h_g0/h_gstar model fits
   portable = TRUE,
   class = TRUE,
   public = list(
@@ -474,11 +482,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     copy.predict = function(bin.out.model) {
       assert_that("BinOutModel" %in% class(bin.out.model))
       assert_that(self$is.fitted)
-      # if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
-      #   private$probAeqa <- bin.out.model$getprobAeqa
-      # } else {
-        private$probA1 <- bin.out.model$getprobA1
-      # }
+      private$probA1 <- bin.out.model$getprobA1
     },
 
     # Predict the response P(Bin = b|sW = sw), which is returned invisibly;
@@ -523,6 +527,14 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       return(probAeqa)
     },
     show = function() {self$bindat$show()}
+    # ,
+    # # return new R6 object that only contains a copy of the fits in self
+    # clone = function(deep = TRUE) {
+    #   BinOutModel$new(reg = reg, ...)
+    #   assert_that("BinOutModel" %in% class(bin.out.model))
+    #   assert_that(self$is.fitted)
+    #   private$probA1 <- bin.out.model$getprobA1
+    # }
   ),
   active = list(
     wipe.alldat = function() {
