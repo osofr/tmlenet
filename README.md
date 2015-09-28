@@ -97,7 +97,7 @@ head(eval_res$NETIDmat) # matrix of network IDs:
 
 In the example below, we estimate mean population outcome under deterministic intervention that assigns all `A` to 0
 (network specified via a matrix of friend IDs). Note that can also use previously evaluated
-summary measures object `DatNet.ObsP0` as input to `tmlenet`, avoiding the need to specify the argumentss
+summary measures object `DatNet.ObsP0` as input to `tmlenet`, avoiding the need to specify the arguments
 (`data`,`NETIDmat`,`Kmax`,`sW`,`sA`) for the second time.
 
 ```R
@@ -110,24 +110,22 @@ res1$EY_gstar1$vars
 res1$EY_gstar1$CIs
 ```
 
-By default, the conditional expectation `E[Y=1|...]` (`Qform` argument) is estimated by including all the
-summary measures defined in `sW` and `sA` as predictors in the logistic regression for the outcome `Y`.
+By default, the conditional expectation `E[Y=1|...]` (`Qform` argument) is estimated by including all
+summary measures in `sW` and `sA` as predictors in the logistic regression for the outcome `Y`.
 Similarly, by default, the observed exposure model `P(sA|sW)` (`hform.g0` argument) is estimated
-as the conditional probability of observing all summary measures defined in `sA`, given all summary measures
+as the conditional probability of observing the summary measures defined in `sA`, given the summary measures
 defined in `sW`. Finally, the intervention exposure model `P(sA^*|sW)` (`hform.gstar` 
 argument) is estimated by first replacing all observed exposures in `A` with those generated from
 the intervention function specified in `f_gstar1` (new exposures denoted by `A^*`) and then building
 the same summary measures defined in `sW` and `sA` using exposures `A^*` instead of `A`
 (new summary measures denoted by `sA^*`). By default, the intervention exposure model `P(sA^*|sW)`
-will be estimated as the conditional probability of observing all summary measures defined in `sA^*` 
+will be estimated as the conditional probability of observing the intervention-based summary measures in `sA^*` 
 (`sA^*` built with `A^*` using the same summary mappings as in `sA`), given the summary measures defined in `sW`.
 
-One can alter this default behavior and use the arguments `Qform`, `hform.g0` and `hform.gstar`
+One can change this default behavior and use the arguments `Qform`, `hform.g0` and `hform.gstar`
 to select a subset of the summary measures in `sW`,`sA` to be included in each of the three models described above.
 For example, below we are assuming that the outcomes in `Y` only depend on the summary measures `netA`,`netW2` 
-(`"Y~netA+netW2"`), hence the observed exposure model is `P(sA|netW2)` (`"netA~netW2"`) and we also know that 
-`f_gstar1` defines a static intervention and hence sA^* doesn't depend on any covariates (`P(sA^*|sW)' is degenerate),
-but is estimated with a simple model (`"netA ~ nF"`):
+(regression `"Y~netA+netW2"`) and hence the observed exposure model is given by `P(netA|netW2)` (regression `"netA~netW2"`) and we also know that `f_gstar1` defines a static intervention `A^*=1` and hence `sA^*` is degenerate and doesn't depend on any baseline covariates and will be estimated here with a simplified regression model (regression `"netA ~ nF"`):
 
 ```R
 res2 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
