@@ -2,8 +2,8 @@ tmlenet
 ==========
 
 
-<!-- [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/tmlenet)](http://cran.r-project.org/package=tmlenet) -->
-<!-- [![](http://cranlogs.r-pkg.org/badges/tmlenet)](http://cran.rstudio.com/web/packages/tmlenet/index.html) -->
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/tmlenet)](http://cran.r-project.org/package=tmlenet)
+[![](http://cranlogs.r-pkg.org/badges/tmlenet)](http://cran.rstudio.com/web/packages/tmlenet/index.html)
 [![Travis-CI Build Status](https://travis-ci.org/osofr/tmlenet.svg?branch=master)](https://travis-ci.org/osofr/tmlenet)
 [![Coverage Status](https://coveralls.io/repos/osofr/tmlenet/badge.png?branch=master&service=github)](https://coveralls.io/r/osofr/tmlenet?branch=master)
 
