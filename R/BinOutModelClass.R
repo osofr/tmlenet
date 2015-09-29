@@ -2,11 +2,6 @@
 # Classes for modelling regression models with binary outcome Bin ~ Xmat
 #----------------------------------------------------------------------------------
 
-
-#-----------------------------------------------------------------------------
-# TO DO:  (Low priority) Consider merging these two classes into one (BinDat & BinOutModel)
-#-----------------------------------------------------------------------------
-
 logisfit <- function(datsum_obj) UseMethod("logisfit") # Generic for fitting the logistic model
 
 # S3 method for glm binomial family fit, takes BinDat data object:
@@ -222,7 +217,6 @@ BinDat <- R6Class(classname = "BinDat",
       return(subset_idx)
     },
 
-    # TO DO: move to private method...
     # Sets X_mat, Yvals, evaluates subset and performs correct subseting of data
     # everything is performed using data$ methods (data is of class DatNet.sWsA)
     setdata = function(data, getoutvar, ...) {
@@ -458,10 +452,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     },
 
     # Predict the response P(Bin = 1|sW = sw);
-    # Does not need to know the actual values of the binary outcome Bin to do prediction ($newdata(, getouvar = FALSE))
-    # rename to:
-    # predictP_1 = function(newdata, ...)
-    # P(A^s[i]=1|W^s=w^s): uses private$m.fit to generate predictions for newdata:
+    # uses private$m.fit to generate predictions for newdata:
     predict = function(newdata, ...) {
       assert_that(self$is.fitted)
       if (missing(newdata)) {
@@ -486,9 +477,8 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     },
 
     # Predict the response P(Bin = b|sW = sw), which is returned invisibly;
-    # Needs to know the values of b to be able to do prediction ($newdata(, getouvar = TRUE))
+    # Needs to know the values of b for prediction
     # WARNING: This method cannot be chained together with methods that follow (s.a, class$predictAeqa()$fun())
-    # rename to: predict.like.P_a = function(newdata)
     predictAeqa = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
       assert_that(self$is.fitted)
       assert_that(!missing(newdata))

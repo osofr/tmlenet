@@ -1,3 +1,8 @@
+#################################################################################
+########################### NETWORK TMLE R PACKAGE ##############################
+# authors: Oleg Sofrygin <sofrygin@berkeley.edu> and Mark van der Laan <laan@berkeley.edu>
+#################################################################################
+
 # @title tmlenet-package
 # @docType package
 # @author Oleg Sofrygin, Mark J. van der Laan
@@ -10,42 +15,13 @@
 #' @importFrom methods is
 #' @importFrom stats approx binomial coef glm.control glm.fit plogis predict qlogis qnorm quantile rnorm terms var predict glm.control
 #' @importFrom utils data head str
-#######################################################################
-######### BETA VERSION - NOT FOR DISTRIBUTION #########################
-#######################################################################
-
-# NETWORK TMLE
-# authors: Oleg Sofrygin <sofrygin@berkeley.edu> and Mark van der Laan <laan@berkeley.edu>
-
-#------------------------------------
-# TO DO LIST:
-#------------------------------------
-  # *) Implement data-adaptive weight truncation wrt minimization of MSE (taking max of 5% weight of total as truth)
-  # *) Allow SL to fit Q_N, g_N and h (i.e P(A_j|A_{1},..,A_{j-1}, W_i\\inF_j))
-#----------------------------------------------------------------------------------
-# Input checks:
-#----------------------------------------------------------------------------------
-# todo 58 (tmlenet, Q.sVars, g.sVars) +0: Check that outvars & predvars in Q.sVars & g.sVars actually exist in sW, sA
-# Currently, if sW,sA doesn't exist it will not be included, without any warning/message.
-#todo 8 (tmlenet) +0: check all names exist in data (Anode, Ynode, etc...)
-#----------------------------------------------------------------------------------
-#todo 52 (tmlenet) +0: Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
-  # When sW / sA are just lists of character vectors need to capture the calling env and call DefineSummariesClass constructor:
-    # user.env <- parent.frame()
-    # user.env_l <- list(user.env = user.env)
-    # sW <- do.call(DefineSummariesClass$new, c(sW, list(type = "sW"), user.env_l))
-    # sW.gstar <- do.call(DefineSummariesClass$new, c(sW.gstar, list(type = "sW.gstar"), user.env_l))
-    # sA <- do.call(DefineSummariesClass$new, c(sA, list(type = "sA"), user.env_l))  
-#todo 53 (tmlenet) +0: If no sVars were defined (default), use netW (Wnode[[0:Kmax]]) and netA for sVars (Anode[[0:Kmax]])
-#todo 54 (tmlenet) +0: Check all sVar names are unique
-#---------------------------------------------------------------------------------
-
 
 #-----------------------------------------------------------------------------
 # Class Membership Tests
 #-----------------------------------------------------------------------------
 is.DatNet.sWsA <- function(DatNet.sWsA) "DatNet.sWsA"%in%class(DatNet.sWsA)
 is.DatNet <- function(DatNet) "DatNet"%in%class(DatNet)
+
 #-----------------------------------------------------------------------------
 # ALL NETWORK VARIABLE NAMES MUST BE CONSTRUCTED BY CALLING THIS FUNCTION.
 # In the future might return the network variable (column vector) itself.
@@ -114,10 +90,6 @@ GetWarningsToSuppress <- function(update.step=FALSE) {
   return(warnings.to.suppress)
 }
 
-CheckInputs <- function(data, inputparams) {    # Error checking for inputs
-  # ....
-}
-
 # returns NULL if no factors exist, otherwise return the name of the factor variable(s)
 CheckExistFactors <- function(data) {
   testvec <- unlist(lapply(data, is.factor))
@@ -181,7 +153,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   # m.Q.init$getoutvarnm           # reg outvar name (Ynode)
   # DatNet.ObsP0$YnodeVals         # visible Y's with NA for det.Y
   # m.Q.init$getoutvarval          # Yvals used in prediction (with det.Y obs set to NA)
-  # m.Q.init$getprobA1             # predictions (for non-DET Y)
   # m.Q.init$getsubset             # valid subset (!det.Y)
   # m.Q.init$reg                   # regression class (Qreg)
 
@@ -216,7 +187,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   if ("TMLE_A" %in% estnames) {
     #************************************************
     # TMLE A: estimate the TMLE update via univariate ML (epsilon is coefficient for h^*/h) - ONLY FOR NON-DETERMINISTIC SUBSET
-    # #todo 19 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.star
     #************************************************
     ctrl <- glm.control(trace = FALSE, maxit = 1000)
     SuppressGivenWarnings(m.Q.star <- glm(Y ~ -1 + h_wts + offset(off), data = data.frame(Y = Y, off = off, h_wts = h_wts),
@@ -227,7 +197,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   } else if ("TMLE_B" %in% estnames) {
     #************************************************
     # TMLE B: estimate the TMLE update via weighted univariate ML (espsilon is intercept)
-    # #todo 20 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.star
     #************************************************
     ctrl <- glm.control(trace = FALSE, maxit = 1000)
     SuppressGivenWarnings(m.Q.star <- glm(Y ~ offset(off), data = data.frame(Y = Y, off = off), weights = h_wts,
@@ -248,7 +217,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   # Y_IPTW_g[!determ.Q] <- Y[!determ.Q] * g_wts[!determ.Q]
   #************************************************
   # (DISABLED) g_IPTW-based clever covariate TMLE (based on FULL likelihood factorization), covariate based fluctuation
-  # #todo 21 (get_all_ests) +0: use glm.fit or speedglm.Wfit for m.Q.star_giptw
   #************************************************
 	# SuppressGivenWarnings(m.Q.star_giptw <- glm(Y ~ -1 + g_wts + offset(off),
   #                                						data = data.frame(Y = Y, off = off, g_wts = g_wts),
@@ -331,6 +299,7 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
   if (length(regform)==0L) {
     return(list(outvars =  as.vector(unlist(sA.map)), predvars = as.vector(unlist(sW.map))))
   } else {
+
     # Getting predictors (sW names):
     regformterms <- terms(regform)
     sW.names <- attributes(regformterms)$term.labels 
@@ -437,9 +406,7 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
   #----------------------------------------------------------------------------------
   # Testing the evaluation of summary measures:
   sW.matrix <- sW$eval.nodeforms(data.df = data, netind_cl = netind_cl)
-  # sW.matrix <- sW$get.mat.sVar(data.df = data, netind_cl = netind_cl, addnFnode = nFnode)
   sA.matrix <- sA$eval.nodeforms(data.df = data, netind_cl = netind_cl)
-  # sA.matrix <- sA$get.mat.sVar(data.df = data, netind_cl = netind_cl)
   if (verbose) {
     print("sample matrix of sW summary measurs: : "); print(head(sW.matrix))
     print("sample matrix of sA summary measurs: "); print(head(sA.matrix))
@@ -451,7 +418,6 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
   # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
   #---------------------------------------------------------------------------------
   datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode)
-  # datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode, addnFnode = TRUE)
   datnetW$make.sVar(Odata = data, sVar.object = sW)
   datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
   datnetA <- DatNet$new(netind_cl = netind_cl)
@@ -940,13 +906,12 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
     sA <- DatNet.ObsP0$datnetA$sVar.object
   }
 
-  # variables that will only be available to eval.summaries:
-  # node_l <- list(IDnode = IDnode, NETIDnode = NETIDnode, nFnode = nFnode)
   # new version of nodes:
   node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anode = Anode, AnodeDET = AnodeDET,
                   Ynode = Ynode, YnodeDET = YnodeDET)
   nobs <- DatNet.ObsP0$nobs
   DatNet.ObsP0$nodes <- node_l
+
   #----------------------------------------------------------------------------------
   # Defining (and checking) Deterministic Y and A node flags:
   #----------------------------------------------------------------------------------
@@ -964,16 +929,18 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
   }
   CheckVarNameExists(data, node_l$Anode)
   CheckVarNameExists(data, node_l$Ynode)
+
   #----------------------------------------------------------------------------------
   # NOTE: YnodeVals = obsYvals, det.Y = determ.Q need to be added to DatNet.ObsP0 after returned its eval.summaries()
   #----------------------------------------------------------------------------------
   obsYvals <- data[,node_l$Ynode]
   DatNet.ObsP0$addYnode(YnodeVals = obsYvals, det.Y = determ.Q)
+
   #----------------------------------------------------------------------------------
   # (OPTIONAL) ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO sA:
+  # cancelled adding DET nodes to sVar since all sVar are automatically get added to A ~ predictors + DETnodes...
   #----------------------------------------------------------------------------------
-    # cancelled adding DET nodes to sVar since all sVar are automatically get added to A ~ predictors + DETnodes...
-    # obsdat.sW <- O.datnetW$add_deterministic(Odata = data, userDETcol = "determ.g")$dat.sVar
+  # obsdat.sW <- O.datnetW$add_deterministic(Odata = data, userDETcol = "determ.g")$dat.sVar
   # Testing NA for visible det.Y and true observed Y as protected:
   # determ.Q <- c(FALSE, FALSE, FALSE, rep(TRUE, length(determ.Q)-3))
   # length(determ.Q) == length(obsYvals)
@@ -1003,8 +970,6 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
 
   #-----------------------------------------------------------
   # Defining and fitting regression for Y ~ sW + sA:
-  # todo 45 (m.Q.init) +0: In the future add option to fit separate m.Q.init models for each nF value
-  # todo 45 (m.Q.init) +0: Move fitting of Q inside get_all_ests?
   #-----------------------------------------------------------
   check.Qpreds.exist <- unlist(lapply(Q.sVars$predvars, function(PredName) PredName %in% DatNet.ObsP0$names.sVar))
   if (!all(check.Qpreds.exist)) stop("the following predictors in Qform regression could not be located among the summary measures: " %+%
@@ -1019,24 +984,6 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
                               predvars = Q.sVars$predvars,
                               subset = !determ.Q, ReplMisVal0 = TRUE)
   m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)
-  # m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)$predict(newdata = DatNet.ObsP0)
-  # if (verbose) {
-  #   print("fit for E(Y|sA,sW) succeeded:")
-  #   print("coef(m.Q.init): "); print(coef(m.Q.init))
-  # }
-  
-
-  # DatNet.ObsP0$YnodeVals       # visible Y's with NA for det.Y
-  # DatNet.ObsP0$det.Y           # TRUE/FALSE for deterministic Y's
-  # DatNet.ObsP0$noNA.Ynodevals  # actual observed Y's
-  # m.Q.init$getoutvarnm         # reg outvar name (Ynode)
-  # m.Q.init$getoutvarval        # obsYvals after setting det.Y obs to NA
-  # m.Q.init$getprobA1           # predictions (for non-DET Y)
-  # m.Q.init$getsubset           # valid subset (!det.Y)
-  # m.Q.init$reg                 # regression class (Qreg)
-  # Not needed here, using only for comparison:
-  # QY.init <- DatNet.ObsP0$noNA.Ynodevals
-  # QY.init[!DatNet.ObsP0$det.Y] <- m.Q.init$getprobA1[!DatNet.ObsP0$det.Y] # getting predictions P(Y=1) for non-DET Y
 
   #----------------------------------------------------------------------------------
   # Create an object with model estimates, data & network information that is passed on to estimation procedure
@@ -1094,7 +1041,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
   #----------------------------------------------------------------------------------
   EY_gstar1 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out)
   EY_gstar2 <- NULL
-  ATE <- NULL	
+  ATE <- NULL
   if (!is.null(f_gstar2)) {
     EY_gstar2 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out=tmle_g2_out)
     ATE <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)

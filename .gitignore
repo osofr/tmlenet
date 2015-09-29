@@ -10,4 +10,3 @@ tests/RUnit/*.txt
 tests/RUnit/*.pdf
 *.sublime-project
 *.sublime-workspace
-tmlenet.do

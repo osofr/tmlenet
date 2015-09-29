@@ -283,9 +283,6 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   # ------------------------------------------------------------------------------------------
   # RENAME ESTIMATORS FOR THE FINAL OUTPUT:
   # ------------------------------------------------------------------------------------------
-  # print("ests_mat: "); print(ests_mat)
-  # print("ests_vars: "); print(as.vars_obj$as.var_mat)
-  # print("ests_CIs: "); print(CIs_mat)
   rownames(ests_mat) <- estoutnames
   rownames(as.vars_obj$as.var_mat) <- estoutnames
   rownames(CIs_mat) <- estoutnames

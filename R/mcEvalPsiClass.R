@@ -163,9 +163,8 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
     # TMLE A - Update QY.init based on the est. coefficient for the clever covariate h_g0/h_gstar in univar. model fluct (m.Q.star_h_A)
     # output is a vector of length n*p
     get.tmleA = function(m.Q.starA, m.h.fit) {
-      if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first") # QY.init <- self$get.gcomp(self$m.Q.init)
+      if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first")
       h_iptw <- predict.hbars(newdatnet = self$DatNet.gstar, m.h.fit = m.h.fit)
-      # h_iptw <- predh.res$dat_hest$h_gstar_gN
       if (!is.na(coef(m.Q.starA))) {
         self$m.Q.starA <- m.Q.starA
         off <- qlogis(self$QY.init)
@@ -180,7 +179,7 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
     # TMLE B - Update QY.init based on the est. intercept of the model fluct (m.Q.star_h_B)
     # output is a vector of length n*p
     get.tmleB = function(m.Q.starB) {
-      if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first") # QY.init <- self$get.gcomp(self$m.Q.init)
+      if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first")
       if (!is.na(coef(m.Q.starB))) {
         self$m.Q.starB <- m.Q.starB
         off <- qlogis(self$QY.init)
@@ -196,7 +195,7 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
     # Creates a vector of size n*p, where each of n obs is then averaged p times.
     get.fiW = function() {
     # get.fiW = function(m.Q.starA, m.Q.starB) {
-      if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first") # QY.init <- self$get.gcomp(self$m.Q.init)
+      if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first")
       # *******fi_W based on Q,N.init model ******
       ID <- rep.int(c(1 : self$nOdata), self$p)
       # taking average over p samples for each of n obs

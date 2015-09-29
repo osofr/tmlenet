@@ -8,7 +8,6 @@
 # @export
 # fit models for m_gAi
 predict.hbars <- function(newdatnet = NULL, m.h.fit) {
-# pred.hbars <- function(newdatnet = NULL, m.h.fit) {
     lbound <- m.h.fit$lbound
     # netA_names <- m.h.fit$m.gAi_vec_g$sA_nms
     # determ_cols_Friend <- m.h.fit$determ_cols_Friend # Should this be saved in m.gAi_vec_g and m.gAi_vec_gstar objects instead?
@@ -143,8 +142,9 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     if (gvars$verbose) message("generating DatNet.g0 under known g0")
     DatNet.g0 <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
     DatNet.g0$make.dat.sWsA(p = p_h0, f.g_fun = f.g0, sA.object = sA)
-    print("head(DatNet.g0$dat.sWsA): "); print(head(DatNet.g0$dat.sWsA))
-    # DatNet.g0$make.dat.sWsA(p = p_h0, f.g_fun = f.g0, f.g_args = f.g0_args, sA.object = sA)
+    if (gvars$verbose) {
+      print("new DatNet.g0$dat.sWsA from known g0: "); print(head(DatNet.g0$dat.sWsA))
+    }
   } else {
     DatNet.g0 <- DatNet.ObsP0
   }

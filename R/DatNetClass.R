@@ -1,7 +1,9 @@
 #-----------------------------------------------------------------------------
-# Create (make.sVar) and store the summary measure matrix sW or sA in DatNet class;
-# Create (make.dat.sWsA) and store the combined summary measure matrix (sW,sA) in DatNet.sWsA class;
-# Methods for: 
+# DatNet Classes
+#-----------------------------------------------------------------------------
+# Creates (make.sVar) and stores the summary measure matrix sW or sA in DatNet class;
+# Creates (make.dat.sWsA) and stores the combined summary measure matrix (sW,sA) in DatNet.sWsA class;
+# Contains Methods for:
   # *) detecting sVar types (detect.col.types);
   # *) normalizing continous sVar (normalize_sVar)
   # *) defining interval cuttoffs for continuous sVar (define.intervals)
@@ -10,14 +12,6 @@
   # *) creating design matrix (Xmat) based on predvars and row subsets (evalsubst)
   # *) sampling exposures from input intervention f_gstar and generating summary measures (sW,sA) from this new exposure (make.dat.sWsA, f.gen.A.star)
 #-----------------------------------------------------------------------------
-
-# ***********************************************************
-# TO DO: is nFnode even needed DatNet anymore???? Where is it used? Can it be removed completely?
-# ***********************************************************
-# #todo 33 (DatNet.sWsA) +0: rename datnetW, datnetA to O.datnetW, O.datnetA for clarity
-# #todo 71 (DatNet.sWsA) +0: *** NOTE *** When sVar is cat might be better to set bin_bymass = FALSE to avoid collapsing of categories for sVar
-# Fix 71 will still not solve the issue for ordinal sVar. Need to manually set intervals when sVar is categorical!
-# ***********************************************************
 
 #-----------------------------------------------------------------------------
 # DatNet.sWsA CLASS STRUCTURE:
@@ -73,6 +67,7 @@ f.gen.A.star <- function(data, f.g_fun) {
   }
   return(newA)
 }
+
 # # Get the prob P(A^*=1|W) (under known stoch. intervention f_gstar) from user-supplied function, f.g_fun_prob:
 # # NOT USED
 # f.gen.probA.star <- function(data, f.g_fun_prob) {
@@ -126,6 +121,7 @@ normalize_sVar <- function(sVar_vec) {
   sVar_vec
 }
 normalize_matsVar <- function(sVar_mat) apply(sVar_mat, 2, normalize_sVar)
+
 # Define bin cutt-offs for continuous x:
 define.intervals <- function(x, nbins, bin_bymass, bin_bydhist, max_nperbin) {
   x <- x[!gvars$misfun(x)]  # remove missing vals
@@ -180,6 +176,7 @@ make.ordinal <- function(x, intervals) findInterval(x = x, vec = intervals, righ
 #   colnames(dummies_mat) <- bin.nms
 #   dummies_mat
 # }
+
 # Make dummy indicators for ordinal x (sA[j])
 # Approach: creates B_j that jumps to 1 only once and stays 1 (degenerate) excludes reference category (last)
 make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms, levels = 1:nbins) {
@@ -327,8 +324,7 @@ DatNet <- R6Class(classname = "DatNet",
       invisible(self)
     },
 
-    # #todo 18 (DatNet, DatNet.sWsA) +0: (OPTIONAL) ENABLE ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO DatNet
-    # #todo 25 (DatNet, add_det) +0: Need to save det node flags as a separate mat, can't add them to sVar since all sVars 
+    # (OPTIONAL) ENABLE ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO DatNet
     # will be automatically added to A ~ predictors
     # add_deterministic = function(Odata, userDETcol) {
     #   determ.g_user <- as.vector(Odata[,userDETcol]) # get deterministic As for the entire network of each unit (set by user)
@@ -349,6 +345,7 @@ DatNet <- R6Class(classname = "DatNet",
     #   self$mat.netVar[gvars$misfun(self$mat.netVar)] <- gvars$misXreplace
     #   invisible(self)
     # },
+
     fixmiss_sVar = function() {
       self$mat.sVar[gvars$misfun(self$mat.sVar)] <- gvars$misXreplace
       invisible(self)
@@ -580,11 +577,13 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       levels <- sort(unique(self$get.sVar(name.sVar)))
       return(levels)
     },
+
     # create a vector of ordinal (categorical) vars out of cont. sVar vector:
     discretize.sVar = function(name.sVar, intervals) {
       self$ord.sVar <- make.ordinal(x = self$get.sVar(name.sVar), intervals = intervals)
       invisible(self$ord.sVar)
     },
+
     # return matrix of bin indicators for continuous sVar:
     # change name to:
     # binirize.cont.sVar = function(name.sVar, intervals, nbins, bin.nms) {
@@ -593,6 +592,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       self$dat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$discretize.sVar(name.sVar, intervals), nbins = nbins, bin.nms = bin.nms)
       invisible(self$dat.bin.sVar)
     },
+
     # return matrix of bin indicators for ordinal sVar:
     binirize.cat.sVar = function(name.sVar, levels) {
       nbins <- length(levels)
@@ -601,6 +601,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       self$dat.bin.sVar <- make.bins_mtx_1(x.ordinal = self$get.sVar(name.sVar), nbins = nbins, bin.nms = bin.nms, levels = levels)
       invisible(self$dat.bin.sVar)
     },
+
     # return the bin widths vector for the discretized continuous sVar (self$ord.sVar):
     get.sVar.bw = function(name.sVar, intervals) {
       if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")
@@ -610,6 +611,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       ord.sVar_bw <- intrvls.width[self$ord.sVar]
       return(ord.sVar_bw)
     },
+
    # return the bin widths vector for the discretized continuous sVar (self$ord.sVar):
     get.sVar.bwdiff = function(name.sVar, intervals) {
       if (!(self$active.bin.sVar %in% name.sVar)) stop("current discretized sVar name doesn't match name.sVar in get.sVar.bin.widths()")

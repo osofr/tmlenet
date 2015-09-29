@@ -1,19 +1,8 @@
 #----------------------------------------------------------------------------------
 # Classes that control modelling of the multivariate joint probability model P(sA|sW).
 #----------------------------------------------------------------------------------
-# **********
-# TO DO (ContinSummaryModel)
-# x) (low priority) see how to generalize to pooled fits, k-specific fits, etc (use subset definitions + ?)
-# **********
-# TO DO (ContinSummaryModel, binirize)
-# * (***BUG***) Currently make.bins_mtx_1 fails on binary A with automatic bin detection (all values are placed in last (2nd) bin)
-# * Implement regression for categorical outvar: the process is identical to contin, except that normalize, define.intervals() & discretize() is skipped
-# * Need to test that make.bins_mtx_1 will do the right thing when x_cat is (0, ..., ncats) instead of (1, ..., ncats) (IT SHOULD WORK)
-
-
 
 #' @importFrom assertthat assert_that
-
 
 # Generic S3 constructor for the summary model classes:
 newsummarymodel <- function(reg, DatNet.sWsA.g0, ...) { UseMethod("newsummarymodel") }
@@ -344,11 +333,6 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		getPsAsW.models = function() { private$PsAsW.models },  # get all summary model objects (one model object per outcome var sA[j])
 		getcumprodAeqa = function() { private$cumprodAeqa },  # get joint prob as a vector of the cumulative prod over j for P(sA[j]=a[j]|sW)
 
-    # # **********************************************************************
-    # # TO DO: Add $copy.fit(SummariesModel) method that will propagate copy all the model fits down the line
-    # copy.fit = function(SummariesModel) {},
-    # # **********************************************************************
-
     fit = function(data) {
       assert_that(is.DatNet.sWsA(data))
       # serial loop over all regressions in PsAsW.models:
@@ -373,8 +357,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		  invisible(self)
 		},
 
-    # TO DO rename to:
-    # predictP_1 = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
+    # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
 		predict = function(newdata) {
 		  if (missing(newdata)) {
         stop("must provide newdata")
@@ -422,12 +405,8 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         probAeqa_list <- foreach::foreach(k_i = seq_along(private$PsAsW.models), .options.multicore = mcoptions) %dopar% {
           private$PsAsW.models[[k_i]]$predictAeqa(newdata = newdata, ...)
         }
-        # cbind_t <- system.time(
           probAeqa_mat <- do.call('cbind', probAeqa_list)
-          # )
-        # rowProds_t <- system.time(
           cumprodAeqa <- matrixStats::rowProds(probAeqa_mat)
-          # )
       }
       private$cumprodAeqa <- cumprodAeqa
 			return(cumprodAeqa)
@@ -611,8 +590,8 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
       invisible(self)
     },
-    # TO DO: rename to:
-    # predictP_1 = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
+
+    # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
     predict = function(newdata) {
       if (missing(newdata)) {
         stop("must provide newdata")
@@ -625,6 +604,7 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       newdata$emptydat.bin.sVar # wiping out binirized mat in newdata DatNet.sWsA object...
       invisible(self)
     },
+
     # Convert contin. sA vector into matrix of binary cols, then call parent class method: super$predictAeqa()
     # Invisibly return cumm. prob P(sA=sa|sW=sw)
     predictAeqa = function(newdata) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
@@ -721,6 +701,7 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       bin_regs <- def_regs_subset(self = self)
       super$initialize(reg = bin_regs, ...)
     },
+
     # Transforms data for categorical outcome to bin indicators sA[j] -> BinsA[1], ..., BinsA[M] and calls $super$fit on that transformed data
     # Gets passed redefined subsets that exclude degenerate Bins (prev subset is defined for names in sA - names have changed though)
     fit = function(data) {
@@ -739,8 +720,7 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       invisible(self)
     },
 
-    # TO DO: rename to:
-    # predictP_1 = function(newdata) { # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
+    # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
     predict = function(newdata) {
       if (missing(newdata)) {
         stop("must provide newdata")

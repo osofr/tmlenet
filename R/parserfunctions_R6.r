@@ -1,7 +1,7 @@
 # nocov start
 # ************************************************************************************
 # TO DO: 
-# REIMPORT THIS FILE BACK INTO SIMCAUSAL
+# REIMPORT THIS FILE BACK INTO SIMCAUSAL (Setting opts$NoChangeFunCalls <- FALSE in simcausal)
 # ************************************************************************************
   # x) Extend the checking for non_TD pars to TD parents in find_FormVars() 
   # x) For non_TD var outside of the DAG also check that length(non_TD) < 2

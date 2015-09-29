@@ -9,8 +9,6 @@ gvars$misval <- NA_integer_ # the default missing value for observations (# gvar
 gvars$misXreplace <- 0L     # the default replacement value for misval that appear in the design matrix
 gvars$tolerr <- 10^-12      # tolerance error: assume for abs(a-b) < gvars$tolerr => a = b
 gvars$sVartypes <- list(bin = "binary", cat = "categor", cont = "contin")
-# gvars$binByMass <- FALSE
-# gvars$binBydhist <- FALSE
 
 # setopt <- function(optname, val) {
 #   opt <- gvars$opts
@@ -147,7 +145,7 @@ gvars$misfun <- testmisfun()
   #   packageStartupMessage('Package created on ', utils::packageDescription('tmlenet')$Date, '\n')
   #   packageStartupMessage('Please note this package is still in its early stages of development.
    # Check for updates and report bugs at http://github.com/osofr/tmlenet.', '\n')
-  #   packageStartupMessage('To see the vignette use vignette("tmlenet_vignette", package="tmlenet"). 
+  #   packageStartupMessage('To see the vignette use vignette("tmlenet_vignette", package="tmlenet").
   # To see all available package documentation use help(package = "tmlenet") and ?tmlenet.', '\n')
   #   packageStartupMessage('To see the latest updates for this version, use news(package = "tmlenet").', '\n')
 }
