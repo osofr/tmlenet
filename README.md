@@ -12,7 +12,7 @@ The `tmlenet` R package performs estimation of average causal effects for single
 
 ### Installation
 
-To install the CRAN release version of `simcausal`: 
+To install the CRAN release version: 
 
 ```R
 install.packages('tmlenet')
