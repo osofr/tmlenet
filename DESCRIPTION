@@ -47,5 +47,6 @@ Suggests:
     locfit,
     matrixStats,
     RUnit
+VignetteBuilder: knitr
 License: GPL-2
 LazyData: true
