@@ -503,6 +503,9 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           res <- res & (!gvars$misfun(sVar.vec))
         }
         return(res)
+      # ******************************************************
+      # NOTE: Below is currently not being used, all subsetting now is done with subsetvars above, for speed & memory efficiency
+      # ******************************************************
       } else {
         if (is.logical(subsetexpr)) {
           return(subsetexpr)

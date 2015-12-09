@@ -202,6 +202,9 @@ BinDat <- R6Class(classname = "BinDat",
     define.subset_idx = function(data) {
       if (is.logical(self$subset_expr)) {
         subset_idx <- self$subset_expr
+      # ******************************************************
+      # NOTE: Below subsetting by call/expression is currently not being used, all subsetting is done by subsetvars now for speed & memory efficiency
+      # ******************************************************
       } else if (is.call(self$subset_expr)) {
         subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
       } else if (is.character(self$subset_expr)) {

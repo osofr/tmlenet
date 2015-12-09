@@ -124,6 +124,9 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # based on existing logical determ_g columns (TRUE = degenerate/determ):
   # subset_exprs <- lapply(netvar("determ.g_true", c(0:Kmax)), function(var) {var%+%" != "%+%TRUE})
   #-----------------------------------------------------------
+  # ******************************************************
+  # NOTE: Subsetting by var name (which automatically evaluates as !gvars$misval(var)) for speed & memory efficiency
+  # ******************************************************
   subsets_expr <- lapply(sA_nms_g0, function(var) {var})  # subsetting by !gvars$misval on sA:
 
   ##########################################

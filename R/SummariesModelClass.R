@@ -448,6 +448,9 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 # -------------------------------------------------------------------------------------------
 # same code in ContinSummaryModel$new and CategorSummaryModel$new replaced with outside function:
 # Define subset evaluation for new bins:
+# ******************************************************
+# NOTE: Subsetting by var name only (which automatically evaluates as !gvars$misval(var)) for speed & memory efficiency
+# ******************************************************
 # -------------------------------------------------------------------------------------------
 def_regs_subset <- function(self) {
   bin_regs <- self$reg$clone() # instead of defining new RegressionClass now cloning parent reg object and then ADDING new SETTINGS
