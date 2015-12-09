@@ -35,7 +35,7 @@ if(FALSE) {
   setwd("..")
   system("R CMD check --as-cran tmlenet_0.1.0.tar.gz") # check R package tar ball prior to CRAN submission
       ## system("R CMD check --no-manual --no-vignettes tmlenet") # check without building the pdf manual and not building vignettes
-      ## system("R CMD build tmlenet --no-build-vignettes")
+      ## system("R CMD build tmlenet --no-build-vignettes --as-cran")
       ## system("R CMD build tmlenet")  
   # devtools::use_travis() # SET UP TRAVIS CONFIG FILE
   # INSTALLING FROM SOURCE:
