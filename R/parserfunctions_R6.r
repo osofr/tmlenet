@@ -514,8 +514,8 @@ Define_sVar <- R6Class("Define_sVar",
 
         if (missing(indx)) stop("missing tindex when using Var[tindex] inside the node formula")
         if (identical(class(indx),"logical")) indx <- which(indx)
-        if (is.null(t)) stop("references, s.a. Var[t] are not allowed when t is undefined")
-        if (max(indx)>t) stop(paste0(var, "[", max(indx),"] cannot be referenced in node formulas at t = ", t))  # check indx<= t
+        # if (is.null(t)) stop("references, s.a. Var[t] are not allowed when t is undefined")
+        # if (max(indx)>t) stop(paste0(var, "[", max(indx),"] cannot be referenced in node formulas at t = ", t))  # check indx<= t
 
         # ******* NOTE *******
         # Don't like the current implementation that defines TDvars as characters and then returns a matrix by cbinding 
@@ -534,6 +534,7 @@ Define_sVar <- R6Class("Define_sVar",
         if (!all(check_exist)) stop("undefined time-dependent variable(s): "%+%TDvars[which(!check_exist)])
         # THIS STEP COULD BE MORE MEMORY EFFICIENT IF WAS SUBSETTING INSTEAD (BY COLS) ON EXISTING data MATRIX:
         TDvars_eval <- eval(parse(text=paste0("cbind(",paste0(TDvars, collapse=","),")")), envir = env)
+        print("TDvars_eval"); print(head(TDvars_eval))
         return(TDvars_eval)
       },
 

@@ -226,13 +226,22 @@ BinDat <- R6Class(classname = "BinDat",
       assert_that(is.DatNet.sWsA(data))
       self$n <- data$nobs
       self$subset_idx <- self$define.subset_idx(data)
-      if (getoutvar) private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Always a vector
+      if (is.character(getoutvar)) {
+        if (getoutvar %in% "Q.kplus1") {
+          private$Y_vals <- data$getQ.kplus1(self$subset_idx, self$outvar) # Always a vector
+        } else {
+          stop("getoutvar arg must be logical or named Q.kplus1: " %+% getoutvar)
+        }
+      } else if (getoutvar) {
+        private$Y_vals <- data$get.outvar(self$subset_idx, self$outvar) # Always a vector
+      }
+
       if (sum(self$subset_idx) == 0L) {  # When nrow(X_mat) == 0L avoids exception (when nrow == 0L => prob(A=a) = 1)
         private$X_mat <- matrix(, nrow = 0L, ncol = (length(self$predvars) + 1))
         colnames(private$X_mat) <- c("Intercept", self$predvars)
       } else {
         # *** THIS IS THE ONLY LOCATION IN THE PACKAGE WHERE CALL TO DatNet.sWsA$get.dat.sWsA() IS MADE ***
-        private$X_mat <- as.matrix(cbind(Intercept = 1, data$get.dat.sWsA(self$subset_idx, self$predvars)))        
+        private$X_mat <- as.matrix(cbind(Intercept = 1, data$get.dat.sWsA(self$subset_idx, self$predvars)))
         # To find and replace misvals in X_mat:
         if (self$ReplMisVal0) private$X_mat[gvars$misfun(private$X_mat)] <- gvars$misXreplace
       }
@@ -411,9 +420,9 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       if (!reg$useglm) self$glmfitclass <- "speedglmS3"
       self$bindat <- BinDat$new(reg = reg, ...) # postponed adding data in BinDat until self$fit() is called
       class(self$bindat) <- c(class(self$bindat), self$glmfitclass)
-      if (gvars$verbose) {
+      # if (gvars$verbose) {
         print("New BinOutModel instance:"); print(self$show())
-      }
+      # }
       # Get the bin width (interval length) for the current bin name self$getoutvarnm (for discretized continuous sA only):
       self$cont.sVar.flag <- self$getoutvarnm %in% names(reg$intrvls.width)
       if (self$cont.sVar.flag) {
@@ -423,7 +432,6 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       } else {
         self$bw.j <- 1L
       }
-
       invisible(self)
     },
 
@@ -433,7 +441,6 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() 
       # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
-
       # **********************************************************************
       # to save RAM space when doing many stacked regressions no longer predicting in fit:
       # **********************************************************************
@@ -462,7 +469,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
         stop("must provide newdata for BinOutModel$predict()")
       }
       # re-populate bindat with new X_mat:
-      self$bindat$newdata(newdata = newdata, getoutvar = FALSE, ...) 
+      self$bindat$newdata(newdata = newdata, getoutvar = FALSE, ...)
       if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
         stop("BinOutModel$predict is not applicable to pooled regression, call BinOutModel$predictAeqa instead")
       } else {

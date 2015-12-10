@@ -109,10 +109,20 @@ capture.exprs <- function(...) {
 #'  \code{\link{DefineSummariesClass}} for details on how the summary measures are stored and evaluated.
 #' @example tests/examples/2_defsWsA_examples.R
 #' @export
-def.sW <- function(...) {
+def.sW.old <- function(...) {
   # call outside fun that parses ... and assigns empty names "" if the names attribute not set:
   sVar.exprs <- capture.exprs(...)
   sVar.exprs <- c(sVar.exprs, list(nF="nF")) # add nF node (vector with counts of friends):
+  node_evaluator <- DefineSummariesClass$new(type = "sW")
+  node_evaluator$set.user.env(user.env = parent.frame())
+  node_evaluator$set.new.exprs(exprs_list = sVar.exprs)
+  return(node_evaluator)
+}
+
+def.sW <- function(...) {
+  # call outside fun that parses ... and assigns empty names "" if the names attribute not set:
+  sVar.exprs <- capture.exprs(...)
+  sVar.exprs <- c(sVar.exprs) # add nF node (vector with counts of friends):
   node_evaluator <- DefineSummariesClass$new(type = "sW")
   node_evaluator$set.user.env(user.env = parent.frame())
   node_evaluator$set.new.exprs(exprs_list = sVar.exprs)
@@ -165,7 +175,8 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
   # flag TRUE if user did not provide an argument name for self$exprs_list[expr.idx]:
   expr_noname <- (names(self$exprs_list)[expr.idx] %in% "")
   if (expr_noname && (length(expr_parents)>1)) {
-    stop("must name complex expressions that involve more than one variable: " %+% expr_char)
+    # disabling for ltmle:
+    # stop("must name complex expressions that involve more than one variable: " %+% expr_char)
   } else if (expr_noname && !is.null(expr_parents) && is.character(expr_parents)) {
     message("assigning a name '" %+% expr_parents %+% "' to expression: " %+% expr_char)
     expr_nm <- expr_parents
@@ -182,7 +193,9 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
   # for matrix results: if column names exist (!is.null(colnames(expr_res))): DO NOTHING
   # if column names don't exist (is.null(colnames(expr_res))) or some are empty strings "":
   } else if (is.matrix(evalres[["evaled_expr"]])) {
-    if (is.null(colnames(evalres[["evaled_expr"]])) || (any(colnames(evalres[["evaled_expr"]])%in%"")) || (length(expr_parents)>1)) {
+    # keeping old names when exist for ltmle:
+    if (is.null(colnames(evalres[["evaled_expr"]])) || (any(colnames(evalres[["evaled_expr"]])%in%""))) {
+    # if (is.null(colnames(evalres[["evaled_expr"]])) || (any(colnames(evalres[["evaled_expr"]])%in%"")) || (length(expr_parents)>1)) {
       # assign names by convention: <- expr_nm%+%"."%+%c(1:ncol(expr_res))
       colnames(evalres[["evaled_expr"]]) <- expr_nm%+%"."%+%c(1:ncol(evalres[["evaled_expr"]]))
     }

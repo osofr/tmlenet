@@ -257,8 +257,10 @@ DatNet <- R6Class(classname = "DatNet",
     nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
 
     initialize = function(netind_cl, nodes, nFnode, ...) {
-      self$netind_cl <- netind_cl
-      self$Kmax <- netind_cl$Kmax
+      if (!missing(netind_cl)) {
+        self$netind_cl <- netind_cl
+        self$Kmax <- netind_cl$Kmax
+      }
       if (!missing(nFnode)) self$nFnode <- nFnode
       if (!missing(nodes)) self$nodes <- nodes
       invisible(self)
@@ -460,8 +462,9 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     # dat.bin.sVar = NULL,     # (MOVED TO AN ACT BIND) points to self$mat.bin.sVar
     mat.bin.sVar = NULL,       # temp storage mat for bin indicators on currently binarized continous sVar (from self$active.bin.sVar)
     ord.sVar = NULL,           # Ordinal (cat) transform for continous sVar
-    YnodeVals = NULL,          # Values of the binary outcome (Ynode) in observed data where det.Y = TRUE obs are set to NA
+    YnodeVals = NULL,          # Values of the binary outcome (Ynode) in observed data, when det.Y = TRUE these values are set to NA
     det.Y = NULL,              # Logical vector, where YnodeVals[det.Y==TRUE] are deterministic (0 or 1)
+    Q.kplus1 = NULL,
     p = 1,
     # **********
     # dat.sVar - (inherited act bind): now points to combine mat.sVar of above cbind(dat.sW, dat.sA)
@@ -549,15 +552,32 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         self$dat.bin.sVar[rowsubset, var]
       } else if ((var %in% self$nodes$Ynode) && !is.null(self$YnodeVals)) {
         self$YnodeVals[rowsubset]
+
+      } else if ((var %in% self$nodes$Ynode) && !is.null(self$YnodeVals)) { # for sequential G-comp
+
       } else {
         stop("requested variable " %+% var %+% " does not exist in DatNet.sWsA!")
       }
     },
 
+    # ------------------------------------------------------------------------------------------------------------
+    # FUNCTION FOR SAVING AND GETTING INTERMEDIATE Q.k VALUES FROM SEQUENTIAL G-COMP PREDICTIONS
+    # In the future might save ALL intermediate Q.kplus1 in a matrix, then look up specific Q.kplus1 by the name in var arg
+    initQ.kplus1 = function(n_regs) {
+      self$Q.kplus1 <- self$YnodeVals
+      invisible(self)
+    },
+    getQ.kplus1 = function(rowsubset = TRUE, var) {
+      return(self$Q.kplus1[rowsubset])
+    },
+    addQ.kplus1 = function(name = "Q.kplus1", iter, val) {
+      self$Q.kplus1 <- val
+      invisible(self)
+    },
+
     copy.sVar.types = function() {
       self$type.sVar <- c(self$datnetW$type.sVar, self$datnetA$type.sVar)
     },
-
     # ------------------------------------------------------------------------------------------------------------
     # MOVED THESE METHODS TO DatNet.sWsA class
     # ------------------------------------------------------------------------------------------------------------
