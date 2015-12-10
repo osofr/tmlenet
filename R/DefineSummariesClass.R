@@ -109,20 +109,21 @@ capture.exprs <- function(...) {
 #'  \code{\link{DefineSummariesClass}} for details on how the summary measures are stored and evaluated.
 #' @example tests/examples/2_defsWsA_examples.R
 #' @export
-def.sW.old <- function(...) {
+def.sW <- function(...) {
   # call outside fun that parses ... and assigns empty names "" if the names attribute not set:
   sVar.exprs <- capture.exprs(...)
-  sVar.exprs <- c(sVar.exprs, list(nF="nF")) # add nF node (vector with counts of friends):
+  sVar.exprs <- c(sVar.exprs) # add nF node (vector with counts of friends):
   node_evaluator <- DefineSummariesClass$new(type = "sW")
   node_evaluator$set.user.env(user.env = parent.frame())
   node_evaluator$set.new.exprs(exprs_list = sVar.exprs)
   return(node_evaluator)
 }
 
-def.sW <- function(...) {
+#' @export
+def.sW.old <- function(...) {
   # call outside fun that parses ... and assigns empty names "" if the names attribute not set:
   sVar.exprs <- capture.exprs(...)
-  sVar.exprs <- c(sVar.exprs) # add nF node (vector with counts of friends):
+  sVar.exprs <- c(sVar.exprs, list(nF="nF")) # add nF node (vector with counts of friends):
   node_evaluator <- DefineSummariesClass$new(type = "sW")
   node_evaluator$set.user.env(user.env = parent.frame())
   node_evaluator$set.new.exprs(exprs_list = sVar.exprs)

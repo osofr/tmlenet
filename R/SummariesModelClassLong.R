@@ -164,8 +164,8 @@ SGcompSummariesModel <- R6Class(classname = "SGcompSummariesModel",
         print("New instance of SGcompSummariesModel:")
         print("#----------------------------------------------------------------------------------")
         print("Outcomes: " %+% paste(reg$outvar, collapse = ", "))
-        print("nodes: " %+% paste(unlist(reg$nodes), collapse = ", "))
-        print("predvars: " %+% paste(unlist(reg$predvars), collapse = ", "))
+        # print("nodes: " %+% paste(unlist(reg$nodes), collapse = ", "))
+        # print("predvars: " %+% paste(unlist(reg$predvars), collapse = ", "))
         print("No. of regressions: " %+% self$n_regs)
         # print("Anodes: " %+% paste(unlist(reg$Anodes), collapse = ", "))
         # print("Cnodes: " %+% paste(unlist(reg$Cnodes), collapse = ", "))
@@ -189,12 +189,13 @@ SGcompSummariesModel <- R6Class(classname = "SGcompSummariesModel",
 
     # Sequential G-COMP regression
     # TO DO: NEED TO ADD newdata ARG TO THIS WHICH WILL CONTAIN COUNTERFACTUAL TREATMENT ASSIGNMENTS
-    fit = function(data) {
+    fit = function(data, newdata) {
     # fit = function(data, newdata) {
       assert_that(is.DatNet.sWsA(data))
       # if (gvars$verbose) {
         print("fitting sequential G-comp: " %+% self$outvar)
       # }
+
       # Initialize Q.kplus1 by adding outcome to data$Q.kplus1:
       data$initQ.kplus1(n_regs = self$n_regs)
 
@@ -209,17 +210,17 @@ SGcompSummariesModel <- R6Class(classname = "SGcompSummariesModel",
         # ... NOT IMPLEMENTED ...
 
         # 3. predict intermediate Y_d, based on Anodes set to gstar, this predictions will be used as the outcome during next regression:
-        # Q.kplus1 <- private$PsAsW.models[[k_i]]$predict(newdata = DatNet.gstar)$getprobA1
-        Q.kplus1 <- private$PsAsW.models[[k_i]]$predict(newdata = data)$getprobA1
+        Q.kplus1 <- private$PsAsW.models[[k_i]]$predict(newdata = newdata)$getprobA1
+        # Q.kplus1 <- private$PsAsW.models[[k_i]]$predict(newdata = data)$getprobA1
 
         # 4. record Q.kplus1, so that its available as an outcome to next regression:
         data$addQ.kplus1(name = "Q.kplus1", iter = k_i, val = Q.kplus1)
-        print("Q.kplus1: "); print(head(Q.kplus1))
+        print("Q.kplus1 fit for sequential regression: " %+% k_i); print(head(Q.kplus1))
       }
 
       # clean up:
       # data$emptydat.bin.sVar # wiping out binirized mat in data DatNet.sWsA object...
-      # self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
+      self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
 
       invisible(self)
     },

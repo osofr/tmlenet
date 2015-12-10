@@ -1,23 +1,25 @@
 # install.packages("simcausal")
 # ************************************************************************************
-# ltmle needs to be installed from github:
+# tmlenet version of ltmle needs to be installed from github:
 # devtools::install_github('osofr/tmlenet', ref = "ltmle", build_vignettes = FALSE)
+# actual ltmle with 2 versions of pooling:
+# devtools::install_github('joshuaschwab/ltmle', ref = "pooling", build_vignettes = FALSE)
 # ************************************************************************************
 
+if(FALSE) {
+  library("RUnit")
+  library("roxygen2")
+  library("devtools")
+  setwd(".."); setwd(".."); getwd()
+  document()
+  load_all("./", create = FALSE) # load all R files in /R and datasets in /data. Ignores NAMESPACE:
+  # tmlenet:::debug_set() # SET TO DEBUG MODE
+  # setwd("..");
+  # install("tmlenet", build_vignettes = FALSE) # INSTALL W/ devtools:
+}
 
-# if(FALSE) {
-#   library("RUnit")
-#   library("roxygen2")
-#   library("devtools")
-#   setwd(".."); setwd(".."); getwd()
-#   document()
-#   load_all("./", create = FALSE) # load all R files in /R and datasets in /data. Ignores NAMESPACE:
-#   # tmlenet:::debug_set() # SET TO DEBUG MODE
-#   # setwd("..");
-#   # install("tmlenet", build_vignettes = FALSE) # INSTALL W/ devtools:
-# }
 
-
+# simcausal DAG for sim1:
 make.simcausal.DAG <- function(t.end=16){
   require(simcausal)
   options(simcausal.verbose = FALSE)
@@ -56,14 +58,18 @@ make.simcausal.DAG <- function(t.end=16){
   return(Drm)
 }
 
-
-
 # ------------------------------------------------------------------------------------
-# simcausal-based simulation for sequential G-COMPUTATION formula
+# big-data simcausal-based simulation for sequential G-COMPUTATION formula
 # ------------------------------------------------------------------------------------
 sim1.simcausal <- function() {
-
   t.end <- 50 # number of time-points
+  n <- 100000 # sample size
+  abar <- 0   # intervention
+
+  # ----------------------------------------------------------------------------
+  # Generate some data
+  # ----------------------------------------------------------------------------
+  require(simcausal)
   dagobj <- set.DAG(make.simcausal.DAG(t.end=t.end))
   simdat <- sim(dagobj, n = 100000)
   (allnodes <- names(attributes(simdat)$node_nms))
@@ -73,95 +79,293 @@ sim1.simcausal <- function() {
   names(simdatfit)
   mean(simdatfit[,"Y_"%+%t.end])
 
+  # define nodes and Qform regressions:
   nodes <- CreateNodes(simdatfit, Anodes = "TI_"%+%1:(t.end-1), Cnodes = NULL,
                        Lnodes = c("highA1c_"%+%2:(t.end-1), "Y_"%+%2:(t.end-1)),
                        Ynodes="Y_"%+%t.end)
-  # Qform <- CreateLYNodes(simdatfit, nodes, check.Qform=TRUE, Qform=NULL)$Qform
+  # Qform <- CreateLYNodes(simdatfit, nodes, check.Qform=TRUE, Qform=Qform)$Qform
   Qform.default <- GetDefaultForm(simdatfit, nodes, is.Qform=TRUE)
-  lapply(Qform.default, RhsVars)
+  # lapply(Qform.default, RhsVars)
 
-  # Define data for tmlenet package:
+  # define intervention (matrix of counterfactual treatment assignments):
+  Abar.df <- data.frame(matrix(abar, nrow=n, ncol=length(1:(t.end-1))))
+  colnames(Abar.df) <- "TI_"%+%1:(t.end-1)
+  dim(Abar.df)
+  head(Abar.df)
+
+  # Define input data objects for tmlenet:
   def_sW <- def.sW("CVD_0",
                     highA1c=highA1c[0:(t.end-1)],
                     N=N[0:(t.end-1)],
                     Y=Y[1:(t.end-1)])
   datnetW <- DatNet$new()$make.sVar(Odata = simdatfit, sVar.object = def_sW)
+
   def_sA <- def.sA(TI=TI[1:(t.end-1)])
   datnetA <- DatNet$new()$make.sVar(Odata = simdatfit, sVar.object = def_sA)
+  # observed data object:
   datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA, YnodeVals = simdatfit[,nodes$Y])$make.dat.sWsA()
+  # counterfactual abar data object:
+  datnetA.gstar <- DatNet$new()$make.sVar(Odata = Abar.df, sVar.object = def_sA)
+  datNet.gstar <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA.gstar)$make.dat.sWsA()
+  # head(datNet.gstar$dat.sVar)
 
-  mean(simdatfit[,"Y_"%+%t.end])
-  t(head(cbind(simdatfit[,"Y_"%+%t.end],simdatfit[,nodes$Y]),100))
+  # mean(simdatfit[,"Y_"%+%t.end])
+  # t(head(cbind(simdatfit[,"Y_"%+%t.end],simdatfit[,nodes$Y]),100))
 
   # Set-up sequential G-comp regs:
   newreg_Gcomp <- SGCompRegClass$new(outvar = "Y", nodes = nodes, Qforms = Qform.default)
   newsummaries_Gcomp <- SGcompSummariesModel$new(reg = newreg_Gcomp)
   # fit the G-comp regression:
   timerun <- system.time(
-    fitted_Gcomp <- newsummaries_Gcomp$fit(data = datNetObs)
+    fitted_Gcomp <- newsummaries_Gcomp$fit(data = datNetObs, newdata = datNet.gstar)
   )
   print(timerun/60)
+  #      user    system   elapsed
+  # 7.8283000 0.6985333 8.5077667
 
   head(datNetObs$getQ.kplus1())
   mean(datNetObs$getQ.kplus1())
   mean(data[,"Y"])
 }
-
-
 
 # ------------------------------------------------------------------------------------
 # ltmle simulation from Josh
 # ------------------------------------------------------------------------------------
-sim2 <- function() {
+sim2.validation <- function() {
   #uses github branch: "pooling"
+  # devtools::install_github('joshuaschwab/ltmle', ref = "pooling", build_vignettes = FALSE)
+  library(ltmle)
   rexpit <- function(x) rbinom(n=length(x), size=1, prob=plogis(x))
   GenerateData <- function(n, est.psi0=FALSE) {
     W <- rbinom(n, 1, 0.5)
     if (est.psi0) {
-      A_1 <- rep(1, n)
+      A1 <- rep(1, n)
     } else {
-      A_1 <- rexpit(-3 + W)
+      A1 <- rexpit(-3 + W)
     }
-    L1_1 <- rexpit(W + A_1)
-    L2_1 <- rexpit(W + A_1)
+    L <- rexpit(W + A1)
     if (est.psi0) {
-      A_2 <- rep(1, n)
+      A2 <- rep(1, n)
     } else {
-      A_2 <- rexpit(-1.5 + W + A_1 + L1_1)
+      A2 <- rexpit(-1.5 + W + A1 + L)
     }
-    Y <- rexpit(W + k*A_1 + L1_1 + A_2)
+    Y <- rexpit(W + k*A1 + L + A2)
     if (est.psi0) return(mean(Y))
-    return(data.frame(W, A_1, L1_1, L2_1, A_2, Y))
+    return(data.frame(W, A1, L, A2, Y))
   }
-  k <- -4
-  n <- 1000
-  data <- GenerateData(n, FALSE)
 
-  names(data)
-  nodes <- CreateNodes(data, Anodes = c("A_1", "A_2"), Cnodes = NULL, Lnodes = c("L1_1", "L2_1"), Ynodes="Y")
-  Qform <- CreateLYNodes(data, nodes, check.Qform=TRUE, Qform=NULL)$Qform
-  Qform.default <- GetDefaultForm(data, nodes, is.Qform=TRUE)
-  lapply(Qform.default, RhsVars)
+  k <- -4
+  n <- 50000
+  data <- GenerateData(n, FALSE)
+  head(data)
+  abar <- c(1, 1)
+
+  # RunIter <- function(j) {
+  j <- 1
+  set.seed(j+100000)
+  data <- GenerateData(n, FALSE)
+  est.strat <- rep(NA, 2)
+  est.nostrat <- rep(NA, 2)
+  names(est.strat) <- names(est.nostrat) <- c("pooling1 (set last Abar)", "set all Abars")
+  
+  # Qform <- c(L="Q.kplus1~W*A1", Y="Q.kplus1~W*A1*L*A2") #saturated models, gives means within strata, estimates for method1 and method2 are identical
+  Qform <- c(L="Q.kplus1~W+A1", Y="Q.kplus1~W+A1+L+A2") #different in finite samples
+
+  # ----------------------------------------------------------------------------------------
+  # Running 4 GCOMP versions in ltmle package by pooling method and stratification on abar
+  # ----------------------------------------------------------------------------------------
+  for (i in 1:2) {
+    pooling1 <<- i == 1
+    gform <- matrix(1, nrow(data), 2) #not used in gcomp, but saves a little time in iptw
+    timerun.ltmle1 <- system.time(
+      r.strat <- ltmle(data, Anodes=c("A1", "A2"), Lnodes="L", Ynodes="Y",
+                  abar=abar, gcomp=TRUE, IC.variance.only = TRUE,
+                  estimate.time = FALSE, gform=gform, stratify = TRUE, Qform=Qform)
+    )
+    est.strat[i] <- r.strat$estimates[1]
+    # print(timerun.ltmle1)
+    timerun.ltmle2 <- system.time(
+      r.nostrat <- ltmle(data, Anodes=c("A1", "A2"), Lnodes="L", Ynodes="Y",
+                  abar=abar, gcomp=TRUE, IC.variance.only = TRUE,
+                  estimate.time = FALSE, gform=gform, stratify = FALSE, Qform=Qform)
+    )
+    est.nostrat[i] <- r.nostrat$estimates[1]
+  }
+  print(timerun.ltmle2)
+  #  user  system elapsed
+  # 2.674   0.315   2.976
+
+  # print(timerun.ltmle2)
+  print("estimates for stratify=TRUE"); print(est.strat)
+  print("estimates for stratify=FALSE"); print(est.nostrat)
+  # cat(est, est[1]-est[2], "\n")
+  # return(est)
+# }
+# for (j in 1:20) RunIter(j)
+
+  # ----------------------------------------------------------------------------------------
+  # Running GCOMP from tmlenet that corresponds to ltmle with stratify=FALSE and pooling1=FALSE
+  # (pool all observations when fitting Q, set all Abars for the prediction step)
+  # ----------------------------------------------------------------------------------------
+  nodes <- CreateNodes(data, Anodes = c("A1", "A2"), Cnodes = NULL, Lnodes = c("L"), Ynodes="Y")
+  Abar.df <- data.frame(matrix(abar, nrow=n, ncol=2, byrow=TRUE))
+  colnames(Abar.df) <- c("A1", "A2")
 
   # Define data:
-  def_sW <- def.sW("W", "L1_1", "L2_1")
-  def_sA <- def.sA("A_1", "A_2")
+  def_sW <- def.sW("W", "L")
+  def_sA <- def.sA("A1", "A2")
   datnetW <- DatNet$new()$make.sVar(Odata = data, sVar.object = def_sW)
   datnetA <- DatNet$new()$make.sVar(Odata = data, sVar.object = def_sA)
   datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA, YnodeVals = data[,nodes$Y])$make.dat.sWsA()
+  # Counterfactual trt assignments (for prediction):
+  datnetA.gstar <- DatNet$new()$make.sVar(Odata = Abar.df, sVar.object = def_sA)
+  datNet.gstar <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA.gstar)$make.dat.sWsA()
+  # head(datNet.gstar$dat.sVar)
 
   # Set-up sequential G-comp regs:
-  newreg_Gcomp <- SGCompRegClass$new(outvar = "Y", nodes = nodes, Qforms = Qform.default)
+  newreg_Gcomp <- SGCompRegClass$new(outvar = "Y", nodes = nodes, Qforms = Qform)
   newsummaries_Gcomp <- SGcompSummariesModel$new(reg = newreg_Gcomp)
-  fitted_Gcomp <- newsummaries_Gcomp$fit(data = datNetObs)
-  head(datNetObs$getQ.kplus1())
-  mean(datNetObs$getQ.kplus1())
-  mean(data[,"Y"])
+  # Run G-comp estimation:
+  timerun <- system.time(
+    fitted_Gcomp <- newsummaries_Gcomp$fit(data = datNetObs, newdata = datNet.gstar)
+  )
+  print(timerun)
+  #  user  system elapsed
+  # 0.119   0.041   0.160
+  timerun.ltmle2/timerun
+  #      user    system   elapsed
+  # 22.470588  7.682927 18.600000
 
+  gcomp.psi.n <- mean(datNetObs$getQ.kplus1())
+  print("tmlenet gcomp.psi.n: " %+% gcomp.psi.n)
+  cat("difference between ltmle & tmlenet G-comps: ", gcomp.psi.n-est.nostrat[2])
 }
 
+# ------------------------------------------------------------------------------------
+# modified ltmle simulation from Josh adding another time-point
+# ------------------------------------------------------------------------------------
+sim3.validation <- function() {
+  #uses github branch: "pooling"
+  # devtools::install_github('joshuaschwab/ltmle', ref = "pooling", build_vignettes = FALSE)
+  library(ltmle)
+  rexpit <- function(x) rbinom(n=length(x), size=1, prob=plogis(x))
+  GenerateData <- function(n, est.psi0=FALSE) {
+    W <- rbinom(n, 1, 0.5)
+    if (est.psi0) {
+      A1 <- rep(1, n)
+    } else {
+      A1 <- rexpit(-3 + W)
+    }
+    L1 <- rexpit(W + A1)
+    if (est.psi0) {
+      A2 <- rep(1, n)
+    } else {
+      A2 <- rexpit(-1.5 + W + A1 + L1)
+    }
+    L2 <- rexpit(W + A1 + L1 + A2)
+    if (est.psi0) {
+      A3 <- rep(1, n)
+    } else {
+      A3 <- rexpit(-1.5 + W + A1 + A2 + 0.4*L1 + 0.4*L2)
+    }
+    L3 <- rexpit(W + A1 + A2 + 0.4*A3 + L1 + 0.4*L2)
+    if (est.psi0) {
+      A4 <- rep(1, n)
+    } else {
+      A4 <- rexpit(-1.5 + W + A1 + A2 + A3 + L1 + L2 + L3)
+    }
+    Y <- rexpit(W + L1 + 0.3*L2 + 0.2*L3 + k*A1 + 0.4*A2 + 0.4*A3 + 0.1*A4)
+    if (est.psi0) return(mean(Y))
+    return(data.frame(W, A1, L1, A2, L2, A3, L3, A4, Y))
+  }
 
+  k <- -4
+  n <- 500000
+  data <- GenerateData(n, FALSE)
+  head(data)
+  abar <- c(1, 1, 1, 1)
 
+  # RunIter <- function(j) {
+  j <- 1
+  set.seed(j+100000)
+  data <- GenerateData(n, FALSE)
+  est.strat <- rep(NA, 2)
+  est.nostrat <- rep(NA, 2)
+  names(est.strat) <- names(est.nostrat) <- c("pooling1 (set last Abar)", "set all Abars")
+  
+  # Qform <- c(L="Q.kplus1~W*A1", Y="Q.kplus1~W*A1*L*A2") #saturated models, gives means within strata, estimates for method1 and method2 are identical
+  Qform <- c(L1="Q.kplus1~W+A1",
+            L2="Q.kplus1~W+A1+L1+A2",
+            L3="Q.kplus1~W+A1+A2+A3+L1+L2",
+            Y="Q.kplus1~W+A1+A2+A3+A4+L1+L2+L3")
+
+  # ----------------------------------------------------------------------------------------
+  # Running 4 GCOMP versions in ltmle package by pooling method and stratification on abar
+  # ----------------------------------------------------------------------------------------
+  # for (i in 1:2) {
+  i <- 2
+    pooling1 <<- i == 1
+    gform <- matrix(1, nrow(data), ncol=4) #not used in gcomp, but saves a little time in iptw
+    timerun.ltmle1 <- system.time(
+      r.strat <- ltmle(data, Anodes=c("A1","A2","A3","A4"), Lnodes=c("L1","L2","L3"), Ynodes="Y",
+                  abar=abar, gcomp=TRUE, IC.variance.only = TRUE,
+                  estimate.time = FALSE, gform=gform, stratify = TRUE, Qform=Qform)
+    )
+    est.strat[i] <- r.strat$estimates[1]
+    # print(timerun.ltmle1)
+    timerun.ltmle2 <- system.time(
+      r.nostrat <- ltmle(data, Anodes=c("A1","A2","A3","A4"), Lnodes=c("L1","L2","L3"), Ynodes="Y",
+                  abar=abar, gcomp=TRUE, IC.variance.only = TRUE,
+                  estimate.time = FALSE, gform=gform, stratify = FALSE, Qform=Qform)
+    )
+    est.nostrat[i] <- r.nostrat$estimates[1]
+  # }
+  print(timerun.ltmle2)
+   #   user  system elapsed
+   # 40.590   5.281  45.805
+  print("estimates for stratify=TRUE"); print(est.strat)
+  print("estimates for stratify=FALSE"); print(est.nostrat)
+  # return(est)
+  # }
+  # for (j in 1:20) RunIter(j)
+
+  # ----------------------------------------------------------------------------------------
+  # Running GCOMP from tmlenet that corresponds to ltmle with stratify=FALSE and pooling1=FALSE
+  # (pool all observations when fitting Q, set all Abars for the prediction step)
+  # ----------------------------------------------------------------------------------------
+  nodes <- CreateNodes(data, Anodes = c("A1","A2","A3","A4"), Cnodes = NULL, Lnodes = c("L1","L2","L3"), Ynodes="Y")
+  Abar.df <- data.frame(matrix(abar, nrow=n, ncol=4, byrow=TRUE))
+  colnames(Abar.df) <- c("A1","A2","A3","A4")
+
+  # Define data:
+  def_sW <- def.sW("W", "L1","L2","L3")
+  def_sA <- def.sA("A1", "A2", "A3", "A4")
+  datnetW <- DatNet$new()$make.sVar(Odata = data, sVar.object = def_sW)
+  datnetA <- DatNet$new()$make.sVar(Odata = data, sVar.object = def_sA)
+  datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA, YnodeVals = data[,nodes$Y])$make.dat.sWsA()
+  # Counterfactual trt assignments (for prediction):
+  datnetA.gstar <- DatNet$new()$make.sVar(Odata = Abar.df, sVar.object = def_sA)
+  datNet.gstar <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA.gstar)$make.dat.sWsA()
+  # head(datNet.gstar$dat.sVar)
+
+  # Set-up sequential G-comp regs:
+  newreg_Gcomp <- SGCompRegClass$new(outvar = "Y", nodes = nodes, Qforms = Qform)
+  newsummaries_Gcomp <- SGcompSummariesModel$new(reg = newreg_Gcomp)
+  # Run G-comp estimation:
+  timerun <- system.time(
+    fitted_Gcomp <- newsummaries_Gcomp$fit(data = datNetObs, newdata = datNet.gstar)
+  )
+  print(timerun)
+  #  user  system elapsed
+  # 3.256   0.730   3.974
+  timerun.ltmle2/timerun
+  #      user    system   elapsed
+  # 14.520502  5.087266 11.730072
+  gcomp.psi.n <- mean(datNetObs$getQ.kplus1())
+  print("tmlenet gcomp.psi.n: " %+% gcomp.psi.n)
+  cat("difference between ltmle & tmlenet G-comps: ", gcomp.psi.n-est.nostrat[2])
+
+}
 
 
 
@@ -264,56 +468,3 @@ GetDefaultForm <- function(data, nodes, is.Qform, stratify=FALSE, survivalOutcom
   }
   return(form)
 }
-
-# # ltmleMSM for a single final.Ynode
-# FixedTimeTMLE <- function(inputs) {
-#   inputs$summary.measures <- NULL #just to make sure it isn't used - should only use combined.summary.measures
-#   data <- inputs$data
-#   nodes <- inputs$nodes
-#   num.regimes <- 1
-
-#   fit.Qstar <- vector("list", length(nodes$LY))
-#   names(fit.Qstar) <- names(data)[nodes$LY]
-#   Qstar.kplus1 <- matrix(data[, max(nodes$Y)], nrow=n, ncol=num.regimes)
-#   for (LYnode.index in length(nodes$LY):1) {
-#     cur.node <- nodes$LY[LYnode.index]
-#     # subsetting by intervention, will be a separate function:
-#     deterministic.list.origdata <- IsDeterministic(data, cur.node, inputs$deterministic.Q.function, nodes, called.from.estimate.g=FALSE, inputs$survivalOutcome)
-#     uncensored <- IsUncensored(data, nodes$C, cur.node)
-#     intervention.match <- subs <- matrix(nrow=n, ncol=num.regimes)
-#     i <- 1
-#     abar <- GetABar(inputs$regimes, i)
-#     intervention.match[, i] <- InterventionMatch(data, abar=abar, nodes$A, cur.node)
-#     newdata <- SetA(data, abar=abar, nodes, cur.node)
-#     deterministic.list.newdata <- IsDeterministic(newdata, cur.node, inputs$deterministic.Q.function, nodes, called.from.estimate.g=FALSE, inputs$survivalOutcome)
-#     if (inputs$stratify) {
-#       subs[, i] <- uncensored & intervention.match[, i] & !deterministic.list.origdata$is.deterministic
-#     } else {
-#       subs[, i] <- uncensored & !deterministic.list.origdata$is.deterministic
-#     }
-
-#     if (any(subs[, i])) {
-#       Q.est <- Estimate(inputs$Qform[LYnode.index],
-#                         data=data.frame(data,
-#                         Q.kplus1=Qstar.kplus1[, i]),
-#                         family="quasibinomial",
-#                         newdata=newdata,
-#                         subs=subs[, i],
-#                         type="link",
-#                         nodes=nodes)
-#       logitQ[, i] <- Q.est$predicted.values
-#     } else {
-#       if (! all(deterministic.list.newdata$is.deterministic)) {
-#         msg <- paste0("ltmle failed trying to estimate ", inputs$Qform[LYnode.index], " because there are no observations that are\nuncensored", ifelse(inputs$stratify, ", follow abar,", ""), " and are not set deterministically due to death or deterministic.Q.function\n")
-#         stop(msg)
-#       }
-#       Q.est <- list(fit="no estimation of Q at this node because all rows are set deterministically")
-#     }
-#   }
-#   return(list(IC=IC, Qstar=Qstar, cum.g=cum.g, cum.g.unbounded=cum.g.unbounded, g.ratio=g.ratio, est.var=est.var, fit=list(g=fit.g, Q=fit.Q, Qstar=fit.Qstar))) 
-# }
-
-
-
-
-
