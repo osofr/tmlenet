@@ -534,7 +534,7 @@ Define_sVar <- R6Class("Define_sVar",
         if (!all(check_exist)) stop("undefined time-dependent variable(s): "%+%TDvars[which(!check_exist)])
         # THIS STEP COULD BE MORE MEMORY EFFICIENT IF WAS SUBSETTING INSTEAD (BY COLS) ON EXISTING data MATRIX:
         TDvars_eval <- eval(parse(text=paste0("cbind(",paste0(TDvars, collapse=","),")")), envir = env)
-        print("TDvars_eval"); print(head(TDvars_eval))
+        # print("TDvars_eval"); print(head(TDvars_eval))
         return(TDvars_eval)
       },
 

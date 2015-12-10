@@ -1,25 +1,7 @@
 #----------------------------------------------------------------------------------
-# Classes that control modelling of the multivariate joint probability model P(sA|sW).
+# Classes that control modelling of the sequential G-computation for multiple point-treatments
 #----------------------------------------------------------------------------------
 #' @importFrom assertthat assert_that
-# # Generic S3 constructor for the summary model classes:
-# newsummarymodel <- function(reg, DatNet.sWsA.g0, ...) { UseMethod("newsummarymodel") }
-# # Summary model constructor for binary outcome sA[j]:
-# newsummarymodel.binary <- function(reg, ...) {
-#   # if (gvars$verbose) print("Calling BinOutModel constructor for binary outcome: " %+% reg$outvar)
-#   BinOutModel$new(reg = reg, ...)
-# }
-# # Summary model constructor for continuous outcome sA[j]:
-# newsummarymodel.contin <- function(reg, DatNet.sWsA.g0, ...) {
-#   # if (gvars$verbose) print("Calling ContinSummaryModel constructor for continuous outcome:" %+% reg$outvar)
-#   ContinSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
-# }
-# # Summary model constructor for categorical outcome sA[j]:
-# newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) {
-#   # if (gvars$verbose) print("Calling CategorSummaryModel constructor for categorical outcome: " %+% reg$outvar)
-#   CategorSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
-# }
-
 is.SGCompRegClass <- function(obj) "SGCompRegClass"%in%class(obj)
 
 ## ---------------------------------------------------------------------
@@ -225,6 +207,7 @@ SGcompSummariesModel <- R6Class(classname = "SGcompSummariesModel",
       invisible(self)
     },
 
+    # ******* NOT USED *******
     # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
     predict = function(newdata) {
       if (missing(newdata)) {
