@@ -527,7 +527,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     get.dat.sWsA = function(rowsubset = TRUE, covars) {
       dat.bin.sVar <- self$dat.bin.sVar
       sel.sWsA <- TRUE
-      sel.binsA = NULL # columns to select from binned continuos var matrix (if it was previously constructed)
+      sel.binsA <- NULL # columns to select from binned continuos var matrix (if it was previously constructed)
       if (!missing(covars)) {
         sel.sWsA <- colnames(self$dat.sWsA)[(colnames(self$dat.sWsA) %in% covars)]
         if (!is.null(dat.bin.sVar)) {
