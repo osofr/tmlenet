@@ -157,7 +157,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   # m.Q.init$reg                   # regression class (Qreg)
 
   nodes <- DatNet.ObsP0$nodes
-  Y <- DatNet.ObsP0$noNA.Ynodevals # actual observed Y's
+  Y <- DatNet.ObsP0$noNA.Ynodevals # actual observed Y`s
   determ.Q <- DatNet.ObsP0$det.Y
   m.Q.init <- est_params_list$m.Q.init
 
@@ -407,6 +407,7 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
   # Testing the evaluation of summary measures:
   sW.matrix <- sW$eval.nodeforms(data.df = data, netind_cl = netind_cl)
   sA.matrix <- sA$eval.nodeforms(data.df = data, netind_cl = netind_cl)
+
   if (verbose) {
     print("sample matrix of sW summary measurs: : "); print(head(sW.matrix))
     print("sample matrix of sA summary measurs: "); print(head(sA.matrix))
@@ -672,8 +673,8 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  specified by the regression formula \code{hform.gstar}).
 #'
 #' \enumerate{
-#' \item Generate a dataset of N observed continuous summary measures (\code{sa_i}:i=1,...,N) from observed
-#'  ((\code{a_i},\code{w_i}):i=1,...,N). Let \code{sa}\\in{\code{sa_i}:i=1,...,M}.
+#' \item Generate a dataset of N observed continuous summary measures (\code{sA_i}:i=1,...,N) from observed
+#'  ((\code{A_i},\code{W_i}):i=1,...,N).
 #'
 #' \item Divide the range of \code{sA} values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point
 #'    \code{sa_i} belongs to one interval in S, namely, 
@@ -812,6 +813,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
   oldverboseopt <- getOption("tmlenet.verbose")
   options(tmlenet.verbose = verbose)
   gvars$verbose <- verbose
+
   #----------------------------------------------------------------------------------
   # ADDITIONAL ARGUMENTS (removed from input args of tmlenet())
   #----------------------------------------------------------------------------------
@@ -842,8 +844,12 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
     stop("optPars[['runTMLE']] argument must be either 'tmle.intercept' or 'tmle.covariate'")
   }
 
-  message("Running tmlenet with the following settings from tmlenet_options(): "); str(gvars$opts)
-  message("Running tmlenet with the following settings from optPars arg of tmlenet(): "); str(optPars)
+  if (verbose) {
+    message("Running tmlenet with the following settings from tmlenet_options(): "); 
+    str(gvars$opts)
+    message("Running tmlenet with the following settings from optPars arg of tmlenet(): "); 
+    str(optPars)
+  }
 
   #----------------------------------------------------------------------------------
   # DETERMINING INTERNAL / EXTERNAL ESTIMATOR NAMES THAT WILL BE EVALUATED

@@ -582,7 +582,9 @@ Define_sVar <- R6Class("Define_sVar",
         ReplMisVal0.idx <- which(names(self$exprs_list) %in% "replaceNAw0")
         self$ReplMisVal0 <- as.logical(self$exprs_list[[ReplMisVal0.idx]])
         self$exprs_list <- self$exprs_list[-ReplMisVal0.idx]
-        print("Detected replaceNAw0 flag with value: " %+% self$ReplMisVal0);
+        if (gvars$verbose) {
+          print("Detected replaceNAw0 flag with value: " %+% self$ReplMisVal0);
+        }
       }
       # if doesn't already exist, init setting for the names attribute of self$exprs_list:
       if (is.null(names(self$exprs_list))) names(self$exprs_list) <- rep_len("", length(self$exprs_list))
@@ -600,7 +602,9 @@ Define_sVar <- R6Class("Define_sVar",
       self$ReplMisVal0 <- rep_len(self$ReplMisVal0, length(self$exprs_list))
       self$sVar.misXreplace <- ifelse(self$ReplMisVal0, gvars$misXreplace, gvars$misval)
       # self$sVar.noname <- rep_len(self$sVar.noname, length(self$exprs_list))
-      print("Final node expression(s) list: "); print(self$exprs_list)
+      if (gvars$verbose) {
+        print("Final node expression(s) list: "); print(self$exprs_list)
+      }
       invisible(self)
     },
 

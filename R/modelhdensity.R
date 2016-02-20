@@ -41,7 +41,7 @@ predict.hbars <- function(newdatnet = NULL, m.h.fit) {
 # fit models for m_gAi
 #---------------------------------------------------------------------------------
 fit.hbars <- function(DatNet.ObsP0, est_params_list) {
-  .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" "))  # defining the vector of c^A's that needs evaluation under h(c)
+  .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" "))  # defining the vector of c^A`s that needs evaluation under h(c)
   #---------------------------------------------------------------------------------
   # PARAMETERS FOR LOGISTIC ESTIMATION OF h
   #---------------------------------------------------------------------------------

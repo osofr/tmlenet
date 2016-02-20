@@ -30,7 +30,7 @@ logisfit.speedglmS3 <- function(datsum_obj) {
   Xmat <- datsum_obj$getXmat
   Y_vals <- datsum_obj$getY
 
-  if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA's and avoid throwing exception
+  if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA`s and avoid throwing exception
     m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
   } else {
     m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial()), silent = TRUE)
@@ -482,7 +482,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     # Predict the response P(Bin = b|sW = sw), which is returned invisibly;
     # Needs to know the values of b for prediction
     # WARNING: This method cannot be chained together with methods that follow (s.a, class$predictAeqa()$fun())
-    predictAeqa = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a's)
+    predictAeqa = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a`s)
       assert_that(self$is.fitted)
       assert_that(!missing(newdata))
       self$bindat$newdata(newdata = newdata, getoutvar = TRUE) # populate bindat with new design matrix covars X_mat

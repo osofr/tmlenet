@@ -9,7 +9,7 @@
 DefineSummariesClass
 }
 \description{
-This \pkg{R6} class that inherits from \code{} can parse and evaluate (given the input data frame) the summary measures defined by functions
+This \pkg{R6} class that inherits from \code{Define_sVar} and can parse and evaluate (given the input data frame) the summary measures defined by functions
  \code{\link{def.sW}} and \code{\link{def.sA}}.
  The object of this class is generally instantiated by calling functions \code{def.sA} or \code{def.sW}.
  The summary expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.

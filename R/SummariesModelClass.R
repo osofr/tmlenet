@@ -454,7 +454,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 # -------------------------------------------------------------------------------------------
 def_regs_subset <- function(self) {
   bin_regs <- self$reg$clone() # instead of defining new RegressionClass now cloning parent reg object and then ADDING new SETTINGS
-  bin_regs$reg_hazard <- TRUE # don't add degenerate bins as predictors in each binary regression
+  bin_regs$reg_hazard <- TRUE # don`t add degenerate bins as predictors in each binary regression
   if (!self$reg$pool_cont) {
     add.oldsubset <- TRUE
     new.subsets <- lapply(self$reg$bin_nms,
@@ -610,7 +610,7 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
 
     # Convert contin. sA vector into matrix of binary cols, then call parent class method: super$predictAeqa()
     # Invisibly return cumm. prob P(sA=sa|sW=sw)
-    predictAeqa = function(newdata) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's)
+    predictAeqa = function(newdata) { # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a`s)
       assert_that(is.DatNet.sWsA(newdata))
       newdata$binirize.sVar(name.sVar = self$outvar, intervals = self$intrvls, nbins = self$reg$nbins, bin.nms = self$reg$bin_nms)
       if (gvars$verbose) print("performing prediction for categorical outcome: " %+% self$outvar)

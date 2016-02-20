@@ -5,9 +5,12 @@ date: "`r Sys.Date()`"
 output:
   pdf_document:
     toc: true
+    toc_depth: 1
+    number_sections: true
     highlight: haddock
     keep_tex: true
     latex_engine: xelatex
+fontsize: 10pt    
 bibliography: 
   - SimCausal_2014.bib
   - R-Pckgs.bib
@@ -33,7 +36,6 @@ vignette: >
     latex_engine: xelatex -->
 <!-- highlight: zenburn -->
 <!-- “default”, “tango”, “pygments”, “kate”, “monochrome”, “espresso”, “zenburn”, and “haddock”  -->
-
 
 ```{r, include=FALSE, results='hide'}
   require(methods)
@@ -71,12 +73,44 @@ vignette: >
   # write_bib(citPkgs, file = "R-Pckgs_tmp.bib")
 ```
 
+<!-- ************************************************ -->
 # Introduction
+<!-- ************************************************ -->
 
-This vignette describes how to combine the structural equation and network models to simulate the network-dependent observational data using the `simcausal` `R` package [@R-simcausal] and then use `tmlenet` `R` package [@R-tmlenet] to estimate the effects of single time point stochastic interventions using such data. To learn more about the general functionality of the `simcausal` package, see the corresponding vignette titled: "simcausal Package: Simulations with Complex Longitudinal Data". To learn more about using the `simcausal` package specifically for conducting the network-based simulations, see the vignette "simcausal Package: Simulations with Networks-Based Dependent-Data Structural Equation Models". 
+This vignette describes how to use `tmlenet` `R` package [@R-tmlenet] to estimate the effects of single time point stochastic interventions using such data. The `tmlenet` R package performs estimation of average causal effects for single time point interventions in network-dependent (non-iid) data in the presence of interference and/or spillover. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation estimator. The user-specified interventions can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. For more information behind the methods implemented the `tmlenet` package, see @sofryginTechreport; @vdL2014nets.
 
-The `tmlenet` R package performs estimation of average causal effects for single time point interventions in network-dependent (non-iid) data in the presence of interference and/or spillover. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation estimator. The user-specified interventions can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. For more information behind the methods implemented the `tmlenet` package, see @sofryginTechreport; @vdL2014nets.
 
+The examples in this vignette will also involve network data simulations that were performed with `simcausal` R package [@R-simcausal]. To learn more about the general functionality of the `simcausal` package, see the corresponding vignette titled: "simcausal Package: Simulations with Complex Longitudinal Data". To learn more about using the `simcausal` package specifically for conducting the network-based simulations, see the vignette "simcausal Package: Simulations with Networks-Based Dependent-Data Structural Equation Models". 
+
+## Targeted Maximum Likelihood Estimation for Network Data
+
+The \textbf{tmlenet} R package implements the Targeted Maximum Likelihood Estimation (TMLE) of causal effects 
+under single time point stochastic interventions in network data. 
+The package also implements the Horvitz-Thompson estimator for networks (IPTW) and the parametric g-computation formula estimator. 
+The inference for the TMLE is based on its asymptotic normality and the efficient influence curve for dependent data. 
+The inference for IPTW is based on its corresponding influence curve for dependent data.
+
+
+The input data structure consists of rows of unit-specific observations, with each row \texttt{i} represented by random variables
+(\texttt{F.i},\texttt{W.i},\texttt{A.i},\texttt{Y.i}), where \texttt{F.i} is a vector of "\emph{friend IDs}" of unit \texttt{i} 
+(also referred to as \texttt{i}'s "\emph{network}"), \texttt{W.i} is a vector of \texttt{i}'s baseline covariates, \texttt{A.i} is \texttt{i}'s exposure
+(either binary, categorical or continuous) and \texttt{Y.i} is \texttt{i}'s binary outcome.
+Each exposure \texttt{A.i} depends on (possibly multivariate) baseline summary measure(s) \texttt{sW.i}, where \texttt{sW.i}
+can be any user-specified function of \texttt{i}'s baseline covariates \texttt{W.i} and the baseline covariates of \texttt{i}'s friends in
+set \texttt{F.i} (all \texttt{W.j} such that \texttt{j} is in \texttt{F.i}).
+Similarly, each outcome \texttt{Y.i} depends on \texttt{sW.i} and (possibly multivariate) summary measure(s) \texttt{sA.i},
+where \texttt{sA.i} can be any user-specified function of \texttt{i}'s baseline covariates and exposure (\texttt{W.i},\texttt{A.i}) and the
+baseline covariates and exposures of \texttt{i}'s friends (all \texttt{W.j},\texttt{A.j} such that \texttt{j} is in \texttt{i}'s friend set \texttt{F.i}). 
+
+
+The summary measures (\texttt{sW.i},\texttt{sA.i}) are defined simultaneously for all \texttt{i} with functions 
+\texttt{{def.sW}} and \texttt{{def.sA}}.
+It is assumed that (\texttt{sW.i},\texttt{sA.i}) have the same dimensionality across \texttt{i}. The function \texttt{{eval.summaries}} 
+can be used for evaluating these summary measures. All estimation is performed by calling the \texttt{{tmlenet}} function. 
+The vector of friends \texttt{F.i} can be specified either as a single column \texttt{NETIDnode} in the input data (where each \texttt{F.i} is a string
+of friend IDs or friend row numbers delimited by the character separator \texttt{sep}) or as a separate input matrix \texttt{NETIDmat} of network IDs
+(where each row is a vector of friend IDs or friend row numbers).
+Specifying the network as a matrix generally results in significant improvements to run time.
 
 ## Installation
 
@@ -95,7 +129,65 @@ devtools::install_github('osofr/tmlenet', build_vignettes = FALSE)
 ```
 
 
+<!-- ************************************************ -->
+# Technical details
+<!-- ************************************************ -->
+
+<!-- ================================================ -->
+## The workflow
+<!-- ================================================ -->
+
+ The following routines will be generally invoked, in the same order as presented below.
+ 
+ \begin{description}
+ \item [\emph{{def.sW}}] This is the first part of the two part specification of the structural equation model
+    for the outcome \texttt{Y}.
+    Defines the (multivariate) baseline-covariate-based summary measure functions
+    that will be later applied to the input data to derive the (multivariate) summary measures \texttt{sW}.
+    Each component \texttt{sW[j]} of \texttt{sW} is defined by an R expression that takes as its input
+    unit's baseline covariates and the baseline covariates of unit's friends.
+    Each argument passed to \texttt{def.sW} is considered a separate summary measure, with the \texttt{j}th argument
+    defining the \texttt{j}the summary measure \texttt{sW[j]} and the name of the \texttt{j}th argument defining the name
+    of the summary measure \texttt{sW[j]}.
+    The arguments of \texttt{def.sW} can be either named, unnamed or a mixture of both. When the argument \texttt{j} is unnamed, 
+    the summary measure name for \texttt{sW[j]} is created automatically.
+    Each summary measure is defined either by an evaluable R expressions or by a string containing an evaluable R
+    expression.
+    These expressions can use a special double-square-bracket subsetting operator \texttt{"Var[[index]]"}, which enables
+    referencing the variable \texttt{Var} values of unit's friends.
+    For example,
+    \texttt{Var[[1]]} will evaluate to a one-dimensional vector of summary measures of length \texttt{nrow(data)}, where for each
+    row from the input \texttt{data},
+    this summary measure will contain the \texttt{Var} value of the unit's first friend. The ordering of friends is
+    determined by the ordering of friend IDs specified in the network input. 
+    In cases when the unit doesn't have any friends, its corresponding value of \texttt{Var[[1]]} will evaluate
+    to \texttt{NA} by default. However, all such \texttt{NA}'s can be replaced by 0's by passing \texttt{replaceNAw0 = TRUE}
+    as an additional argument to \texttt{def.sW}.
+    One can also use vectors for indexing friend variable \texttt{Var} values in \texttt{Var[[index]]}.
+    For example, \texttt{Var[[1:Kmax]]} will evaluate to a \texttt{Kmax}-dimensional summary measure, which will be a matrix
+    with \texttt{nrow(data)} rows and \texttt{Kmax} columns,
+    where the first column will evaluate to \texttt{Var[[1]]}, the second to \texttt{Var[[2]]}, and so on, 
+    up to the last column evaluating to \texttt{Var[[Kmax]]}.
+    Note that \texttt{Kmax} is a special reserved constant that can be used inside the network indexing operators.
+    It is set to the highest number of friends among all units in the input \texttt{data} and it is specified by
+    the user input argument \texttt{Kmax}. See \texttt{def.sW} manual for various examples of 
+    summary measures that use the network indexing operators.
+ \item [\emph{{def.sA}}] Defines treatment summary measures \texttt{sA} that can be functions of each unit's exposure and baseline covariates, 
+    as well the exposures and baseline covariates of unit's friends. 
+    This is the second part of the two part specification of the structural equation model for the outcome \texttt{Y}. 
+    The syntax is identical to \texttt{def.sW} function, except that \texttt{def.sA} can consists of functions of baseline covariates
+    as well as the exposure \texttt{Anode}.
+ \item [\emph{{eval.summaries}}] A convenience function that can be used for validating and evaluating the user-specified summary measures. 
+    Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \texttt{def.sW} and \texttt{def.sA}.
+    Note that this function is called automatically by the \texttt{tmlenet} function and does not need to be called by the user prior to calling \texttt{tmlenet}.
+ \item [\emph{{tmlenet}}] Performs estimation of the causal effect of interest using the observed input \texttt{data}, 
+    the intervention of interest, the network information and the previously defined summary measures \texttt{sW}, \texttt{sA}.
+ \end{description}
+
+
+<!-- ================================================ -->
 ## The input data and the network summary measures
+<!-- ================================================ -->
 
 The input data are assumed to consist of rows of unit-specific observations, with each row `i` represented by variables (`F.i`,`W.i`,`A.i`,`Y.i`), where `F.i` is a vector of "__friend IDs__" of unit `i` (also referred to as `i`'s "__network__"), `W.i` is a vector of `i`'s baseline covariates, `A.i` is `i`'s exposure (either binary, categorical or continuous) and `Y.i` is `i`'s binary outcome. 
 
@@ -105,9 +197,28 @@ The summary measures (`sW.i`,`sA.i`) are defined simultaneously for all `i` with
 
 All estimation is performed by calling the `tmlenet` function. The vector of friends `F.i` can be specified either as a single column in the input data (where each `F.i` is a string of friend IDs or friend row numbers delimited by character `sep`) or as a separate input matrix of network IDs (where each row is a vector of friend IDs or friend row numbers). Specifying the network as a matrix generally results in significant improvements to run time. See `tmlenet` function help file for additional details on how to specify these and the rest of the input arguments.
 
+<!-- ================================================ -->
+## Specifying interventions and network
+<!-- ================================================ -->
+
+Interventions are specified by passing counterfactual treatment assignment functions as arguments (\texttt{f\_gstar1} and \texttt{optPars\$f\_gstar2}) to the \texttt{tmlenet} function. The functions specified in \texttt{f\_gstar1} and \texttt{optPars\$f\_gstar2}} can only depend on variables specified by the combined matrix of summary measures (\texttt{sW},\texttt{sA}), which is passed using the argument \texttt{data}. These functions should return a vector of length \texttt{nrow(data)} of counterfactual treatments for observations in the input data.
 
 
+The network of friends (connections) for observations in the input \texttt{data} can be specified in two alternative ways, using either \texttt{NETIDnode} or \texttt{NETIDmat} input arguments of the \texttt{tmlenet} function.
+ 
+\texttt{NETIDnode} - The first (slower) method uses a vector of strings in \texttt{data[, NETIDnode]}, where each
+  string \texttt{i} must contain the space separated IDs or row numbers of all units in \texttt{data} thought to be
+  connected to observation i (friends of unit i);
+ 
+\texttt{NETIDmat} - An alternative (and faster) method is to pass a matrix with \texttt{Kmax} columns and nrow(data)
+  rows, where each row \texttt{NETIDmat[i,]} is a vector of observation \texttt{i}'s friends' IDs or \texttt{i}'s friends'
+  row numbers in \texttt{data} if \texttt{IDnode=NULL}. If observation \texttt{i} has fewer than \texttt{Kmax} friends, the
+  remainder of \texttt{NETIDmat[i,]} must be filled with \texttt{NA}s. Note that the ordering of friend indices is
+  irrelevant.
+
+<!-- ================================================ -->
 ## Using syntax `'[['` for referencing the network variable values
+<!-- ================================================ -->
 
 The `network` function call that defines the network of friends can be added to a growing `DAG` object with syntax `'+network(...)'`, much like a new `node` is added to a growing `DAG` object when sampling iid observations. Subsequently defined nodes (`node` function calls) can employ the double square bracket subsetting syntax `'[['` to reference previously simulated node values for specific friends in $F_i$, simultaneously across all observations `i`. 
 
@@ -117,26 +228,153 @@ For example, using the expression `'VarName[[net_indx]]'` inside the formula of 
 
 Finally, we note that `simcausal` does not allow simultaneous friend references of the same node, that is, each newly added node can be defined only as a function of the nodes that have already been added to the structural equation model. For example, for unit `i`, a node named `Var` cannot depend on the same node `Var` values of `i`'s friends.
 
+<!-- ================================================ -->
+## Network-based variable summary measures
+<!-- ================================================ -->
 
-## Network-based covariate summary measures
+One can define the summary measures of the network covariates by specifying a node formula that applies an `R` function to the evaluation result of the expression `Var[[indx]]`, where `indx` is a vector, and the evaluation result of `Var[[indx]]` is a matrix. The rules for defining and applying such summary measures are identical to the rules for defining and applying the summary measures to the evaluation result of the time-varying node, such as the result of the expression `Var[t_indx]`, where `t_indx` is a vector. For example, one can use `sum(Var[[indx]])` to define a summary measure as a sum of `Var` values of friends in $F_i(indx)$, across all observations $i \in 1,\ldots,N$. Similarly, use `mean(Var[[indx]])` to define a summary measure as a mean of `Var` values of friends in $F_i(indx)$, across all $i$. For more details on defining such summary functions see the vignette "simcausal Package: Simulations with Complex Longitudinal Data" and the examples below.
 
-One can define the summary measures of the network covariates by specifying a node formula that applies an `R` function to the evaluation result of the expression `VarName[[net_indx]]`, where `net_indx` is a vector, and the evaluation result of `VarName[[net_indx]]` is a matrix. The rules for defining and applying such summary measures are identical to the rules for defining and applying the summary measures to the evaluation result of the time-varying node, such as the result of the expression `VarName[t_indx]`, where `t_indx` is a vector. For example, one can use `sum(VarName[[net_indx]])` to define a summary measure as a sum of `VarName` values of friends in $F_i[net\_indx]$, across all observations $i \in 1,\ldots,n$. Similarly, use `mean(VarName[[net_indx]])` to define a summary measure as a mean of `VarName` values of friends in $F_i[net\_indx]$, across all `i`. For more details on defining such summary functions see the vignette "simcausal: Causal Simulation Package" and the examples below.
+ 
+<!-- ================================================ -->
+## Estimators
+<!-- ================================================ -->
+
+The estimators implemented in this package are described in detail in @sofryginTechreport and are briefly reviewed below.
+
+### Inverse Probability Treatment-Weighted (IPTW):
+ 
+The first step of IPTW is to construct an estimator ${P_{g_N}(A^s | W^s)}$ for common (in $i$) conditional density ${P_{g_0}(A^s | W^s)}$ and common (in $i$) summary measures $(A^s,W^s)$. The same fitting algorithm is then applied to construct an estimator ${P_{g^*_N}(A^{*,s} | W^{*,s})}$ of the common (in $i$) conditional density ${P_{g^*_0}(A^{*,s} | W^{*,s})}$ for common (in $i$) unit-level summary measures $(A^{*,s},sW^{*,s})$ implied by the user-supplied stochastic interventions \texttt{f\_gstar1} or \texttt{f\_gstar2} and the empirical distribution of ${W}$. 
+
+These two density estimators form the basis of the IPTW estimator, which is evaluated at the observed N data points ${O_i=(W^s_i, A^s_i, Y_i), i=1,...,N}$ and is given by
+$${\psi^{IPTW}_n = \sum_{i=1,...,N}{Y_i \dfrac{P_{g^*_N}(A^{*,s}=A^s_i | W^s=W^s_i)}{P_{g_N}(A^s=A^s_i | W^s=W^s_i)}}.}$$
+
+### G-computation
+...
+
+### Targeted Maximum Likelihood
+...
+
+### Modeling ${P(A^s|W^s)}$ for summary measures ${(A^s,W^s)}$:
+
+Non-parametric estimation of the common \emph{unit-level} multivariate joint conditional probability model ${P_{g_0}(A^s|W^s)}$, 
+for unit-level summary measures ${(A^s,W^s)}$ generated from the observed exposures and baseline covariates 
+${(\mathbf{A},\mathbf{W})=(A_i,W_i : i=1,...,N)}$ (their joint density given by ${\mathbf{g}_0(\mathbf{A}|\mathbf{W})\mathbf{Q}(\mathbf{W})}$), is performed by first 
+constructing the dataset of $N$ summary measures, ${(A^s_i,W^s_i : i=1,...,N)}$, and then fitting the usual i.i.d. MLE 
+for the common density ${P_{g_0}(A^s|W^s)}$ based on the pooled N sample of these summary measures.
+  
+Note that ${A^s}$ can be multivariate, e.g., for $k$ dimensional $A^s$, we have $A^s=(A^s(1),\ldots,A^s(k))$, where each component $A^s(j)$ is univariate it can be either binary, categorical or continuous.
+The joint probability model for ${P(sA|W^s)} = {P(A^s(1),\ldots,A^s(k)|W^s)}$ can be factorized as
+$${P(A^s(1)|W^s)} * {P(A^s(2)|W^s, A^s(1))} * \ldots * {P(A^s(k)|W^s, A^s(1),...,A^s(k-1))},$$
+where each of these conditional probability models is fit by a separate algorithm, which depends on the type of the outcome variable $A^s(j)$.
+  
+For binary $A^s(j)$, the conditional probability $P(A^s(j)|W^s,A^s(1),...,A^s(j-1))$ is evaluated via a typical logistic
+regression model. When $A^s(j)$ is continuous (or categorical), its range will be fist partitioned into $K$ bins and the
+corresponding $K^{th}$ bin indicators $({B_1,...,B_K)}$, with each bin indicator ${B_j}$ playing the role of the outcome in a 
+separate logistic regression model. Thus, the joint probability ${P(A^|W^s)}$ is then defined by such a tree of binary logistic regressions.
+ 
+For simplicity, we now suppose \texttt{sA} is continuous and univariate and we describe here an algorithm for fitting
+${P_{g_0}(A^s | W^s)}$ (the algorithm for fitting ${P_{g^*}(A^{*,s} | W^{*,s})}$ is equivalent, except that exposure $\mathbf{A}$ is replaced with exposure $\mathbf{A}^*$ generated under \texttt{f\_gstar1} or \texttt{f\_gstar2} and 
+the predictors $W^s$ from the regression formula \texttt{hform.g0} are replaced with predictors $W^{*,s}$
+specified by the regression formula \texttt{hform.gstar}).
+
+The evaluation below utilizes the following fact that: (1) Continuous density 
+$f_X$ for random variable $X$ can be written as $f_X(x)=S_X(x)h_X(x)$, 
+where $S_X(x)=P(X>x)$ is the survival function for $X$ and $h_X=P(X>x|X>=x)$
+is the hazard function for $X$; and (2) The discretized survival function $S_X(x)$ can then be 
+written as a product of the hazards for $s<x$: $S_X(x)=\prod_{s<x}h_X(x)$.
+
+\begin{enumerate}
+\item Generate a dataset of $N$ observed continuous summary measures ($A^s_i:i=1,\ldots,N$) 
+from the observed exposures and baseline covariates on $N$ subjects $((A_i,W_i):i=1,\ldots,N)$,
+which also includes each subject`s network information.
+\item Divide the range of $A^s$ into intervals $S=(i_1,...,i_M,i_{M+1})$ so that each observed data point
+$a^s_i$, for $i=1,\ldots,N$ belongs to some interval from $S$, namely, 
+for any $a^s$ there is $k\in{1,...,M}$, such that, $i_k < a^s <= i_{k+1}$.
+Let the mapping $B(a^s)\in{1,...,M}$ denote a unique interval in $S$ for 
+specific $a^s$ value, such that, $i_{B(a^s)} < a^s <= i_{B(a^s)+1}$.
+Let $bw_{B(a^s)}:=i_{B(a^s)+1}-i_{B(a^s)}$ denote the length (bandwidth) 
+of the interval $i_{B(a)},i_{B(s^s)+1}$. Next, define the binary 
+indicators $b_1,...,b_M$, where $b_j:=I(B(s^s)=j)$, for all $j \leq B(s^s)$ and $b_j$ 
+is set to missing for all $j>B(a^s)$ (i.e., we set $b_j$ to missing right 
+after the indicator $I(B(s^s)=j)$ jumps from 0 to 1).
+Now let $A^s$ denote the random variable for the observed summary measure for one unit
+and denote by $(B_1,...,B_M)$ the corresponding random indicators for $A^s$ defined as $B_j := I(B(A^s) = j)$, 
+for all $j <= B(A^s)$ and $B_j$ set to missing for all $j>B(A^s)$.
+
+\item Next, for each $j=1,...,M$, fit the logistic regression model estimating the conditional 
+probability $P(B_j = 1 | B_{j-1}=0, W^s)$, i.e., at each $j$ this is defined as the conditional 
+probability of $B_j$ jumping from 0 to 1 at bin $j$, given that $B_{j-1}=0$ and 
+each of these logistic regression models is fit only among the observations that are still at 
+risk of having $B_j=1$ with $B_{j-1}=0$.
+
+\item Normalize the above conditional probability of $B_j$ jumping from 0 to 1 by its corresponding 
+interval length (bandwidth) $bw_j$ to obtain the discrete conditional hazards 
+$h_j(W^s):=P(B_j = 1 | (B_{j-1}=0, W^s) / bw_j$, for each $j$.
+For the summary measure $A^s$, the above conditional hazard $h_j(W^s)$ is equal 
+to $P(A^s \in (i_j,i_{j+1}) | A^s>=i_j, W^s)$, i.e., this is the probability 
+that $A^s$ falls in the interval $(i_j,i_{j+1})$, conditional on $W^s$ and conditional on the fact that
+$A^s$ does not belong to any intervals before $j$.
+
+\item  Finally, for any given data-point $(a^s,w^s)$, evaluate the discretized 
+conditional density for $P(A^s=a^s|W^s=w^s)$ by first evaluating the interval number 
+$k=B(a^s)\in{1,...,M}$ for $a^s$ and then computing $\prod_{j=1,...,k-1}{1-h_j(W^s))*h_k(W^s)}$,
+which is equivalent to the joint conditional probability that $a^s$ belongs to the 
+interval $(i_k,i_{k+1})$ and does not belong to any of the intervals $1$ to $k-1$, conditional on $W^s$.
+\end{enumerate}
 
 
-# Brief introduction to estimation with `tmlenet` with running examples
+###Three methods for defining bin (interval) cuttoffs for a continuous one-dimenstional summary measure $A^s(j)$.
+
+There are 3 alternative methods to defining the bin cutoffs $S=(i_1,...,i_M,i_{M+1})$ for a univariate continuous summary measure
+$A^s(j)$. The choice of which method is used along with other discretization parameters (e.g., total number of
+bins) is controlled via the tmlenet_options() function. See \texttt{?tmlenet\_options} argument \texttt{bin.method} for
+additional details.
+
+Approach 1 (\texttt{equal.len}): equal length, default.
+The bins are defined by splitting the range of the observed $A^s$ into equal length intervals. 
+This is the dafault discretization method, set by passing an argument \texttt{bin.method="equal.len"} to 
+\texttt{tmlenet\_options} function prior to calling \texttt{tmlenet()}. The intervals will be defined by splitting the
+range of $A^s$ into \texttt{nbins} number of equal length intervals, where \texttt{nbins} is another argument
+of \texttt{tmlenet\_options()} function. When \texttt{nbins=NA} (the default setting) the actual value of \texttt{nbins}
+is computed at run time by taking the integer value (floor) of \texttt{n/maxNperBin},
+for \texttt{n} - the total observed sample size and \texttt{maxNperBin=1000} - another argument of
+\texttt{tmlenet\_options()} with the default value 1,000.
+
+Approach 2 (\texttt{equal.mass}): data-adaptive equal mass intervals. The intervals are defined 
+by splitting the range of $A^s$ into non-equal length data-adaptive intervals that ensures 
+that each interval contains around \texttt{maxNperBin} observations.
+This interval definition approach can be selected by passing an argument \texttt{bin.method="equal.mass"} to 
+\texttt{tmlenet\_options()} prior to calling \texttt{tmlenet()}. The method ensures that an approximately 
+equal number of observations will belong to each interval, where that number of observations for each interval
+is controlled by setting \texttt{maxNperBin}. The default setting is \texttt{maxNperBin=1000} observations per interval.
+
+Approach 3 (\texttt{dhist}): combination of 1 \& 2. The data-adaptive approach dhist is a mix of 
+Approaches 1 \& 2. See @denby2009variations.
+This interval definition method is selected by passing an argument \texttt{bin.method="dhist"} to 
+\texttt{tmlenet\_options()}  prior to calling \texttt{tmlenet()}.
+
+
+
+<!-- ************************************************ -->
+# Estimation with `tmlenet` using a running example
+<!-- ************************************************ -->
+
+## Data
 
 We will use the sample dataset (`W`=(`W1`,`W2`,`W3`),`A`,`Y`) and the sample network matrix of friend IDs (`F`) that come along with the package:
 
-```{r}
-library(tmlenet)
-# require(simcausal)
+```{r, message=FALSE}
+library('tmlenet')
+options(tmlenet.verbose=FALSE)
 
 data(df_netKmax6)
-head(df_netKmax6)
+head(df_netKmax6,2)
 
 data(NetInd_mat_Kmax6)
-head(NetInd_mat_Kmax6)
+head(NetInd_mat_Kmax6,2)
 ```
+
+## Estimation
 
 The estimation algorithm assumes that the outcomes in `Y.i` for units `i=1,...,N` are conditionally independent,
 given the summary measures defined in `def_sW` and the summary measures defined in `def_sA`.
@@ -152,7 +390,7 @@ The example below does just that, defining  `sW`:=(`netW1`,`netW2`,`netW3`) and 
 where `netVar` is a summary measure of dimension `Kmax+1` and includes `Var` values of each 
 unit as well as `Var` values of all friends of each unit:
 
-```{r}
+```{r, message=FALSE}
 Kmax <- ncol(NetInd_mat_Kmax6)
 def_sW <- def.sW(netW1 = W1[[0:Kmax]], netW2 = W2[[0:Kmax]], netW3 = W3[[0:Kmax]])
 def_sA <- def.sA(netA = A[[0:Kmax]])
@@ -163,7 +401,7 @@ Note that the summary measure `nF` (number of friends for each unit) is always a
 
 A helper function that can pre-evaluate the above summary measures based on the input data:
 
-```{r}
+```{r, message=FALSE}
 eval_res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
                           NETIDmat = NetInd_mat_Kmax6)
 ```
@@ -172,17 +410,16 @@ Contents of the list returned by `eval.summaries()`:
 
 ```{r}
 # Matrix of sW summary measures:
-head(eval_res$sW.matrix) 
+head(eval_res$sW.matrix,2) 
 # Matrix of sA summary measures:
-head(eval_res$sA.matrix)
+head(eval_res$sA.matrix,2)
 # matrix of network IDs: 
-head(eval_res$NETIDmat)
+head(eval_res$NETIDmat,2)
 ```
 
-Observed data summary measures (sW,sA) and network stored in one object:
+Observed data summary measures (sW,sA) and the network are stored in one object named \texttt{DatNet.ObsP0}:
 
 ```{r}
-# eval_res$DatNet.ObsP0
 class(eval_res$DatNet.ObsP0)
 ```
 
@@ -191,7 +428,7 @@ In the example below, we estimate mean population outcome under deterministic in
 summary measures object `DatNet.ObsP0` as input to `tmlenet`, avoiding the need to specify the arguments
 (`data`,`NETIDmat`,`Kmax`,`sW`,`sA`) for the second time.
 
-```{r}
+```{r, message=FALSE}
 res1 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax, 
                 sW = def_sW, sA = def_sA,
                 Anode = "A", Ynode = "Y",
@@ -218,7 +455,7 @@ to select a subset of the summary measures in `sW`,`sA` to be included in each o
 For example, below we are assuming that the outcomes in `Y` only depend on the summary measures `netA`,`netW2` 
 (regression `"Y~netA+netW2"`) and hence the observed exposure model is given by `P(netA|netW2)` (regression `"netA~netW2"`) and we also know that `f_gstar1` defines a static intervention `A^*=1` and hence `sA^*` is degenerate and doesn't depend on any baseline covariates and will be estimated here with a simplified regression model (regression `"netA ~ nF"`):
 
-```{r}
+```{r, message=FALSE}
 res2 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
                     Anode = "A", Ynode = "Y", 
                     Qform = "Y ~ netA + netW2",
@@ -236,7 +473,7 @@ through a sum of its friends' values of `W3` and `Y.i` depends on its network's 
 of `i`'s friends' interactions `(1-A)*(W2)` (while we assume `Y.i` still depends on `i`'s baseline covariates and
 `i`'s exposure):
 
-```{r}
+```{r, message=FALSE}
 def_sW <- def.sW(W = c(W1,W2,W3)) +
           def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
@@ -244,7 +481,7 @@ def_sA <- def.sA(A) +
           def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
 
 eval_res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = 6, data = df_netKmax6,
-                            NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
+                            NETIDmat = NetInd_mat_Kmax6, verbose = FALSE)
 
 res3 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
                 Anode = "A", Ynode = "Y",
@@ -260,7 +497,7 @@ Note that the above model specified by `Qform` includes all summary measures in 
 One can specify any intervention of interest, for example below we estimate the counterfactual mean outcome under intervention that randomly assigns 20% of the population to exposure `A=1`. Note that we are also increasing the number of Monte-Carlo simulations
 from 1 to 100.
 
-```{r}
+```{r, message=FALSE}
 f.A_.2 <- function(data, ...) rbinom(n = nrow(data), size = 1, prob = 0.2)
 res4 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
                 sW = def_sW, sA = def_sA, 
@@ -272,15 +509,16 @@ res4$EY_gstar1$estimates
 To estimate the average treatment effect (ATE) for two interventions (static or stochastic), specify the second intervention function using the argument `optPars(f_gstar2 = ...)`. In the example below, the intervention `f_gstar1`
 statically sets everyone's exposure to `A=1` and the intervention `f_gstar2` statically sets everyone's exposure to `A=0`:
 
-```{r}
+```{r, message=FALSE}
 res5 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
                 sW = def_sW, sA = def_sA, Anode = "A", Ynode = "Y",
                 f_gstar1 = 1, optPars = list(f_gstar2 = 0, n_MCsims = 1))
 res5$ATE$estimates
 ```
 
-
-# Example of a simulation study with a single time point stochastic intervention
+<!-- ************************************************ -->
+# Simulation study with continuous exposure and a single time point stochastic intervention
+<!-- ************************************************ -->
 
 In this example we simulate a network of connections on $n$ units, along with the unit-specific data with 3 binary baseline covariates, $W_i = (W_i(1),W_i(2),W_i(3))$, for $i=1,\ldots,n$. In addition, we also simulate the observed unit-specific exposures $sA_i$, which are continuous and are normally distributed when conditioned on $W_i$, with a common (in $i$) conditional density given by $g_0(sA_i|W_i)$ and parameterized as normal with $\sigma^2=1$ and $$\mu(W_i)= 0.98*W_i(1)+0.58*W_i(2)+0.33*W_i(3).$$ We define the stochastic intervention by known (and common in $i$) density $g^*$, that depends on $g_0$. This new (intervened) exposure under stochastic intervention $g^*$ is denoted by random variable $sA^*_i$ and it is set equal to $sA_i+shift$, for known constant $shift>0$, if the following condition holds: $$\exp\{shift * (sA_i - \mu(W_i) + shift/2)\} \geq trunc \tag{*},$$ for known truncation constant $trunc>0$, and otherwise, the intervention is to keep the exposure unchanged, setting: $$sA^*_i = sA_i.$$ Finally, the outcome $Y_i$, for each unit $i$, is assumed to depend on $i$'s baseline covariates in $W_i$ and $i$'s exposure $sA_i$, as well as the baseline covariate values and exposures of $i$'s friends via the following summary measures: $$W^s_i:=1/|F_i|\sum_{j \in F_i}{W_j}\ \mbox{and}\ A^s_i:=1/|F_i|\sum_{j \in F_i}{sA_j}.$$
 
@@ -372,8 +610,8 @@ print("mean(datO$Y): " %+% mean(datO$Y));
 NetInd_mat <- attributes(datO)$netind_cl$NetInd
 nF <- attributes(datO)$netind_cl$nF
 datO <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-print(head(datO))
-print(head(NetInd_mat))
+print(head(datO,2))
+print(head(NetInd_mat,2))
 ```
 
 ## Plotting
@@ -451,14 +689,14 @@ def_sW <- def.sW(W1, W2, W3) +
 
 ## Pre-evaluation of the summary measures
 
-```{r}
+```{r, message=FALSE}
 Kmax <- 10
 trunc.const <- 4
 shift.const <- 1
 
 res <- eval.summaries(sW = def_sW, sA = def_sA, 
                       Kmax = Kmax, data = datO,
-                      NETIDmat = NetInd_mat, verbose = TRUE)
+                      NETIDmat = NetInd_mat, verbose = FALSE)
 names(res)
 ```
 
@@ -466,7 +704,7 @@ names(res)
 
  The example below performs estimation using the default regression models for $E[Y_|A^s_i,W^s_i]$, $P_{\mathbf{g}_0}(A^s|W^s)$ and  $P_{\mathbf{g}^*}(A^s|W^s)$.
 
-```{r}
+```{r, message=FALSE}
 f.gstar <- create_f.gstar(shift = shift.const, trunc = trunc.const)
 
 print_tmlenet_opts()
@@ -511,8 +749,8 @@ res1$EY_gstar1$CIs
 Finally, `h_g0_SummariesModel` and `h_gstar_SummariesModel` provide the model fits for the exposure model $P(A^s|W^s)$, for the observed exposure mechanism $\mathbf{g}_0$ and for the stochastic intervention (either `f_gstar1` or `f_gstar2`), respectively, as shown below:
 
 ```{r}
-res1$EY_gstar1$h_g0_SummariesModel
-res1$EY_gstar1$h_gstar_SummariesModel
+names(res1$EY_gstar1$h_g0_SummariesModel)
+names(res1$EY_gstar1$h_gstar_SummariesModel)
 ```
 
 ## Estimation example 2.
@@ -536,7 +774,7 @@ Specifying the exposure regression model under user-specified stochastic interve
 hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3 + net.mean.W1"
 ```
 
-```{r}
+```{r, message=FALSE}
 res2 <- tmlenet(data = datO, Kmax = Kmax, NETIDmat = NetInd_mat,
                 sW = def_sW, sA = def_sA,
                 Anode = "sA", Ynode = "Y",

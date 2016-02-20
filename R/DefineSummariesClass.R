@@ -112,7 +112,7 @@ capture.exprs <- function(...) {
 def.sW <- function(...) {
   # call outside fun that parses ... and assigns empty names "" if the names attribute not set:
   sVar.exprs <- capture.exprs(...)
-  sVar.exprs <- c(sVar.exprs, list(nF="nF")) # add nF node (vector with counts of friends):
+  sVar.exprs <- c(sVar.exprs, list(nF = "nF")) # add nF node (vector with counts of friends):
   node_evaluator <- DefineSummariesClass$new(type = "sW")
   node_evaluator$set.user.env(user.env = parent.frame())
   node_evaluator$set.new.exprs(exprs_list = sVar.exprs)
@@ -167,7 +167,9 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
   if (expr_noname && (length(expr_parents)>1)) {
     stop("must name complex expressions that involve more than one variable: " %+% expr_char)
   } else if (expr_noname && !is.null(expr_parents) && is.character(expr_parents)) {
-    message("assigning a name '" %+% expr_parents %+% "' to expression: " %+% expr_char)
+    if (gvars$verbose) {
+      message("assigning a name '" %+% expr_parents %+% "' to expression: " %+% expr_char)
+    }
     expr_nm <- expr_parents
   } else if (expr_noname) stop(expr_char%+% ": parents are null or not a character vector")
   # -------------------------------------------------------
@@ -196,7 +198,7 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
 ## ---------------------------------------------------------------------
 #' R6 class for parsing and evaluating user-specified summary measures (in \code{exprs_list})
 #'
-#' This \pkg{R6} class that inherits from \code{} can parse and evaluate (given the input data frame) the summary measures defined by functions 
+#' This \pkg{R6} class that inherits from \code{Define_sVar} and can parse and evaluate (given the input data frame) the summary measures defined by functions 
 #'  \code{\link{def.sW}} and \code{\link{def.sA}}. 
 #'  The object of this class is generally instantiated by calling functions \code{def.sA} or \code{def.sW}.
 #'  The summary expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.

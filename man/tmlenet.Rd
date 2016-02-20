@@ -278,8 +278,8 @@ For simplicity, we now suppose \code{sA} is continuous and univariate and we des
  specified by the regression formula \code{hform.gstar}).
 
 \enumerate{
-\item Generate a dataset of N observed continuous summary measures (\code{sa_i}:i=1,...,N) from observed
- ((\code{a_i},\code{w_i}):i=1,...,N). Let \code{sa}\\in{\code{sa_i}:i=1,...,M}.
+\item Generate a dataset of N observed continuous summary measures (\code{sA_i}:i=1,...,N) from observed
+ ((\code{A_i},\code{W_i}):i=1,...,N).
 
 \item Divide the range of \code{sA} values into intervals S=(i_1,...,i_M,i_{M+1}) so that any observed data point
    \code{sa_i} belongs to one interval in S, namely,

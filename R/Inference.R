@@ -113,7 +113,7 @@ sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
   # 3) All non-zero elements as a vector of 0-based row numbers:
   base0_IDrownums <- sparseAdjMat@i
   # 4) For each observation i that has non-zero nF (friends), add fvec_i[i]*fvec_Fj for each friend Fj of i:  
-  non0nF.idx <- which(nF > 1L) # don't care if nF[i]=1 since it means i has 0 actual friends (i itself is included in nF)
+  non0nF.idx <- which(nF > 1L) # don`t care if nF[i]=1 since it means i has 0 actual friends (i itself is included in nF)
   # non0nF.idx <- which(nF > 0L)
   Dstar_crossprod <- 0
   for (idx in non0nF.idx) {
