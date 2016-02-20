@@ -52,11 +52,13 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 10, trunc
   # Kmax - degree of each node
   generate.igraph.k.regular <- function(n, Kmax, ...) {
     if (n < 20) Kmax <- 5
+    browser()
     igraph.reg <- igraph::sample_k_regular(no.of.nodes = n, k = Kmax, directed = TRUE, multiple = FALSE)
     # From igraph object to sparse adj. matrix:
     sparse_AdjMat <- simcausal::igraph.to.sparseAdjMat(igraph.reg)
     # From igraph object to simcausal/tmlenet input (NetInd_k, nF, Kmax):
     NetInd_out <- simcausal::sparseAdjMat.to.NetInd(sparse_AdjMat)
+
     if (Kmax < NetInd_out$Kmax) message("new network has larger Kmax value than requested, new Kmax = " %+% NetInd_out$Kmax)
     message("done generating network")
     return(NetInd_out$NetInd_k)
@@ -97,7 +99,7 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 10, trunc
   # Trimmed small world model network generator:
   # D <- D + network("NetInd_k", netfun = "generate.igraph.smallwld", Kmax = Kmax, dim = 1, nei = 9, p = 0.1)
   # Trimmed small world model network generator:
-  # D <- D + network("NetInd_k", netfun = "generate.igraph.smallwld", Kmax = Kmax, dim = 1, nei = 4, p = 0.05)      
+  # D <- D + network("NetInd_k", netfun = "generate.igraph.smallwld", Kmax = Kmax, dim = 1, nei = 4, p = 0.05)
   D <- D +
       node("nF", distr = "rconst", const = nF) +
       node("W1", distr = "rbern", prob = 0.5) +
@@ -124,7 +126,7 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 10, trunc
         replaceNAw0 = TRUE) +
       node("Y.gstar", distr = "rbern", prob = probY.gstar)
 
-  D <- set.DAG(D)
+  D <- set.DAG(D, n.test = 10)
 
   datO <- sim(D, n = nsamp, rndseed = rndseed)
   psi0 <- mean(datO$Y.gstar)

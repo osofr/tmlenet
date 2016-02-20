@@ -22,6 +22,7 @@ if(FALSE) {
   getwd()
   # setwd("./tmlenet"); setwd(".."); getwd()
   devtools::check(args = "--as-cran")
+  devtools::check(args = c("--no-vignettes"), build_args = c("--no-build-vignettes")) # runs faster
   # devtools::check() # runs check with devtools
   # devtools::check(args = c("--no-vignettes"), build_args = c("--no-build-vignettes")) # runs check with devtools
   # devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
@@ -59,7 +60,7 @@ if(FALSE) {
   # zero_coverage(cov)
 }
 
-sample_checks <- function() {   # doesn't run, this is just to show what test functions can be used
+sample_checks <- function() {   # doesn`t run, this is just to show what test functions can be used
   print("Starting tests...")
     checkTrue(1 < 2, "check1")     ## passes fine
      ## checkTrue(1 > 2, "check2")  ## appears as failure in the test protocol
@@ -166,7 +167,7 @@ get.testDat <- function(nsamp = 100000) {
       node("W3", distr = "rbern", prob = 0.3) +
       node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
       node("sA", distr = "rnorm", mean = sA.mu, sd = 1)
-  D <- set.DAG(D)
+  D <- set.DAG(D, n.test = 10)
   datO <- sim(D, n = nsamp, rndseed = 12345)
 }
 

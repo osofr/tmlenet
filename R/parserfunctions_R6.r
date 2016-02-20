@@ -12,7 +12,7 @@
 opts <- new.env(parent = emptyenv())
 opts$NoChangeFunCalls <- TRUE # Flag, if TRUE will not modify any unknown node formula functions while parsing
 opts$vecfun <- NULL           # character vector of user-defined vectorized function names
-opts$debug <- FALSE            # debug mode, when TRUE print all calls to dprint()
+opts$debug <- FALSE           # debug mode, when TRUE print all calls to dprint()
 
 dprint <- function(...) if (opts$debug) print(...) # debug-only version of print
 debug_set <- function() { # Set to Debug Mode
@@ -205,10 +205,6 @@ nodeform_parsers = function(node_form_call, data.env, user.env)  {
     while ((i <= 10) & (!samecall)) {
       eval_atom_call <- eval_atomic(preveval_atom_call)
       samecall <- identical(eval_atom_call, preveval_atom_call)
-      # dprint("-------------");
-      # dprint(samecall); 
-      # dprint(eval_atom_call); 
-      # dprint("-------------")
       preveval_atom_call <- eval_atom_call
       i <- i + 1
     }
@@ -229,7 +225,7 @@ nodeform_parsers = function(node_form_call, data.env, user.env)  {
       if (is.name(x)) dprint("name: "%+%x)
       x	# Leave unchanged
     } else if (is.call(x)) {
-      if (identical(x[[1]], quote(`[`)) && is.name(x[[2]])) {	# reached '[' function, don't need to parse any deeper, return this subtree intact
+      if (identical(x[[1]], quote(`[`)) && is.name(x[[2]])) {	# reached '[' function, dont need to parse any deeper, return this subtree intact
         x
       } else if (identical(x[[1]], quote(`[[`)) && is.name(x[[2]])) { # reached '[[' function, same as above
         x
@@ -287,7 +283,7 @@ nodeform_parsers = function(node_form_call, data.env, user.env)  {
 
   # Parses the formula and gets all the variable names referenced as [] or as.name==TRUE
   Vnames <- find_FormVars(eval_atom_call, vartype="non_TD")	# returns unique names of none TD vars that were called as VarName
-  TD_vnames <- find_FormVars(eval_atom_call, vartype="TD")	# returns unique names TDVar that were called as TDVar[indx]
+  TD_vnames <- find_FormVars(eval_atom_call, vartype="TD")	 # returns unique names TDVar that were called as TDVar[indx]
   TD_t_vnames <- find_FormVars(eval_atom_call, vartype="TD_t") # returns unique names TDVar_t that were called as TDVar[indx]
 
   dprint("Vnames: "); dprint(Vnames)
@@ -334,7 +330,7 @@ eval.nodeform.full <- function(expr_call, expr_str, self, data.env) {
     modified_call_nocurl <- modified_call[-1]
     evaled_expr <- try(lapply(X = modified_call_nocurl, FUN = eval, envir = data.env, enclos = self$user.env))
   } else {
-    evaled_expr <- try(eval(modified_call, envir = data.env, enclos = self$user.env)) # eval'ing expr in the envir of data.df
+    evaled_expr <- try(eval(modified_call, envir = data.env, enclos = self$user.env)) # eval`ing expr in the envir of data.df
   }
 
   if(inherits(evaled_expr, "try-error")) {
@@ -362,7 +358,7 @@ eval.nodeform.full <- function(expr_call, expr_str, self, data.env) {
 
 eval.nodeform.asis <- function(expr_call, expr_str, self, data.env) {
   # print("AS IS EVALUTION FOR: "); print(expr_str)
-  evaled_expr <- try(eval(expr_call, envir = data.env, enclos = self$user.env)) # eval'ing expr in the envir of data.df
+  evaled_expr <- try(eval(expr_call, envir = data.env, enclos = self$user.env)) # eval`ing expr in the envir of data.df
   if(inherits(evaled_expr, "try-error")) {
     stop("error while evaluating node "%+% self$cur.node$name %+%" formula: \n"%+%parse(text = expr_str)%+%".\nCheck syntax specification.", call. = FALSE)
   }

@@ -82,7 +82,7 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 5, shift 
             replaceNAw0 = TRUE) +
           node("Y.gstar", distr = "rbern", prob = probY.gstar)
 
-  D <- set.DAG(D)
+  D <- set.DAG(D, n.test = 10)
 
   # nsamp <- 10000
   # rndseed <- 12345

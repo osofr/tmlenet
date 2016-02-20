@@ -23,7 +23,7 @@ test.simple.fit.density.sA <- function() {
         node("W3", distr = "rbern", prob = 0.3) +
         node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
         node("sA", distr = "rnorm", mean = sA.mu, sd = 1)
-    D <- set.DAG(D)
+    D <- set.DAG(D, n.test = 10)
     datO <- sim(D, n = nsamp, rndseed = 12345)
   }
 
@@ -36,7 +36,7 @@ test.simple.fit.density.sA <- function() {
         node("W2", distr = "rconst", const = .(W2val)) +
         node("W3", distr = "rconst", const = .(W3val)) +
         node("sA", distr = "rnorm", mean = (0.98 * W1 + 0.58 * W2 + 0.33 * W3), sd = 1)
-    D <- set.DAG(D)
+    D <- set.DAG(D, n.test = 10)
     datWset <- sim(D, n = nsamp, rndseed = 12345)
     setWmat <- as.matrix(data.frame(W1 = W1val, W2 = W2val, W3 = W3val, sA = seq(-4, 4, by = 0.2)))
     return(list(setWsA = datWset$sA, setWmat = setWmat))
@@ -237,7 +237,7 @@ get.iid.densityOdat <- function(nsamp = 100000, rndseed = NULL, trunc.const = 10
       node("probY.gstar", distr = "rconst", const = plogis(-0.45 * trunc.sA.gstar - 0.5 * W1 - 0.58 * W2 - 0.33 * W3)) +
       node("Y.gstar", distr = "rbern", prob = plogis(-0.45 * trunc.sA.gstar - 0.5 * W1 - 0.58 * W2 - 0.33 * W3))
 
-  D <- set.DAG(D)
+  D <- set.DAG(D, n.test = 10)
   datO <- sim(D, n = nsamp, rndseed = rndseed)
 
   head(datO, 100)
@@ -253,6 +253,8 @@ get.iid.densityOdat <- function(nsamp = 100000, rndseed = NULL, trunc.const = 10
 run.1sim.tmlenet <- function(nsamp, psi0, Qform, f.gstar, trunc.const = 10, shift.const = 2, n_MCsims = 10) {
   datO <- get.iid.densityOdat(nsamp = nsamp, rndseed = NULL, trunc.const = trunc.const, shift.const = shift.const)$datO
   datO <- datO[,c("W1", "W2", "W3", "sA", "Y")]
+  print("head(datO)"); print(head(datO))
+  print("summary(datO)"); print(summary(datO))
   Kmax <- 1
   def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
   def_sA <- def.sA(sA = "sA")
@@ -327,6 +329,26 @@ test.onesim.iid.tmlefit <- function() {
                           f.gstar = f.gstar,  trunc.const = trunc.const, shift.const = shift.const,
                           n_MCsims = 10)
   res$est
+
+# [1] "mean(datO$Y): 0.3156"
+# [1] "psi0: 0.2419"
+# [1] "head(datO)"
+#   W1 W2 W3        sA Y
+# 1  1  1  0 1.1530363 0
+# 2  1  0  0 0.3955352 1
+# 3  1  1  0 1.5730009 0
+# 4  1  1  0 0.8500365 0
+# 5  0  0  1 1.6758910 0
+# 6  1  0  0 2.5997302 0
+# [1] "summary(datO)"
+#        W1               W2              W3               sA                  Y
+#  Min.   :0.0000   Min.   :0.000   Min.   :0.0000   Min.   :-3.754226   Min.   :0.0000
+#  1st Qu.:0.0000   1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:-0.009311   1st Qu.:0.0000
+#  Median :0.0000   Median :0.000   Median :0.0000   Median : 0.750215   Median :0.0000
+#  Mean   :0.4976   Mean   :0.306   Mean   :0.3056   Mean   : 0.766478   Mean   :0.3156
+#  3rd Qu.:1.0000   3rd Qu.:1.000   3rd Qu.:1.0000   3rd Qu.: 1.547738   3rd Qu.:1.0000
+#  Max.   :1.0000   Max.   :1.000   Max.   :1.0000   Max.   : 5.280415   Max.   :1.0000
+
   #      tmle    h_iptw     gcomp
   # 0.2360305 0.2441800 0.2131320
   # [1] "new MC.ests mat: "

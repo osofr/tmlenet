@@ -3,6 +3,7 @@
 # tmlenet TO DO LIST
 #------------------------------------------------------------------------------------------------
 
+- Pre-save all simulated test datasets. Current method of setting seed and running simcausal is unstable.
 - Put parserfunctions_R6.r back into simcausal (Setting opts$NoChangeFunCalls <- FALSE in simcausal)
 - Export Define_sVar from simcausal, import simcausal::Define_sVar into tmlenet namespace
 - See what other global vars in parserfunctions_R6.r will need to be redefined in tmlenet

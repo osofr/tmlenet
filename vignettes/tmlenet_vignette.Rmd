@@ -75,7 +75,7 @@ vignette: >
 
 This vignette describes how to combine the structural equation and network models to simulate the network-dependent observational data using the `simcausal` `R` package [@R-simcausal] and then use `tmlenet` `R` package [@R-tmlenet] to estimate the effects of single time point stochastic interventions using such data. To learn more about the general functionality of the `simcausal` package, see the corresponding vignette titled: "simcausal Package: Simulations with Complex Longitudinal Data". To learn more about using the `simcausal` package specifically for conducting the network-based simulations, see the vignette "simcausal Package: Simulations with Networks-Based Dependent-Data Structural Equation Models". 
 
-The `tmlenet` R package performs estimation of average causal effects for single time point interventions in network-dependent (non-iid) data in the presence of interference and/or spillover. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation estimator. The user-specified interventions can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. For more information behind the methods implemented the `tmlenet` package, see @vdL2014nets.
+The `tmlenet` R package performs estimation of average causal effects for single time point interventions in network-dependent (non-iid) data in the presence of interference and/or spillover. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation estimator. The user-specified interventions can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. For more information behind the methods implemented the `tmlenet` package, see @sofryginTechreport; @vdL2014nets.
 
 
 ## Installation
@@ -527,13 +527,13 @@ Qform.mis <- "Y ~ W2 + W3 + net.mean.sA"
 Specifying the exposure regression model under observed exposure mechanism $\mathbf{g}_0$:
 
 ```{r}
-hform.g0 <- "sA + net.mean.sA ~ W1 + W2 + W3"
+hform.g0 <- "sA + net.mean.sA ~ W1 + W2 + W3 + net.mean.W1"
 ```
 
 Specifying the exposure regression model under user-specified stochastic intervention $\mathbf{g}^*$ :
 
 ```{r}
-hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3"
+hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3 + net.mean.W1"
 ```
 
 ```{r}

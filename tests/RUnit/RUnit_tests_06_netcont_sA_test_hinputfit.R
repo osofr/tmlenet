@@ -50,7 +50,7 @@ make_netDAG <- function(Kmax, trunc.const, shift.const) {
       node("probY.gstar", distr = "rconst", const =
             plogis(-0.35 * tr.sA.gstar - 0.20 * mean(tr.sA.gstar[[1:Kmax]]) - 0.5 * W1 - 0.58 * W2 - 0.33 * W3)) +
       node("Y.gstar", distr = "rbern", prob = probY.gstar)
-  Dset <- set.DAG(D)
+  Dset <- set.DAG(D, n.test = 10)
   return(Dset)
 }
 
