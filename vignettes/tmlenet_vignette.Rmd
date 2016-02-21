@@ -12,7 +12,7 @@ output:
     keep_tex: true
     latex_engine: pdflatex
 fontsize: 10pt
-bibliography: 
+bibliography:
   - TMLENET_simcausal_Rpkgs_2016.bib
 vignette: >
   %\VignetteIndexEntry{tmlenet Package: Estimating Causal Effects in Observational Network Data}
@@ -56,7 +56,7 @@ vignette: >
   opts_chunk$set(fig.path='figure/beamer-',fig.align='center',fig.show='hold',size='footnotesize')
   # to crop white space in output figures:
   knit_hooks$set(pdfcrop = hook_pdfcrop)
-  if(opts_knit$get("rmarkdown.pandoc.to")=="latex") knit_hooks$set(plot=hook_plot_tex)
+  # if(opts_knit$get("rmarkdown.pandoc.to")=="latex") knit_hooks$set(plot=hook_plot_tex)
   # To disable syntax color highlighing of R code in the entire document
   # opts_chunk$set(highlight=FALSE)
   # To change the background color on knitR output from default gray to white:
@@ -91,8 +91,8 @@ vignette: >
 
 This vignette describes how to use \texttt{tmlenet} \textbf{R} package [@R-tmlenet] to estimate the effects of single time point stochastic interventions using such data. The `tmlenet` R package performs estimation of average causal effects for single time point interventions in network-dependent (non-iid) data in the presence of interference and/or spillover. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation estimator. The user-specified interventions can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. For more information behind the methods implemented the `tmlenet` package, see @sofryginTechreport and @vdL2014nets.
 
-
-The examples in this vignette will also involve network data simulations that were performed with `simcausal` R package [@R-simcausal]. To learn more about the general functionality of the `simcausal` package, see the corresponding vignette titled: "simcausal Package: Simulations with Complex Longitudinal Data". To learn more about using the `simcausal` package specifically for conducting the network-based simulations, see the vignette "simcausal Package: Simulations with Networks-Based Dependent-Data Structural Equation Models". 
+The network data examples in this vignette were simulated with the `simcausal` R package [@R-simcausal]. To learn more about the general functionality of the 
+`simcausal` package, see the corresponding vignette titled: "simcausal Package: Simulations with Complex Longitudinal Data". To learn more about using the `simcausal` package specifically for conducting the network-based simulations, see the vignette "simcausal Package: Simulations with Networks-Based Dependent-Data Structural Equation Models". 
 
 ## Targeted Maximum Likelihood Estimation for Network Data
 
@@ -102,6 +102,23 @@ The package also implements the Horvitz-Thompson estimator for networks (IPTW) a
 The inference for the TMLE is based on its asymptotic normality and the efficient influence curve for dependent data. 
 The inference for IPTW is based on its corresponding influence curve for dependent data.
 
+We start by describing the type of data that may arise in an observational study on a population of connected units. Consider a study in which we observe a sample of N dependent units. For each unit we collect baseline covariates, a binary exposure, and a one-dimensional outcome of interest. We denote the sample by the random vector 
+$\mathbf{O}=(\mathbf{W},\mathbf{A},\mathbf{Y})\sim P_{0}$, 
+where $\mathbf{W}=(W_{i})_{i=1}^{N}$ 
+is a vector of baseline covariates across all units, 
+$\mathbf{A}=(A_{i})_{i=1}^{N}$
+is a vector of exposures, 
+$\mathbf{Y}=(Y_{i})_{i=1}^{N}$
+is a vector of outcomes, and $P_{0}$
+belongs to a large semi-parametric model. 
+We assume each $W_{i}$ has finite support, $A_{i}$ is allowed to be multivariate (can be binary, discrete or continuous) and $Y_{i}$ is either binary (e.g., indicating survival beyond a specific time point, or the success of a particular intervention) or bounded (e.g., a count of the number of times an event of interest has occurred during the follow-up period, or a continuous measure of a biomarker level at the end of the study). 
+For each unit $i$ in the sample, we also collect the information on other units in $\{1,\ldots,N\}\backslash\{i\}$ that are connected to (or influence) $i$. These units are referred to as “$i$'s friends”, and this set is denoted by $F_{i}\subseteq\{1,\ldots,N\}$.
+It is assumed that $F_{i}$ is recorded at baseline, along with other baseline covariates, and it is assumed fixed. Additionally, we allow $|F_{i}|$,
+the number of friends for unit $i$, to vary in $i$,
+but assume that this number is bounded by some known global constant $K(N)$, which can be a function of $N$.
+The vector $\mathbf{F}=(F_{i})_{i=1}^{N}$ is then referred to as the “network profile” of $\mathbf{O}$.
+For example, in an experiment evaluating the effects of introducing a new service to an online social network, for each unit, $F_{i}$ could denote the set of all online friends of $i$, whose exposure status may influence $i$'s outcome. Alternatively, in a study of the effects of early HIV treatment initiation, $F_{i}$ could be the set of all sexual partners of unit $i$.
+We allow for the following types of between-unit dependencies: (i) the unit-level exposures can depend on baseline data of itself and other units, and (ii) unit-level outcomes can depend on baseline and exposure data of itself and other units. An important ingredient of our modeling approach is to assume that the dependence of each unit $i$ on other units is fully described by the network. Specifically, we assume that the dependence of $i$'s treatment and outcome on other units is limited to the set of $i$'s friends. A second important ingredient is the assumption that these dependencies can be accurately described with some known summary measures, which map the data collected on friends of each unit into a summary that has the same dimension for all units.
 
 The input data structure consists of rows of unit-specific observations, with each row \texttt{i} represented by random variables
 (\texttt{F.i},\texttt{W.i},\texttt{A.i},\texttt{Y.i}), where \texttt{F.i} is a vector of "\emph{friend IDs}" of unit \texttt{i} 
@@ -145,15 +162,27 @@ devtools::install_github('osofr/tmlenet', build_vignettes = FALSE)
 # Technical details
 <!-- ************************************************ -->
 
-<!-- ================================================ -->
+## The estimands (statistical parameters)
+
+- Briefly describe the observed data model
+- The statistical parameters (estimands) that can be estimated with the \texttt{tmlenet} package include:
+    + Sample-average expected outcome under static, dynamic and stochastic intervention. Our target statistical quantity $\psi_{0}$
+    is defined as a function of this post-intervention distribution. Specifically, it is an expectation of the sample-average of $N$
+    outcomes among dependent units $i=1,\ldots,N$, where the expectation is evaluated with respect to the post-intervention distribution $P_{\mathbf{Q},\mathbf{G}^{*}}$:
+    $$\psi_{0}=\Psi(P_{0}^{N})=E_{\mathbf{q}_{0},\mathbf{g}^{*}}\left[\dfrac{1}{N}\sum_{i=1}^{N}Y_{i}^{*}\right].$$
+    + Alternatively, one may estimate the contrast of two stochastic interventions (on additivite scale), e.g., the sample-average treatment effect. More specifically, define $\Psi^{\mathbf{G}_{1}^{*}}(P_{0}^{N})$ and $\Psi^{\mathbf{G}_{2}^{*}}(P_{0}^{N})$ as the above target parameter evaluated under two different interventions $\mathbf{G}_{1}^{*}$ and $\mathbf{G}_{2}^{*}$, respectively, where each intervention can be static, dynamic or stochastic. The contrast estimand is defined as 
+    $$\Psi^{\mathbf{G}_{1}^{*},\mathbf{G}_{2}^{*}}(P_{0}^{N})=\Psi^{\mathbf{G}_{1}^{*}}(P_{0}^{N})-\Psi^{\mathbf{G}_{2}^{*}}(P_{0}^{N}).$$ 
+    The sample-average treatment effect over $N$ connected units is a special case of such estimand $\Psi^{\mathbf{G}_{1}^{*},\mathbf{G}_{2}^{*}}(P_{0}^{N})$, where $\mathbf{G}_{1}^{*}$ is defined by degenerate density $\mathbf{g}_{1}^{*}(\mathbf{1}^{N}\:|\:\mathbf{w})=1$ and $\mathbf{G}_{2}^{*}$ is defined by $\mathbf{g}_{2}^{*}(\mathbf{0}^{N}\:|\:\mathbf{w})=1$, for any $\mathbf{w}\in\mathcal{W}$.
+
+Note that by making additional untestable assumptions, one can interpret $\psi_{0}$ as a causal quantity that measures the sample-average of the expected counterfactual outcomes in a network of $N$ connected units under intervention $\mathbf{G}^{*}$ [@vdL2014nets]. However, for the estimation problem at hand, the causal model plays no further role: even when one does not believe any of the untestable causal assumptions, one might still argue that the above statistical parameter $\psi_{0}$ represents an effect measure of interest controlling for all *measured* confounders.
+
 ## The workflow
-<!-- ================================================ -->
 
  The following routines will be generally invoked, in the same order as presented below.
  
  \begin{description}
- \item [\emph{{def.sW}}] This is the first part of the two part specification of the structural equation model
-  for the outcome \texttt{Y}.
+ \item [\emph{{def.sW}}] This is the first part of the two part specification 
+  of the structural equation model for the outcome \texttt{Y}.
   Defines the (multivariate) baseline-covariate-based summary measure functions
   that will be later applied to the input data to derive the (multivariate) summary measures \texttt{sW}.
   Each component \texttt{sW[j]} of \texttt{sW} is defined by an R expression that takes as its input
@@ -184,22 +213,23 @@ devtools::install_github('osofr/tmlenet', build_vignettes = FALSE)
   It is set to the highest number of friends among all units in the input \texttt{data} and it is specified by
   the user input argument \texttt{Kmax}. See \texttt{def.sW} manual for various examples of 
   summary measures that use the network indexing operators.
- \item [\emph{{def.sA}}] Defines treatment summary measures \texttt{sA} that can be functions of each unit's exposure and baseline covariates, 
+\item [\emph{{def.sA}}] Defines treatment summary measures \texttt{sA} that
+  can be functions of each unit's exposure and baseline covariates, 
   as well the exposures and baseline covariates of unit's friends. 
   This is the second part of the two part specification of the structural equation model for the outcome \texttt{Y}. 
   The syntax is identical to \texttt{def.sW} function, except that \texttt{def.sA} can consists of functions of baseline covariates
   as well as the exposure \texttt{Anode}.
- \item [\emph{{eval.summaries}}] A convenience function that can be used for validating and evaluating the user-specified summary measures. 
+\item [\emph{{eval.summaries}}] A convenience function that can be used for 
+  validating and evaluating the user-specified summary measures. 
   Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \texttt{def.sW} and \texttt{def.sA}.
   Note that this function is called automatically by the \texttt{tmlenet} function and does not need to be called by the user prior to calling \texttt{tmlenet}.
- \item [\emph{{tmlenet}}] Performs estimation of the causal effect of interest using the observed input \texttt{data}, 
+\item [\emph{{tmlenet}}] Performs estimation of the causal effect of interest 
+  using the observed input \texttt{data}, 
   the intervention of interest, the network information and the previously defined summary measures \texttt{sW}, \texttt{sA}.
- \end{description}
+\end{description}
 
 
-<!-- ================================================ -->
 ## The input data and the network summary measures
-<!-- ================================================ -->
 
 The input data are assumed to consist of rows of unit-specific observations, with each row `i` represented by variables (`F.i`,`W.i`,`A.i`,`Y.i`), where `F.i` is a vector of "__friend IDs__" of unit `i` (also referred to as `i`'s "__network__"), `W.i` is a vector of `i`'s baseline covariates, `A.i` is `i`'s exposure (either binary, categorical or continuous) and `Y.i` is `i`'s binary outcome. 
 
@@ -209,9 +239,7 @@ The summary measures (`sW.i`,`sA.i`) are defined simultaneously for all `i` with
 
 All estimation is performed by calling the `tmlenet` function. The vector of friends `F.i` can be specified either as a single column in the input data (where each `F.i` is a string of friend IDs or friend row numbers delimited by character `sep`) or as a separate input matrix of network IDs (where each row is a vector of friend IDs or friend row numbers). Specifying the network as a matrix generally results in significant improvements to run time. See `tmlenet` function help file for additional details on how to specify these and the rest of the input arguments.
 
-<!-- ================================================ -->
 ## Specifying interventions and network
-<!-- ================================================ -->
 
 Interventions are specified by passing counterfactual treatment assignment functions as arguments (\texttt{f\_gstar1} and \texttt{optPars\$f\_gstar2}) to the \texttt{tmlenet} function. The functions specified in \texttt{f\_gstar1} and \texttt{optPars\$f\_gstar2}} can only depend on variables specified by the combined matrix of summary measures (\texttt{sW},\texttt{sA}), which is passed using the argument \texttt{data}. These functions should return a vector of length \texttt{nrow(data)} of counterfactual treatments for observations in the input data.
 
@@ -228,28 +256,20 @@ The network of friends (connections) for observations in the input \texttt{data}
   remainder of \texttt{NETIDmat[i,]} must be filled with \texttt{NA}s. Note that the ordering of friend indices is
   irrelevant.
 
-<!-- ================================================ -->
 ## Using syntax `'[['` for referencing the network variable values
-<!-- ================================================ -->
 
 The `network` function call that defines the network of friends can be added to a growing `DAG` object with syntax `'+network(...)'`, much like a new `node` is added to a growing `DAG` object when sampling iid observations. Subsequently defined nodes (`node` function calls) can employ the double square bracket subsetting syntax `'[['` to reference previously simulated node values for specific friends in $F_i$, simultaneously across all observations `i`. 
-
 
 For example, using the expression `'VarName[[net_indx]]'` inside the formula of the node function call, will look-up the values of the node `'VarName'` for observations in $F_i[net\_indx]$,  simultaneously across all $i \in 1,\ldots,n$. When `net_indx` is a vector, the evaluation result of the expression `'VarName[[net_indx]]'` is a matrix with `length(net_indx)` columns and `n` rows, and when `net_indx` is a scalar, this evaluation results in a vector. We note that indexing variable `net_indx` above can be a non-negative integer-valued vector, with values starting from 0 and bounded above by the specially reserved integer constant `Kmax`. Using `0` as part of the `net_indx` vector refers to the actual `'VarName'` node values of the observations, hence the expression `'VarName[[0]]'` is equivalent to just using `'VarName'`. When `net_indx` is 1, the expression refers to the node `'VarName'` values for observations in $F_i[1]$, across all $i \in 1,\ldots,n$ (that is, the value of `'VarName'` of `i`'s first friend $F_i[1]$, if the friend exists and `NA` otherwise), and so on, up to `net_indx` value of `Kmax`, which would reference the last friend node values of `VarName`, as defined by observation $F_i[Kmax]$, if `i` has a total of `Kmax` friends and is `NA` otherwise. Also note that the reserved variable name `'Kmax'` can be explicitly used as part of the friend node indexing, i.e., using the node formula expression `'VarName[[Kmax]]'`, will first set the variable `Kmax` to the maximal number of friends observed in a specific network, and then evaluate this node expression according to the rule just described. By default, the expression `'VarName[[k]]'` evaluates to missing (i.e., `'NA'`) for observations that have fewer than `k` friends. This default behavior however can be changed to return `0` instead of `NA`, by passing an additional argument `'replaceNAw0=TRUE'` to the corresponding `node` function call.
 
 
 Finally, we note that `simcausal` does not allow simultaneous friend references of the same node, that is, each newly added node can be defined only as a function of the nodes that have already been added to the structural equation model. For example, for unit `i`, a node named `Var` cannot depend on the same node `Var` values of `i`'s friends.
 
-<!-- ================================================ -->
 ## Network-based variable summary measures
-<!-- ================================================ -->
 
 One can define the summary measures of the network covariates by specifying a node formula that applies an `R` function to the evaluation result of the expression `Var[[indx]]`, where `indx` is a vector, and the evaluation result of `Var[[indx]]` is a matrix. The rules for defining and applying such summary measures are identical to the rules for defining and applying the summary measures to the evaluation result of the time-varying node, such as the result of the expression `Var[t_indx]`, where `t_indx` is a vector. For example, one can use `sum(Var[[indx]])` to define a summary measure as a sum of `Var` values of friends in $F_i(indx)$, across all observations $i \in 1,\ldots,N$. Similarly, use `mean(Var[[indx]])` to define a summary measure as a mean of `Var` values of friends in $F_i(indx)$, across all $i$. For more details on defining such summary functions see the vignette "simcausal Package: Simulations with Complex Longitudinal Data" and the examples below.
 
- 
-<!-- ================================================ -->
 ## Estimators
-<!-- ================================================ -->
 
 The estimators implemented in this package are described in detail in @sofryginTechreport and are briefly reviewed below.
 
@@ -366,7 +386,6 @@ This interval definition method is selected by passing an argument \texttt{bin.m
 \texttt{tmlenet\_options()}  prior to calling \texttt{tmlenet()}.
 
 
-
 <!-- ************************************************ -->
 # Estimation with `tmlenet` using a running example
 <!-- ************************************************ -->
@@ -378,11 +397,10 @@ We will use the sample dataset (`W`=(`W1`,`W2`,`W3`),`A`,`Y`) and the sample net
 ```{r, message=FALSE}
 library('tmlenet')
 options(tmlenet.verbose=FALSE)
-
 data(df_netKmax6)
-head(df_netKmax6,2)
-
 data(NetInd_mat_Kmax6)
+
+head(df_netKmax6,2)
 head(NetInd_mat_Kmax6,2)
 ```
 
@@ -792,15 +810,16 @@ res3 <- tmlenet(data = datO, Kmax = Kmax, NETIDmat = NetInd_mat,
 res3$EY_gstar1$estimates
 ```
 
+<!-- ************************************************ -->
+# Discussion
+<!-- ************************************************ -->
 
-<!-- \section{Discussion}\label{secdiscus} -->
-<!-- % \addcontentsline{toc}{section}{Discussion} -->
 
-<!-- \section*{Acknowledgments} -->
-<!-- \textbf{FUNDING ACKNOWLEDGEMENT}:  -->
+<!-- ************************************************ -->
+# Acknowledgments
+<!-- ************************************************ -->
 
-<!-- % \bibliographystyle{unsrt} -->
-<!-- \bibliography{SimCausal_2014,R-Pckgs,TMLE_networks_2014} -->
+This research was supported by NIH grant R01 AI074345-07.
 
 # References
 
