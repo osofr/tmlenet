@@ -2,6 +2,7 @@
 title: "Using tmlenet R Package for Estimation of Causal Effects in Observational Network Data"
 author: "Oleg Sofrygin and Mark J. van der Laan"
 date: "`r Sys.Date()`"
+header-includes: \usepackage{graphicx}
 output:
   pdf_document:
     toc: true
@@ -9,17 +10,25 @@ output:
     number_sections: true
     highlight: haddock
     keep_tex: true
-    latex_engine: xelatex
-fontsize: 10pt    
+    pandoc_args: [
+      "--natbib"
+    ]
+    latex_engine: pdflatex
+fontsize: 10pt
 bibliography: 
-  - SimCausal_2014.bib
-  - R-Pckgs.bib
-  - TMLE_networks_2014.bib
+  - TMLENET_simcausal_Rpkgs_2016.bib
 vignette: >
   %\VignetteIndexEntry{tmlenet Package: Estimating Causal Effects in Observational Network Data}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
+  \usepackage{float}
 ---
+<!--   - SimCausal_2014.bib
+  - R-Pckgs.bib
+  - TMLE_networks_2014.bib -->
+<!-- graphics: yes -->
+<!--  -->
+<!--  biblatex -->
 <!-- output: rmarkdown::html_vignette -->
 <!-- output:
   html_document:
@@ -45,6 +54,7 @@ vignette: >
   opts_chunk$set(fig.path='figure/beamer-',fig.align='center',fig.show='hold',size='footnotesize')
   # to crop white space in output figures:
   knit_hooks$set(pdfcrop = hook_pdfcrop)
+  if(opts_knit$get("rmarkdown.pandoc.to")=="latex") knit_hooks$set(plot=hook_plot_tex)
   # To disable syntax color highlighing of R code in the entire document
   # opts_chunk$set(highlight=FALSE)
   # To change the background color on knitR output from default gray to white:
@@ -77,7 +87,7 @@ vignette: >
 # Introduction
 <!-- ************************************************ -->
 
-This vignette describes how to use `tmlenet` `R` package [@R-tmlenet] to estimate the effects of single time point stochastic interventions using such data. The `tmlenet` R package performs estimation of average causal effects for single time point interventions in network-dependent (non-iid) data in the presence of interference and/or spillover. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation estimator. The user-specified interventions can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. For more information behind the methods implemented the `tmlenet` package, see @sofryginTechreport; @vdL2014nets.
+This vignette describes how to use \texttt{tmlenet} \textbf{R} package [\cite{R-tmlenet}] to estimate the effects of single time point stochastic interventions using such data. The `tmlenet` R package performs estimation of average causal effects for single time point interventions in network-dependent (non-iid) data in the presence of interference and/or spillover. Currently implemented estimation algorithms are the targeted maximum likelihood estimation (TMLE), Horvitz-Thompson or the inverse-probability-of-treatment (IPTW) estimator and the parametric G-computation estimator. The user-specified interventions can be either static, dynamic or stochastic. Asymptotically correct influence-curve-based confidence intervals are also constructed for the TMLE and IPTW. For more information behind the methods implemented the `tmlenet` package, see @sofryginTechreport; @vdL2014nets.
 
 
 The examples in this vignette will also involve network data simulations that were performed with `simcausal` R package [@R-simcausal]. To learn more about the general functionality of the `simcausal` package, see the corresponding vignette titled: "simcausal Package: Simulations with Complex Longitudinal Data". To learn more about using the `simcausal` package specifically for conducting the network-based simulations, see the vignette "simcausal Package: Simulations with Networks-Based Dependent-Data Structural Equation Models". 
@@ -141,47 +151,47 @@ devtools::install_github('osofr/tmlenet', build_vignettes = FALSE)
  
  \begin{description}
  \item [\emph{{def.sW}}] This is the first part of the two part specification of the structural equation model
-    for the outcome \texttt{Y}.
-    Defines the (multivariate) baseline-covariate-based summary measure functions
-    that will be later applied to the input data to derive the (multivariate) summary measures \texttt{sW}.
-    Each component \texttt{sW[j]} of \texttt{sW} is defined by an R expression that takes as its input
-    unit's baseline covariates and the baseline covariates of unit's friends.
-    Each argument passed to \texttt{def.sW} is considered a separate summary measure, with the \texttt{j}th argument
-    defining the \texttt{j}the summary measure \texttt{sW[j]} and the name of the \texttt{j}th argument defining the name
-    of the summary measure \texttt{sW[j]}.
-    The arguments of \texttt{def.sW} can be either named, unnamed or a mixture of both. When the argument \texttt{j} is unnamed, 
-    the summary measure name for \texttt{sW[j]} is created automatically.
-    Each summary measure is defined either by an evaluable R expressions or by a string containing an evaluable R
-    expression.
-    These expressions can use a special double-square-bracket subsetting operator \texttt{"Var[[index]]"}, which enables
-    referencing the variable \texttt{Var} values of unit's friends.
-    For example,
-    \texttt{Var[[1]]} will evaluate to a one-dimensional vector of summary measures of length \texttt{nrow(data)}, where for each
-    row from the input \texttt{data},
-    this summary measure will contain the \texttt{Var} value of the unit's first friend. The ordering of friends is
-    determined by the ordering of friend IDs specified in the network input. 
-    In cases when the unit doesn't have any friends, its corresponding value of \texttt{Var[[1]]} will evaluate
-    to \texttt{NA} by default. However, all such \texttt{NA}'s can be replaced by 0's by passing \texttt{replaceNAw0 = TRUE}
-    as an additional argument to \texttt{def.sW}.
-    One can also use vectors for indexing friend variable \texttt{Var} values in \texttt{Var[[index]]}.
-    For example, \texttt{Var[[1:Kmax]]} will evaluate to a \texttt{Kmax}-dimensional summary measure, which will be a matrix
-    with \texttt{nrow(data)} rows and \texttt{Kmax} columns,
-    where the first column will evaluate to \texttt{Var[[1]]}, the second to \texttt{Var[[2]]}, and so on, 
-    up to the last column evaluating to \texttt{Var[[Kmax]]}.
-    Note that \texttt{Kmax} is a special reserved constant that can be used inside the network indexing operators.
-    It is set to the highest number of friends among all units in the input \texttt{data} and it is specified by
-    the user input argument \texttt{Kmax}. See \texttt{def.sW} manual for various examples of 
-    summary measures that use the network indexing operators.
+  for the outcome \texttt{Y}.
+  Defines the (multivariate) baseline-covariate-based summary measure functions
+  that will be later applied to the input data to derive the (multivariate) summary measures \texttt{sW}.
+  Each component \texttt{sW[j]} of \texttt{sW} is defined by an R expression that takes as its input
+  unit's baseline covariates and the baseline covariates of unit's friends.
+  Each argument passed to \texttt{def.sW} is considered a separate summary measure, with the \texttt{j}th argument
+  defining the \texttt{j}the summary measure \texttt{sW[j]} and the name of the \texttt{j}th argument defining the name
+  of the summary measure \texttt{sW[j]}.
+  The arguments of \texttt{def.sW} can be either named, unnamed or a mixture of both. When the argument \texttt{j} is unnamed, 
+  the summary measure name for \texttt{sW[j]} is created automatically.
+  Each summary measure is defined either by an evaluable R expressions or by a string containing an evaluable R
+  expression.
+  These expressions can use a special double-square-bracket subsetting operator \texttt{"Var[[index]]"}, which enables
+  referencing the variable \texttt{Var} values of unit's friends.
+  For example,
+  \texttt{Var[[1]]} will evaluate to a one-dimensional vector of summary measures of length \texttt{nrow(data)}, where for each
+  row from the input \texttt{data},
+  this summary measure will contain the \texttt{Var} value of the unit's first friend. The ordering of friends is
+  determined by the ordering of friend IDs specified in the network input. 
+  In cases when the unit doesn't have any friends, its corresponding value of \texttt{Var[[1]]} will evaluate
+  to \texttt{NA} by default. However, all such \texttt{NA}'s can be replaced by 0's by passing \texttt{replaceNAw0 = TRUE}
+  as an additional argument to \texttt{def.sW}.
+  One can also use vectors for indexing friend variable \texttt{Var} values in \texttt{Var[[index]]}.
+  For example, \texttt{Var[[1:Kmax]]} will evaluate to a \texttt{Kmax}-dimensional summary measure, which will be a matrix
+  with \texttt{nrow(data)} rows and \texttt{Kmax} columns,
+  where the first column will evaluate to \texttt{Var[[1]]}, the second to \texttt{Var[[2]]}, and so on, 
+  up to the last column evaluating to \texttt{Var[[Kmax]]}.
+  Note that \texttt{Kmax} is a special reserved constant that can be used inside the network indexing operators.
+  It is set to the highest number of friends among all units in the input \texttt{data} and it is specified by
+  the user input argument \texttt{Kmax}. See \texttt{def.sW} manual for various examples of 
+  summary measures that use the network indexing operators.
  \item [\emph{{def.sA}}] Defines treatment summary measures \texttt{sA} that can be functions of each unit's exposure and baseline covariates, 
-    as well the exposures and baseline covariates of unit's friends. 
-    This is the second part of the two part specification of the structural equation model for the outcome \texttt{Y}. 
-    The syntax is identical to \texttt{def.sW} function, except that \texttt{def.sA} can consists of functions of baseline covariates
-    as well as the exposure \texttt{Anode}.
+  as well the exposures and baseline covariates of unit's friends. 
+  This is the second part of the two part specification of the structural equation model for the outcome \texttt{Y}. 
+  The syntax is identical to \texttt{def.sW} function, except that \texttt{def.sA} can consists of functions of baseline covariates
+  as well as the exposure \texttt{Anode}.
  \item [\emph{{eval.summaries}}] A convenience function that can be used for validating and evaluating the user-specified summary measures. 
-    Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \texttt{def.sW} and \texttt{def.sA}.
-    Note that this function is called automatically by the \texttt{tmlenet} function and does not need to be called by the user prior to calling \texttt{tmlenet}.
+  Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \texttt{def.sW} and \texttt{def.sA}.
+  Note that this function is called automatically by the \texttt{tmlenet} function and does not need to be called by the user prior to calling \texttt{tmlenet}.
  \item [\emph{{tmlenet}}] Performs estimation of the causal effect of interest using the observed input \texttt{data}, 
-    the intervention of interest, the network information and the previously defined summary measures \texttt{sW}, \texttt{sA}.
+  the intervention of interest, the network information and the previously defined summary measures \texttt{sW}, \texttt{sA}.
  \end{description}
 
 
@@ -243,7 +253,7 @@ The estimators implemented in this package are described in detail in @sofryginT
 
 ### Inverse Probability Treatment-Weighted (IPTW):
  
-The first step of IPTW is to construct an estimator ${P_{g_N}(A^s | W^s)}$ for common (in $i$) conditional density ${P_{g_0}(A^s | W^s)}$ and common (in $i$) summary measures $(A^s,W^s)$. The same fitting algorithm is then applied to construct an estimator ${P_{g^*_N}(A^{*,s} | W^{*,s})}$ of the common (in $i$) conditional density ${P_{g^*_0}(A^{*,s} | W^{*,s})}$ for common (in $i$) unit-level summary measures $(A^{*,s},sW^{*,s})$ implied by the user-supplied stochastic interventions \texttt{f\_gstar1} or \texttt{f\_gstar2} and the empirical distribution of ${W}$. 
+The first step of IPTW is to construct an estimator ${P_{g_N}(A^s | W^s)}$ for common (in $i$) conditional density ${P_{g_0}(A^s | W^s)}$ and common (in $i$) summary measures $(A^s,W^s)$. The same fitting algorithm is then applied to construct an estimator ${P_{g^*_N}(A^{*,s} | W^{*,s})}$ of the common (in $i$) conditional density ${P_{g^*_0}(A^{*,s} | W^{*,s})}$ for common (in $i$) unit-level summary measures $(A^{*,s},sW^{*,s})$ implied by the user-supplied stochastic interventions \texttt{f\_gstar1} or \texttt{f\_gstar2} and the empirical distribution of ${W}$.
 
 These two density estimators form the basis of the IPTW estimator, which is evaluated at the observed N data points ${O_i=(W^s_i, A^s_i, Y_i), i=1,...,N}$ and is given by
 $${\psi^{IPTW}_n = \sum_{i=1,...,N}{Y_i \dfrac{P_{g^*_N}(A^{*,s}=A^s_i | W^s=W^s_i)}{P_{g_N}(A^s=A^s_i | W^s=W^s_i)}}.}$$
@@ -259,7 +269,7 @@ $${\psi^{IPTW}_n = \sum_{i=1,...,N}{Y_i \dfrac{P_{g^*_N}(A^{*,s}=A^s_i | W^s=W^s
 Non-parametric estimation of the common \emph{unit-level} multivariate joint conditional probability model ${P_{g_0}(A^s|W^s)}$, 
 for unit-level summary measures ${(A^s,W^s)}$ generated from the observed exposures and baseline covariates 
 ${(\mathbf{A},\mathbf{W})=(A_i,W_i : i=1,...,N)}$ (their joint density given by ${\mathbf{g}_0(\mathbf{A}|\mathbf{W})\mathbf{Q}(\mathbf{W})}$), is performed by first 
-constructing the dataset of $N$ summary measures, ${(A^s_i,W^s_i : i=1,...,N)}$, and then fitting the usual i.i.d. MLE 
+constructing the dataset of $N$ summary measures, ${(A^s_i,W^s_i : i=1,...,N)}$, and then fitting the usual iid MLE 
 for the common density ${P_{g_0}(A^s|W^s)}$ based on the pooled N sample of these summary measures.
   
 Note that ${A^s}$ can be multivariate, e.g., for $k$ dimensional $A^s$, we have $A^s=(A^s(1),\ldots,A^s(k))$, where each component $A^s(j)$ is univariate it can be either binary, categorical or continuous.
@@ -406,27 +416,25 @@ eval_res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKma
                           NETIDmat = NetInd_mat_Kmax6)
 ```
 
-Contents of the list returned by `eval.summaries()`:
+The contents of the list returned by `eval.summaries()` includes the matrix of evaluated baseline summaries $W^s$ (variable `sW.matrix`), the matrix of evaluated exposure summaries $A^s$ (variable `sA.matrix`), and the matrix of network IDs (variable `NETIDmat`), all of which can be accessed as shown below:
 
 ```{r}
-# Matrix of sW summary measures:
+# Matrix of sW (baseline) summaries:
 head(eval_res$sW.matrix,2) 
-# Matrix of sA summary measures:
+# Matrix of sA (exposure) summaries:
 head(eval_res$sA.matrix,2)
-# matrix of network IDs: 
+# Matrix of the network IDs:
 head(eval_res$NETIDmat,2)
 ```
 
-Observed data summary measures (sW,sA) and the network are stored in one object named \texttt{DatNet.ObsP0}:
+The observed data summary measures ($A^s,W^s$) and the network are conveniently stored in a single object named \texttt{DatNet.ObsP0}, which is also returned by the function \texttt{eval.summaries}. The object \texttt{DatNet.ObsP0} can be passed on to the \texttt{tmlenet} function as an alternative way to specify the input data with one argument \texttt{DatNet.ObsP0} (see `?tmlenet` for additional details).
 
-```{r}
-class(eval_res$DatNet.ObsP0)
+```{r, eval=FALSE}
+eval_res$DatNet.ObsP0
 ```
 
 In the example below, we estimate mean population outcome under deterministic intervention that assigns all `A` to 0
-(network specified via a matrix of friend IDs). Note that can also use previously evaluated
-summary measures object `DatNet.ObsP0` as input to `tmlenet`, avoiding the need to specify the arguments
-(`data`,`NETIDmat`,`Kmax`,`sW`,`sA`) for the second time.
+(network specified via a matrix of friend IDs).
 
 ```{r, message=FALSE}
 res1 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax, 
@@ -454,6 +462,8 @@ One can change this default behavior and use the arguments `Qform`, `hform.g0` a
 to select a subset of the summary measures in `sW`,`sA` to be included in each of the three models described above.
 For example, below we are assuming that the outcomes in `Y` only depend on the summary measures `netA`,`netW2` 
 (regression `"Y~netA+netW2"`) and hence the observed exposure model is given by `P(netA|netW2)` (regression `"netA~netW2"`) and we also know that `f_gstar1` defines a static intervention `A^*=1` and hence `sA^*` is degenerate and doesn't depend on any baseline covariates and will be estimated here with a simplified regression model (regression `"netA ~ nF"`):
+
+Note that in this example we are also using the previously evaluated summary data object `DatNet.ObsP0` as an input to `tmlenet`, thus, avoiding the need to specify the arguments (`data`,`NETIDmat`,`Kmax`,`sW`,`sA`) each time.
 
 ```{r, message=FALSE}
 res2 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
@@ -527,10 +537,17 @@ Our target causal quantity is defined with respect to $n$ $i$-specific counterfa
 
 ## Specifying the structural equation model for dependent data
 
-In order to perform network-based simulations with the `simcausal` package one has to first define the sampling distribution function for the network, and this function will be referred to as the *network generator* function. In general the network generator can be any user-supplied function that returns a network $\mathbf{F}$ for `n` observations. The next step is then to *register* the network generator with a call to the `network` function, specifying the network generator function name as an argument `netfun`. This network can then serve as a backbone for defining the dependent-data structural equation models, in which any variable can be a function of the previously defined variable values of the unit's friends. For additional examples of such network generators, as well as the detailed specifications of how to define such functions, we refer to the `simcausal` package vignette "Simulations with Networks-Based Dependent-Data Structural Equation Models" [@R-simcausal]. We define the network generator `generate.igraph.k.regular` below that samples a regular directed graph (all nodes have the same degree `Kmax`) using the `sample_k_regular` function of the `igraph` package [@igraph]. 
+In order to perform network-based simulations with the `simcausal` package one has to first define the sampling distribution function for the network. This network can then serve as a backbone for defining the dependent-data structural equation models, in which any variable can be a function of the previously defined variable values of the unit's friends. For additional examples of such network generators, as well as the detailed specifications of how to define such functions, we refer to the `simcausal` package vignette "Simulations with Networks-Based Dependent-Data Structural Equation Models" [@R-simcausal]. We define the network generator by sampling a regular directed graph (all nodes have the same degree `Kmax`) using the `sample_k_regular` function of the `igraph` package [@igraph]. 
 
-```{r, results='hide', message=FALSE}
-library(igraph)
+We then use the `simcausal` `R` package [@R-simcausal] to define the structural equation model for baseline covariates (`W1`, `W2` and `W3`), then defining the structural equation model for the observed exposure `sA` and, finally, defining the binary outcome `Y` that depends on the network structure of friends exposures [\textbf{PRESENT THE SEM}].
+
+Next, we evaluate $\psi_0$ under intervention $g^*$ via Monte-Carlo simulation by sampling the counterfactual outcome $Y^*$ from the modified data-generating distribution that replaces $g_0$ with $g^*$. In order to do that, we first define an action named `gstar`, that overrides the distribution of the observed node `new.sA`, with a new distribution given by the common in $i$ density $g^*$, which is as described above, i.e., we shift the value of the observed continuous exposure `sA` only if the condition $(*)$ is satisfied for $trunc=4$ and $shift=1$ constants. We then sample a network of $n=50,000$, sample $Y_i^*$, for $i=1,\ldots,n$, based on stochastic intervention $g^*$ and evaluate the Monte-Carlo estimate of $\psi_0$. 
+
+As our final step of the simulation, we used the same data-generating mechanism to obtain replicate observed data samples using the above defined dependent data generating distribution with the observed treatment mechanism $g_0$. The visualize representation of the observed network for 50 samples is shown in Figure \ref{fig:netplot3} (the plot was created by using the `plot.igraph` function in `igraph` package [@igraph]).
+
+
+```{r, results='hide', message=FALSE, echo=FALSE}
+library('igraph')
 generate.igraph.k.regular <- function(n, Kmax, ...) {
     if (n < 20) Kmax <- 5
     igraph.reg <- igraph::sample_k_regular(no.of.nodes = n, 
@@ -543,9 +560,7 @@ generate.igraph.k.regular <- function(n, Kmax, ...) {
   }
 ```
 
-Below, we use the `simcausal` `R` package [@R-simcausal] to define the structural equation model that uses the above network generating function `generate.igraph.k.regular`, by first  adding the above network generator, then defining the structural equation model for baseline covariates (`W1`, `W2` and `W3`), then defining the structural equation model for the observed exposure `sA` and, finally, defining the binary outcome `Y` that depends on the network structure of friends exposures.
-
-```{r, results='hide', message=FALSE}
+```{r, results='hide', message=FALSE, echo=FALSE}
 library(simcausal)
 options(simcausal.verbose=FALSE)
 Kmax <- 10
@@ -571,11 +586,7 @@ D <- D +
 Dset <- set.DAG(D)
 ```
 
-## Evaluating the true value of the causal quantity
-
-We now evaluate $\psi_0$ under intervention $g^*$ via Monte-Carlo simulation by sampling the counterfactual outcome $Y^*$ from the modified data-generating distribution that replaces $g_0$ with $g^*$. In order to do that, we first define an action named `gstar`, that overrides the distribution of the observed node `new.sA`, with a new distribution given by the common in $i$ density $g^*$, which is as described above, i.e., we shift the value of the observed continuous exposure `sA` only if the condition $(*)$ is satisfied for $trunc$ and $shift$ constants provided below:
-
-```{r}
+```{r, results='hide', message=FALSE, echo=FALSE}
 trunc <- 4
 shift <- 1
 
@@ -588,9 +599,7 @@ Dset <- Dset +
     trunc = trunc, shift = shift)
 ```
 
-Next, we sample a network of $n=50,000$, sample $Y_i^*$, for $i=1,\ldots,n$, based on the action `gstar` defined above and finally, evaluate the Monte-Carlo estimate of $\psi_0$:
-
-```{r}
+```{r, results='hide', message=FALSE, echo=FALSE}
 `%+%` <- function(a, b) paste0(a, b)
 nfull <- 50000
 datFull <- sim(Dset, actions="gstar", n = nfull, rndseed = 54321)[[1]]
@@ -598,11 +607,7 @@ psi0 <- mean(datFull$Y)
 print(c("psi0: ", psi0))
 ```
 
-## Simulating observed data, obtaining the network
-
-Next, we simulate the observed data from the above defined dependent data generating distribution and save the network ID matrix, as shown below:
-
-```{r}
+```{r, results='hide', message=FALSE, echo=FALSE}
 nsamp <- 50
 datO <- sim(Dset, n = nsamp, rndseed = 54321)
 print("mean(datO$Y): " %+% mean(datO$Y));
@@ -614,11 +619,8 @@ print(head(datO,2))
 print(head(NetInd_mat,2))
 ```
 
-## Plotting
 
-We can visualize the observed network using `plot.igraph` function in `igraph` package [@igraph], as shown below.
-
-```{r netplot3, fig.width=7, fig.height=5, message=FALSE, fig.cap = "Directed random regular graph (all nodes have the same degree) from Example 3"}
+```{r netplot3, fig.width=7, fig.height=5, message=FALSE, echo=FALSE, fig.cap = "Directed random regular graph (all nodes have the same degree) from Example 3"}
 g <- sparseAdjMat.to.igraph(NetInd.to.sparseAdjMat(NetInd_mat, nF = nF))
 par(mar=c(.1,.1,.1,.1))
 plot.igraph(g,
@@ -628,26 +630,21 @@ plot.igraph(g,
     edge.arrow.size=.1)
 ```
 
-Similarly, we can plot the functional relationships between the nodes in the `DAG` object `Dset`, as shown below.
-
-```{r DAGplot3, fig.width=6, fig.height=5, message=FALSE, fig.cap = "Functional relationships between the nodes of the structural equation model from Example 3"}
+<!-- Similarly, we can plot the functional relationships between the nodes in the `DAG` object `Dset`, as shown below. -->
+<!-- {r DAGplot3, fig.width=6, fig.height=5, message=FALSE, fig.cap = "Functional relationships between the nodes of the structural equation model from Example 3"}
 par(mar=c(.1,.1,.1,.1))
 plotDAG(Dset, vertex_attrs = list(size = 18, label.cex = 0.8))
-```
+ -->
 
 ## Estimation of causal effects in observational network data using `tmlenet` `R` package
 
-Function `tmlenet` in package `tmlenet` can perform the estimation of the mean outcome under stochastic intervention `f.gstar`, using the above sampled observed data `datO`, the network defined by the matrix `NetInd_mat` and the argument `Qform` to specify the regression model for the conditional mean of the outcome `Y`, given summary measures $W^s,A^s$.
-
-
-## Stochastic intervention
+We use the function `tmlenet` to perform the estimation of the mean outcome under stochastic intervention `f.gstar`, using the above sampled observed data `datO`, the network defined by the matrix `NetInd_mat` and the argument `Qform` to specify the regression model for the conditional mean of the outcome `Y`, given summary measures $W^s,A^s$.
 
 Below we give an example of the user-specified stochastic intervention that will be provided as an input to the `tmlenet` function. The user-defined stochast intervention is a function that should always return a vector of new treatment assignments. The example below uses the shifted normal intervention, which is the same intervention defined above using the `DAG` object of the `simcausal` package. This function returns a stochastic intervention function intervening on `sA`, for given `shift` and `trunc` constants.
 
 ```{r, message=FALSE}
 library(tmlenet)
 options(tmlenet.verbose = FALSE)
-
 nsamp <- 5000
 datO <- sim(Dset, n = nsamp, rndseed = 54321)
 NetInd_mat <- attributes(datO)$netind_cl$NetInd
@@ -662,7 +659,6 @@ create_f.gstar <- function(shift, trunc) {
     sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
     sA <- data[,"sA"]
     untrunc.sA.gstar <- sA + shift
-    # ratio of P_g^*(sA=sa|W)/P_g0(sA=sa|W) for sa=sA generated under g^*:
     r.new.sA <- exp(shift * (untrunc.sA.gstar - sA.mu - shift / 2))
     trunc.sA.gstar <- ifelse(r.new.sA > trunc, sA, untrunc.sA.gstar)
     return(trunc.sA.gstar)
@@ -671,9 +667,7 @@ create_f.gstar <- function(shift, trunc) {
 }
 ```
 
-## Summary measures
-
-Define the (network) summary measures $W^s$ and $A^s$ for the `tmlenet` function input using a syntax similar to the `simcausal` syntax above. The function `def.sW` is used to specify the baseline-only summary measures $W^s:=w_i(\mathbf{W})$ and the function `def.sA` is used to specify the exposure and baseline summary measures $A^s:=a_i(\mathbf{A},\mathbf{W})$. This summary measures form the basis of the `exposure model`, i.e., $P(A^s|W^s)$, where the latter probability model is defined under the true exposure mechanism $\mathbf{g}_0(\mathbf{A}|\mathbf{W})$ and the user-specified stochastic intervention $\mathbf{g}^*(\mathbf{A}^*|\mathbf{W})$, where the stochastic intervention of interest is defined with the argument `f_gstar1` of the `tmlenet` function.
+Next, we define the (network) summary measures $W^s$ and $A^s$ for the `tmlenet` function input using a syntax that is identical to the syntax described in the `simcausal` package vignette "Simulations with Networks-Based Dependent-Data Structural Equation Models" [@R-simcausal]. The function `def.sW` is used to specify the baseline-only summary measures $W^s:=w_i(\mathbf{W})$ and the function `def.sA` is used to specify the exposure and baseline summary measures $A^s:=a_i(\mathbf{A},\mathbf{W})$. This summary measures form the basis of the `exposure model`, i.e., $P(A^s|W^s)$, where the latter probability model is defined under the true exposure mechanism $\mathbf{g}_0(\mathbf{A}|\mathbf{W})$ and the user-specified stochastic intervention $\mathbf{g}^*(\mathbf{A}^*|\mathbf{W})$, where the stochastic intervention of interest is defined with the argument `f_gstar1` of the `tmlenet` function.
 
 
 ```{r, results='hide', message=FALSE}
@@ -687,7 +681,7 @@ def_sW <- def.sW(W1, W2, W3) +
 ```
 
 
-## Pre-evaluation of the summary measures
+One can examine the evaluation results of such summary measures by calling the helper function \texttt{eval.summaries}. Note that this function is provided purely for the user's convenience, that is, \texttt{eval.summaries} doesn't need to be called for performing estimation with the \texttt{tmlenet} function.
 
 ```{r, message=FALSE}
 Kmax <- 10
@@ -702,14 +696,12 @@ names(res)
 
 ## Estimation example 1.
 
- The example below performs estimation using the default regression models for $E[Y_|A^s_i,W^s_i]$, $P_{\mathbf{g}_0}(A^s|W^s)$ and  $P_{\mathbf{g}^*}(A^s|W^s)$.
+ The example below performs estimation using the default regression models for $E[Y_|A^s_i,W^s_i]$, $P_{\mathbf{g}_0}(A^s|W^s)$ and $P_{\mathbf{g}^*}(A^s|W^s)$. Note that below we are changing the default settings of the estimation procedure, specifically, we are calling the \texttt{tmlenet\_options} function and setting the parameters: \texttt{maxNperBin} to \texttt{1000} (maximum number of observations per one bin when performing the conditional histogram estimation for continuous summary in $A^s$) and \texttt{bin.method} to \texttt{"equal.mass"} (data-adaptive definition for bin cutoffs, all bin intervals will have the same number of observations and varying interval length). To learn more about all such options available for the \textbf{tmlenet} package, see `?tmlenet_options`. To see the values of the current used option parameters, call `print_tmlenet_opts()`.
+
 
 ```{r, message=FALSE}
-f.gstar <- create_f.gstar(shift = shift.const, trunc = trunc.const)
-
-print_tmlenet_opts()
 tmlenet_options(maxNperBin = 1000, bin.method="equal.mass")
-
+f.gstar <- create_f.gstar(shift = shift.const, trunc = trunc.const)
 res1 <- tmlenet(data = datO, Anode = "sA", Ynode = "Y",
                 Kmax = Kmax,
                 NETIDmat = NetInd_mat,
@@ -746,11 +738,11 @@ The `alpha`-level asymptotic confidence intervals (based on the asymptotic norma
 res1$EY_gstar1$CIs
 ```
 
-Finally, `h_g0_SummariesModel` and `h_gstar_SummariesModel` provide the model fits for the exposure model $P(A^s|W^s)$, for the observed exposure mechanism $\mathbf{g}_0$ and for the stochastic intervention (either `f_gstar1` or `f_gstar2`), respectively, as shown below:
+Finally, `h_g0_SummariesModel` and `h_gstar_SummariesModel` provide the fit objects for the exposure model $P(A^s|W^s)$, for the observed exposure mechanism $\mathbf{g}_0$ and for the stochastic intervention (either `f_gstar1` or `f_gstar2`), respectively, which could be examined as shown below:
 
-```{r}
-names(res1$EY_gstar1$h_g0_SummariesModel)
-names(res1$EY_gstar1$h_gstar_SummariesModel)
+```{r, eval=FALSE}
+res1$EY_gstar1$h_g0_SummariesModel
+res1$EY_gstar1$h_gstar_SummariesModel
 ```
 
 ## Estimation example 2.
@@ -806,7 +798,7 @@ res3$EY_gstar1$estimates
 <!-- \textbf{FUNDING ACKNOWLEDGEMENT}:  -->
 
 <!-- % \bibliographystyle{unsrt} -->
-<!-- \bibliography{SimCausal_2014,R-Pckgs} -->
+<!-- \bibliography{SimCausal_2014,R-Pckgs,TMLE_networks_2014} -->
 
 # References
 
