@@ -566,13 +566,26 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     bin.nms.sVar = function(name.sVar, nbins) { name.sVar%+%"_"%+%"B."%+%(1L:nbins) },
     pooled.bin.nm.sVar = function(name.sVar) { name.sVar %+% "_allB.j" },
     detect.sVar.intrvls = function(name.sVar, nbins, bin_bymass, bin_bydhist, max_nperbin) {
+      tol.int <- 0.001
       int <- define.intervals(x = self$get.sVar(name.sVar), nbins = nbins, bin_bymass = bin_bymass, bin_bydhist = bin_bydhist, max_nperbin = max_nperbin)
-      if (length(unique(int)) < length(int)) {
-        message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+%
-                (length(int)-1) %+% " to " %+% (length(unique(int))-1) %+% " due to too few obs.")
-        print("old intervals: "); print(int)
-        int <- unique(int)
-        print("new intervals: "); print(int)
+      diffvec <- diff(int)
+      if (sum(abs(diffvec) < tol.int) > 0) {
+      # if (length(unique(int)) < length(int)) {
+        if (gvars$verbose) {
+          # message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+%
+          #         (length(int)-1) %+% " to " %+% (length(unique(int))-1) %+% " due to too few obs.")
+          message("No. of categories for " %+% name.sVar %+% " was collapsed from " %+%
+                  (length(int)-1) %+% " to " %+% (length(int[diffvec >= tol.int])-1) %+% " due to too few obs.")
+          print("old intervals: "); print(as.numeric(int))
+        }
+        # Just taking unique interval values is insufficient
+        # Instead need to drop all intervals that are "too close" to each other based on some tol value
+        # remove all intervals (a,b) where |b-a| < tol.int, but always keep the very first interval (int[1])
+        int <- c(int[1], int[2:length(int)][abs(diffvec) >= tol.int])
+        # int <- unique(int)
+        if (gvars$verbose) {
+          print("new intervals: "); print(as.numeric(int))
+        }
       }
       return(int)
     },
