@@ -71,7 +71,7 @@ test.examples <- function() {
   # # correct version(s):
   #***************************************************************************************
   # No Ynode:
- res_K6_1a <- tmlenet(data = df_netKmax6, Kmax = Kmax, Anode = "A", f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
+  res_K6_1a <- tmlenet(data = df_netKmax6, Kmax = Kmax, Anode = "A", f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
                       Qform = "Y ~ sum.netW3 + sum.netAW2",
                       hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                       hform.gstar = "netA ~ sum.netW3",

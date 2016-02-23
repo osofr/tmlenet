@@ -150,13 +150,14 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   connectmtx_1stO <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
 
   # TMLE inference based on the iid IC:
-  iidIC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
-  var_tmle <- est.sigma_sparse(iidIC_tmle, connectmtx_1stO)
+  IC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO)
   # Simple estimator of the iid asymptotic IC-based variance (no adjustment made when two observations i!=j are dependent):
-  var_iid.tmle <- mean((iidIC_tmle)^2)
+  iid_var_tmle <- mean((IC_tmle)^2)
   # IPTW h (based on the mixture density clever covariate (h)):
-  iidIC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_IPTW",])
-  var_iptw_h <- est.sigma_sparse(iidIC_iptw_h, connectmtx_1stO)
+  IC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_IPTW",])
+  var_iptw_h <- est.sigma_sparse(IC_iptw_h, connectmtx_1stO)
+  iid_var_iptw_h <- mean((IC_iptw_h)^2)
 
   var.ests <- c(abs(var_tmle), abs(var_iptw_h), NA)
   as.var_mat <- matrix(0, nrow = length(var.ests), ncol = 1)
@@ -164,24 +165,32 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   rownames(as.var_mat) <- estnames
   colnames(as.var_mat) <- "Var"
 
+  iid.vars = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
+                 iid_var_iptw_h = abs(iid_var_iptw_h)) # no adjustment for correlations i,j for iptw
+
+  iid.vars_mat <- matrix(0, nrow = length(iid.vars), ncol = 1)
+  iid.vars_mat[,1] <- iid.vars
+  rownames(iid.vars_mat) <- names(iid.vars)
+  colnames(iid.vars_mat) <- "Var"
+
   # QY.star <- QY_mat[, "QY.star"]
   # g_wts <- wts_mat[,"g_wts"]  
   # var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
   # var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
   # # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
   # if (!onlyTMLE_B) {
-  #   iidIC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
-  #   var_tmle_A <- est.sigma_sparse(iidIC_tmle_A, connectmtx_1stO)
+  #   IC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
+  #   var_tmle_A <- est.sigma_sparse(IC_tmle_A, connectmtx_1stO)
   # }
   # # TMLE B (weighted model update): Inference based on the iid IC:
-  # iidIC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
-  # var_tmle_B <- est.sigma_sparse(iidIC_tmle_B, connectmtx_1stO)
+  # IC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
+  # var_tmle_B <- est.sigma_sparse(IC_tmle_B, connectmtx_1stO)
   # # simple iid estimator of the asymptotic variance (no adjustment made when two observations i!=j are dependent):
-  # var_iid.tmle_B <- mean((iidIC_tmle_B)^2)
+  # iid_var_tmle_B <- mean((IC_tmle_B)^2)
   # TMLE based on iptw clever covariate (more non-parametric):
   # if (!onlyTMLE_B) {
-  #   iidIC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
-  #   var_tmleiptw_1stO <- est.sigma_sparse(iidIC_tmleiptw, connectmtx_1stO)
+  #   IC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
+  #   var_tmleiptw_1stO <- est.sigma_sparse(IC_tmleiptw, connectmtx_1stO)
   # }
   # # IPTW g:
   # if (!onlyTMLE_B) {
@@ -229,15 +238,15 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   # var.ests <- c(abs(var_tmle_A), abs(var_tmle_B), abs(var_tmleiptw_1stO), abs(var_iptw_h), abs(var_iptw_1stO), 0)
   # estnames <- c( "TMLE_A", "TMLE_B", "TMLE_g_IPTW", "h_IPTW", "g_IPTW", "MLE")
   # other.vars = c(
-  #               var_iid.tmle_B = abs(var_iid.tmle_B), # no adjustment for correlations i,j
+  #               iid_var_tmle_B = abs(iid_var_tmle_B), # no adjustment for correlations i,j
   #               var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
   #               var_iptw_2ndO = abs(var_iptw_2ndO), # adjusting for 2nd order dependence of i,j
   #               var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
   #               var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
   #               )
 
-  return(list(as.var_mat = as.var_mat))
-  # return(list(as.var_mat = as.var_mat, other.vars = other.vars))
+  # return(list(as.var_mat = as.var_mat))
+  return(list(as.var_mat = as.var_mat, iid.vars_mat = iid.vars_mat))
 }
 
 # create output object with param ests of EY_gstar, vars and CIs for given gstar (or ATE if two tmle obj are passed)
@@ -279,19 +288,28 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
 
   CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$as.var_mat), 1, get_CI, n = nobs))
   colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
+  
+  # CIs based on IID variance :
+  iid.CIs_mat <- t(apply(cbind(ests_mat[c(1:2),,drop=FALSE], as.vars_obj$iid.vars_mat), 1, get_CI, n = nobs))
+  colnames(iid.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
 
   # ------------------------------------------------------------------------------------------
   # RENAME ESTIMATORS FOR THE FINAL OUTPUT:
   # ------------------------------------------------------------------------------------------
   rownames(ests_mat) <- estoutnames
+
   rownames(as.vars_obj$as.var_mat) <- estoutnames
+  rownames(as.vars_obj$iid.vars_mat) <- estoutnames[1:2]
+
   rownames(CIs_mat) <- estoutnames
+  rownames(iid.CIs_mat) <- estoutnames[1:2]
 
   EY_g.star <- list(estimates = ests_mat,
                     vars = (as.vars_obj$as.var_mat / nobs),
                     CIs = CIs_mat,
-                    other.vars = (as.vars_obj$other.vars / nobs),
-                    # other.vars = lapply(as.vars_obj$other.vars, function(var) var / nobs)
+                    # other.vars = (as.vars_obj$other.vars / nobs),
+                    iid.vars = (as.vars_obj$iid.vars_mat / nobs),
+                    iid.CIs = iid.CIs_mat,
                     h_g0_SummariesModel = NULL,
                     h_gstar_SummariesModel = NULL)
 
