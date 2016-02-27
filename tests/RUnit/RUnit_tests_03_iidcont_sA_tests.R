@@ -63,6 +63,12 @@ test.simple.fit.density.sA <- function() {
   testm.sW <- nodeobjs$def_sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
   testm.sA <- nodeobjs$def_sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
 
+  DatNet_object <- nodeobjs$datNetObs
+  head(DatNet_object$dat.sWsA)
+  subset_mat <- DatNet_object$get.dat.sWsA(rowsubset = TRUE, covars = c("W1","W2"))
+  # check error is thrown when covariate doesn't exist:
+  checkException(subset_mat_error <- DatNet_object$get.dat.sWsA(rowsubset = TRUE, covars = c("W1","W4", "W5")))
+
   # Define est_params_list:
   reg.sVars <- list(outvars = c("sA"), predvars = c("W1", "W2", "W3"))
   subset_vars <- lapply(reg.sVars$outvars, function(var) {var})

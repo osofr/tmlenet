@@ -56,13 +56,17 @@ f.gen.A.star <- function(data, f.g_fun) {
       args <- c(args0, ...)
     do.call(f.g_fun, args)
   }
-  # test f.g_fun is a function, if not it must be a vector
+  # test f.g_fun is a function, if not it must be either a vector (numAnodes x 1) or matrix (n x numAnodes)
+  # of counterfactual treatment assignments
   if (!is.function(f.g_fun)) {
+    # need to modify:
+    # (1) allow vector (numAnodes x 1) for constant treatment assignment or
+    # (2) matrix (n x numAnodes) for obs-specific assignment
     newA <- as.vector(f.g_fun)
     if (length(newA)!=nrow(data) && length(newA)!=1L) stop("f_gstar1/f_gstar2 must be either a function or a vector of length nrow(data) or 1")
     if (length(newA)==1L) newA <- rep_len(newA, nrow(data))
   } else {
-    if (!("data" %in% names(formals(f.g_fun)))) stop("functions f_gstar1 / f_gstar2 must have a named argument 'data'")  
+    if (!("data" %in% names(formals(f.g_fun)))) stop("functions f_gstar1 / f_gstar2 must have a named argument 'data'")
     newA <- .f_g_wrapper(data = data, f.g_fun = f.g_fun)
   }
   return(newA)
@@ -525,20 +529,31 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     # if covar[j] doesn't exist, it just wont be included with no warning;
     # return a data.frame with covars (predictors):
     get.dat.sWsA = function(rowsubset = TRUE, covars) {
-      dat.bin.sVar <- self$dat.bin.sVar
-      sel.sWsA <- TRUE
-      sel.binsA <- NULL # columns to select from binned continuos var matrix (if it was previously constructed)
       if (!missing(covars)) {
+
+        # columns to select from main design matrix:
         sel.sWsA <- colnames(self$dat.sWsA)[(colnames(self$dat.sWsA) %in% covars)]
-        if (!is.null(dat.bin.sVar)) {
-          sel.binsA <- colnames(dat.bin.sVar)[(colnames(dat.bin.sVar) %in% covars)]
+        dfsel <- self$dat.sWsA[rowsubset, sel.sWsA, drop = FALSE]
+
+        # columns to select from binned continuous/cat var matrix (if it was previously constructed):
+        if (!is.null(self$dat.bin.sVar)) {
+          sel.binsA <- colnames(self$dat.bin.sVar)[(colnames(self$dat.bin.sVar) %in% covars)]
+        } else {
+          sel.binsA <- NULL
         }
+        if (length(sel.binsA)>0) {
+          dfsel <- cbind(dfsel, self$dat.bin.sVar[rowsubset, sel.binsA, drop = FALSE])
+        }
+
+        found_vars <- covars %in% colnames(dfsel)
+        if (!all(found_vars)) stop("some covariates can't be found (perhaps not declared as summary measures (def.sW(...) or def.sW(...))): "%+%
+                                    paste(covars[!found_vars], collapse=","))
+
+        return(dfsel)
+
+      } else {
+        return(self$dat.sWsA[rowsubset, , drop = FALSE])
       }
-      dfsel <- self$dat.sWsA[rowsubset, sel.sWsA, drop = FALSE]
-      if (length(sel.binsA)>0) {
-        dfsel <- cbind(dfsel, dat.bin.sVar[rowsubset, sel.binsA, drop = FALSE])
-      }
-      return(dfsel)
     },
 
     get.outvar = function(rowsubset = TRUE, var) {
@@ -657,19 +672,46 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       } else {
         if (is.null(self$nodes$Anode)) stop("Anode was not appropriately specified and is null; can't replace observed Anode with that sampled under g_star")
         Odata <- datnetW$Odata
-        # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping a old pointer to O.datnetA)
+        # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping an old pointer to O.datnetA to be used later for prediction)
         datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes)
         df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
         colnames(df.sWsA) <- self$names.sWsA
         for (i in seq_len(p)) {
-          # if Anode is continuous, just call f.gen.probA.star:
+
+          # * Does it make sense to also pass the input data?
           A.gstar <- f.gen.A.star(data = cbind(datnetW$dat.sVar,datnetA$dat.sVar), f.g_fun = f.g_fun)
           Odata[, self$nodes$Anode] <- A.gstar # replace A under g0 in Odata with A^* under g.star:
+          # Odata[, self$nodes$Anode := A.gstar]
+
+          # * Does it make sense to also convert Odata in a data.table and throw it in its own class? (will forever prohibit copy on modify...)
+          # print("class(Odata)"); print(class(Odata))
+          # browser()
+          # for (Anode in self$nodes$Anode) {
+          #   Odata[, Anode] <- A.gstar[,Anode]
+          # }
+
           datnetA.gstar$make.sVar(Odata = Odata, sVar.object = sA.object) # create new summary measures sA (under g.star)
           # Assigning the summary measures to one output data matrix:
           df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetA.gstar$dat.sVar)[, ]
         }
       }
+
+
+      # data.table::setDT(Odata)
+      # Anodes <- self$nodes$Anode
+      # Anodes <- c("nF.PA", "A")
+      # A.gstar <- cbind(nF.PA = A.gstar, A = rep(0,length(A.gstar)))
+      # if (is.matrix(A.gstar)) {
+      #   assert_that(ncol(A.gstar) == length(Anodes))
+      #   for (col in Anodes) {
+      #     idx <- which(Anodes %in% col)
+      #     Odata[, (col) := A.gstar[, idx]]
+      #   }
+      # } else {
+      #   Odata[, Anodes := A.gstar]
+      # }
+
+
       self$dat.sVar <- df.sWsA
       invisible(self)
     }

@@ -162,16 +162,15 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   var.ests <- c(abs(var_tmle), abs(var_iptw_h), NA)
   as.var_mat <- matrix(0, nrow = length(var.ests), ncol = 1)
   as.var_mat[,1] <- var.ests
-  rownames(as.var_mat) <- estnames
-  colnames(as.var_mat) <- "Var"
+  rownames(as.var_mat) <- estnames; colnames(as.var_mat) <- "Var"
 
-  iid.vars = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
-                 iid_var_iptw_h = abs(iid_var_iptw_h)) # no adjustment for correlations i,j for iptw
+  iid.var.ests = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
+                   iid_var_iptw_h = abs(iid_var_iptw_h), # no adjustment for correlations i,j for iptw
+                   iid_var_gcomp = NA) 
 
-  iid.vars_mat <- matrix(0, nrow = length(iid.vars), ncol = 1)
-  iid.vars_mat[,1] <- iid.vars
-  rownames(iid.vars_mat) <- names(iid.vars)
-  colnames(iid.vars_mat) <- "Var"
+  iid.vars_mat <- matrix(0, nrow = length(iid.var.ests), ncol = 1)
+  iid.vars_mat[,1] <- iid.var.ests
+  rownames(iid.vars_mat) <- names(iid.var.ests); colnames(iid.vars_mat) <- "Var"
 
   # QY.star <- QY_mat[, "QY.star"]
   # g_wts <- wts_mat[,"g_wts"]  
@@ -290,7 +289,7 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
   
   # CIs based on IID variance :
-  iid.CIs_mat <- t(apply(cbind(ests_mat[c(1:2),,drop=FALSE], as.vars_obj$iid.vars_mat), 1, get_CI, n = nobs))
+  iid.CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$iid.vars_mat), 1, get_CI, n = nobs))
   colnames(iid.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
 
   # ------------------------------------------------------------------------------------------
@@ -299,15 +298,14 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   rownames(ests_mat) <- estoutnames
 
   rownames(as.vars_obj$as.var_mat) <- estoutnames
-  rownames(as.vars_obj$iid.vars_mat) <- estoutnames[1:2]
+  rownames(as.vars_obj$iid.vars_mat) <- estoutnames
 
   rownames(CIs_mat) <- estoutnames
-  rownames(iid.CIs_mat) <- estoutnames[1:2]
+  rownames(iid.CIs_mat) <- estoutnames
 
   EY_g.star <- list(estimates = ests_mat,
                     vars = (as.vars_obj$as.var_mat / nobs),
                     CIs = CIs_mat,
-                    # other.vars = (as.vars_obj$other.vars / nobs),
                     iid.vars = (as.vars_obj$iid.vars_mat / nobs),
                     iid.CIs = iid.CIs_mat,
                     h_g0_SummariesModel = NULL,
