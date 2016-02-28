@@ -103,7 +103,7 @@ summary measures object `DatNet.ObsP0` as input to `tmlenet`, avoiding the need 
 ```R
 res1 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax, 
                 sW = def_sW, sA = def_sA,
-                Anode = "A", Ynode = "Y",
+                Anodes = "A", Ynode = "Y",
                 f_gstar1 = 0L, optPars = list(n_MCsims = 1))
 res1$EY_gstar1$estimates
 res1$EY_gstar1$vars
@@ -129,7 +129,7 @@ For example, below we are assuming that the outcomes in `Y` only depend on the s
 
 ```R
 res2 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
-                    Anode = "A", Ynode = "Y", 
+                    Anodes = "A", Ynode = "Y", 
                     Qform = "Y ~ netA + netW2",
                     hform.g0 = "netA ~ netW2",
                     hform.gstar = "netA ~ nF",
@@ -156,7 +156,7 @@ eval_res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = 6, data = df_netKmax
                             NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 
 res3 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
-                Anode = "A", Ynode = "Y",
+                Anodes = "A", Ynode = "Y",
                 Qform = "Y ~ A + sum.netAW2 + W + sum.netW3 + nF",
                 hform.g0 = "A + sum.netAW2 ~ sum.netW3",
                 hform.gstar = "A + sum.netAW2 ~ sum.netW3",
@@ -173,7 +173,7 @@ from 1 to 100.
 f.A_.2 <- function(data, ...) rbinom(n = nrow(data), size = 1, prob = 0.2)
 res4 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
                 sW = def_sW, sA = def_sA, 
-                Anode = "A", Ynode = "Y", 
+                Anodes = "A", Ynode = "Y", 
                 f_gstar1 = f.A_.2, optPars = list(n_MCsims = 100))
 res4$EY_gstar1$estimates
 ```
@@ -183,7 +183,7 @@ statically sets everyone's exposure to `A=1` and the intervention `f_gstar2` sta
 
 ```R
 res5 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
-                sW = def_sW, sA = def_sA, Anode = "A", Ynode = "Y",
+                sW = def_sW, sA = def_sA, Anodes = "A", Ynode = "Y",
                 f_gstar1 = 1, optPars = list(f_gstar2 = 0, n_MCsims = 1))
 res5$ATE$estimates
 ```

@@ -168,6 +168,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   #************************************************
   # h^*/h_N clever covariate:
   #************************************************
+
   fit.hbars_t <- system.time(fit.hbars.res <- fit.hbars(DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_params_list)) # fit the clever covariate
 
   DatNet.gstar <- fit.hbars.res$DatNet.gstar
@@ -180,6 +181,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   h_IPTW <- Y
   h_IPTW[!determ.Q] <- Y[!determ.Q] * h_wts[!determ.Q]
   h_IPTW <- mean(h_IPTW)
+
 
   #************************************************
   # TMLEs
@@ -376,16 +378,25 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
     if (missing(Kmax)) Kmax <- 1 # need to allow Kmax = 0
   }
 
+  #---------------------------------------------------------------------------------
+  # Saving the observed data as a data.table in its own object class OdataDT
+  #---------------------------------------------------------------------------------
+  OdataDT_R6 <- OdataDT$new(Odata = data, nFnode = nFnode, iid_data_flag = iid_data_flag)
+
   #----------------------------------------------------------------------------------
   # Create an object with model estimates, data & network information that is passed on to estimation algorithm(s)
   #----------------------------------------------------------------------------------
   netind_cl <- NetIndClass$new(nobs = nobs, Kmax = Kmax)
   if (!is.null(NETIDnode)) {
     assert_that(is.character(NETIDnode))
-    Net_str <- as.character(data[, NETIDnode])
+    # Net_str <- as.character(data[, NETIDnode])
+    Net_str <- as.character(OdataDT_R6$OdataDT[[NETIDnode]])
+    OdataDT_R6$OdataDT[, NETIDnode:=NULL, with=FALSE]
     if (!is.null(IDnode)) {
       assert_that(is.character(IDnode))
-      IDs_str <- as.character(data[, IDnode])
+      # IDs_str <- as.character(data[, IDnode])
+      IDs_str <- as.character(OdataDT_R6$OdataDT[[IDnode]])
+      OdataDT_R6$OdataDT[, IDnode:=NULL, with=FALSE]
     } else {
       IDs_str <- NULL
     }
@@ -405,26 +416,35 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
   # Test parsing and evaluating the summary measures (in class DefineSummariesClass):
   #----------------------------------------------------------------------------------
   # Testing the evaluation of summary measures:
-  sW.matrix <- sW$eval.nodeforms(data.df = data, netind_cl = netind_cl)
-  sA.matrix <- sA$eval.nodeforms(data.df = data, netind_cl = netind_cl)
 
-  if (verbose) {
-    print("sample matrix of sW summary measurs: : "); print(head(sW.matrix))
-    print("sample matrix of sA summary measurs: "); print(head(sA.matrix))
-    print("map of sW names to column names: "); print(sW$sVar.names.map)    
-    print("map of sA names to column names: "); print(sA$sVar.names.map)
-  }
+  # # sW.matrix <- sW$eval.nodeforms(data.df = data, netind_cl = netind_cl)
+  # sW.matrix <- sW$eval.nodeforms(data.df = OdataDT_R6$OdataDT, netind_cl = netind_cl)
+  # # sA.matrix <- sA$eval.nodeforms(data.df = data, netind_cl = netind_cl)
+  # sA.matrix <- sA$eval.nodeforms(data.df = OdataDT_R6$OdataDT, netind_cl = netind_cl)
+
+  # if (verbose) {
+  #   print("sample matrix of sW summary measurs: : "); print(head(sW.matrix))
+  #   print("sample matrix of sA summary measurs: "); print(head(sA.matrix))
+  #   print("map of sW names to column names: "); print(sW$sVar.names.map)    
+  #   print("map of sA names to column names: "); print(sA$sVar.names.map)
+  # }
 
   #---------------------------------------------------------------------------------
   # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
   #---------------------------------------------------------------------------------
   datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode)
-  datnetW$make.sVar(Odata = data, sVar.object = sW)
+  # datnetW$make.sVar(Odata = data, sVar.object = sW)
+  datnetW$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
   datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
+
   datnetA <- DatNet$new(netind_cl = netind_cl)
-  datnetA$make.sVar(Odata = data, sVar.object = sA)
+  # datnetA$make.sVar(Odata = data, sVar.object = sA)
+  datnetA$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
+
   DatNet.ObsP0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
-  return(list(sW.matrix = sW.matrix, sA.matrix = sA.matrix, NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
+
+  # return(list(sW.matrix = sW.matrix, sA.matrix = sA.matrix, NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
+  return(list(NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
 }
 
 #---------------------------------------------------------------------------------
@@ -447,18 +467,18 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  following arguments no longer need to be provided: \code{data}, \code{Kmax}, \code{sW}, \code{sA},
 #'  \code{IDnode}, \code{NETIDnode}, \code{optPars$sep}, \code{NETIDmat}.
 #' @param data Observed data, a \code{data.frame} with named columns, containing the baseline covariates, 
-#'  exposures (\code{Anode}), the outcomes (\code{Ynode}) and possibly the network column (\code{NETIDnode}), where 
+#'  exposures (\code{Anodes}), the outcomes (\code{Ynode}) and possibly the network column (\code{NETIDnode}), where 
 #'  network is specified by a vector of strings of friend IDs, each string using \code{optPars$sep} character to separate different friend IDs 
 #'  (default is \code{optPars$sep=' '}).
 # @param estimators (NOT IMPLEMENTED) Character vector with estimator names.
 #' @param Kmax Integer constant specifying the maximal number of friends for any observation in the input \code{data} data.frame.
 #' @param sW Summary measures constructed from baseline covariates alone. This must be an object of class
 #'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.
-#' @param sA Summary measures constructed from exposures \code{Anode} and baseline covariates. This must be an object of class
+#' @param sA Summary measures constructed from exposures \code{Anodes} and baseline covariates. This must be an object of class
 #'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.
-#' @param Anode Exposure (treatment) variable name (column name in \code{data}); exposures can be either binary, categorical or continuous.
-#  This variable can be instead specified with argument \code{sA} by adding a call \code{+def.sA(Anode="ExposureVarName")} to \code{sA}.
-# @param AnodeDET Optional column name for indicators of deterministic values of exposures in \code{Anode}, 
+#' @param Anodes Exposure (treatment) variable name (column name in \code{data}); exposures can be either binary, categorical or continuous.
+#  This variable can be instead specified with argument \code{sA} by adding a call \code{+def.sA(Anodes="ExposureVarName")} to \code{sA}.
+# @param AnodeDET Optional column name for indicators of deterministic values of exposures in \code{Anodes}, 
 #  should be coded as (\code{TRUE}/\code{FALSE}) or (\code{1}/\code{0});
 #  observations with \code{AnodeDET}=\code{TRUE}/\code{1} are assumed to have deterministically assigned exposures
 #' @param Ynode  Outcome variable name (column name in \code{data}), assumed normalized between 0 and 1. This can instead be specified
@@ -518,7 +538,7 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #  \code{sW}.
 # 
 # (NOT IMPLEMENTED) Similarly, when \code{sA} is missing, it is constructed by running
-#  \code{def.sW(netA = A[[0:Kmax]], noname = TRUE)} (assuming \code{"A"} is the value of \code{Anode} in \code{data}), 
+#  \code{def.sW(netA = A[[0:Kmax]], noname = TRUE)} (assuming \code{"A"} is the value of \code{Anodes} in \code{data}), 
 #  which combines the column \code{data[,"A"]} with all the friends treatment assignments of variable "A".
 # 
 #'
@@ -581,8 +601,8 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'
 #' \item \code{sep} - A character separating friend indices for the same observation in \code{NETIDnode}.
 #'
-#' \item \code{f_g0} - A function for generating true treatment mechanism under observed \code{Anode}, if known (for example in a
-#'    randomized trial). This is used for estimating P(\code{sA}|\code{sW}) under \code{g0} by sampling large vector of \code{Anode}
+#' \item \code{f_g0} - A function for generating true treatment mechanism under observed \code{Anodes}, if known (for example in a
+#'    randomized trial). This is used for estimating P(\code{sA}|\code{sW}) under \code{g0} by sampling large vector of \code{Anodes}
 #'    (of length \code{nrow(data)*n_MCsims}) from \code{f_g0} function;
 #'
 #' \item \code{h_g0_SummariesModel} - Previously fitted model for P(\code{sA}|\code{sW}) under observed exposure mechanism \code{g0}, 
@@ -787,7 +807,7 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  for examples of network datasets.
 #' @example tests/examples/1_tmlenet_example.R
 #' @export
-tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
+tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
                     Qform = NULL, hform.g0 = NULL, hform.gstar = NULL,
                     # estimators = c("tmle", "iptw", "gcomp"),
                     # AnodeDET = NULL, 
@@ -905,6 +925,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
     DatNet.ObsP0 <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, 
                                     IDnode = IDnode, NETIDnode = NETIDnode, 
                                     sep = sep, NETIDmat = NETIDmat, verbose = FALSE)$DatNet.ObsP0
+    data <- DatNet.ObsP0$datnetW$Odata
   } else {
     data <- DatNet.ObsP0$datnetW$Odata
     Kmax <- DatNet.ObsP0$Kmax
@@ -913,8 +934,10 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
   }
 
   # new version of nodes:
-  node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anode = Anode, AnodeDET = AnodeDET,
+  node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anodes = Anodes, AnodeDET = AnodeDET,
                   Ynode = Ynode, YnodeDET = YnodeDET)
+  data$nodes <- node_l
+
   nobs <- DatNet.ObsP0$nobs
   DatNet.ObsP0$nodes <- node_l
 
@@ -924,22 +947,29 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anode, Ynode, f_gstar1,
   if (is.null(AnodeDET)) {
     determ.g <- rep_len(FALSE, nobs)
   } else {
-    CheckVarNameExists(data, AnodeDET)
-    determ.g <- (data[, AnodeDET] == 1)
+    CheckVarNameExists(data$OdataDT, AnodeDET)
+    # determ.g <- (data[, AnodeDET] == 1)
+    setkeyv(data$OdataDT, cols=AnodeDET)
+    data$OdataDT[list(1),AnodeDET, with=FALSE]
   }
   if (is.null(YnodeDET)) {
     determ.Q <- rep_len(FALSE, nobs)
   } else {
-    CheckVarNameExists(data, YnodeDET)
-    determ.Q <- (data[, YnodeDET] == 1)
+    CheckVarNameExists(data$OdataDT, YnodeDET)
+    # determ.Q <- (data[, YnodeDET] == 1)
+    setkeyv(data$OdataDT, cols=YnodeDET)
+    data$OdataDT[list(1),YnodeDET, with=FALSE]
   }
-  CheckVarNameExists(data, node_l$Anode)
-  CheckVarNameExists(data, node_l$Ynode)
+
+  CheckVarNameExists(data$OdataDT, node_l$Anodes)
+  # CheckVarNameExists(data, node_l$Anodes)
+  CheckVarNameExists(data$OdataDT, node_l$Ynode)
+  # CheckVarNameExists(data, node_l$Ynode)
 
   #----------------------------------------------------------------------------------
   # NOTE: YnodeVals = obsYvals, det.Y = determ.Q need to be added to DatNet.ObsP0 after returned its eval.summaries()
   #----------------------------------------------------------------------------------
-  obsYvals <- data[,node_l$Ynode]
+  obsYvals <- data$OdataDT[[node_l$Ynode]]
   DatNet.ObsP0$addYnode(YnodeVals = obsYvals, det.Y = determ.Q)
 
   #----------------------------------------------------------------------------------

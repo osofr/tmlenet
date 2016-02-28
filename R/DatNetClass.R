@@ -50,24 +50,57 @@ is.integerish <- function (x) is.integer(x) || (is.numeric(x) && all(x == as.int
 NULL
 
 # Get the actual A^* sampled from user-supplied intervention f_gstar (fcn_name):
-f.gen.A.star <- function(data, f.g_fun) {
+f.gen.A.star <- function(data, f.g_fun, Anodes) {
   .f_g_wrapper <- function(data, f.g_fun, ...) {
       args0 <- list(data = data)
       args <- c(args0, ...)
     do.call(f.g_fun, args)
   }
-  # test f.g_fun is a function, if not it must be either a vector (numAnodes x 1) or matrix (n x numAnodes)
-  # of counterfactual treatment assignments
-  if (!is.function(f.g_fun)) {
-    # need to modify:
-    # (1) allow vector (numAnodes x 1) for constant treatment assignment or
-    # (2) matrix (n x numAnodes) for obs-specific assignment
-    newA <- as.vector(f.g_fun)
-    if (length(newA)!=nrow(data) && length(newA)!=1L) stop("f_gstar1/f_gstar2 must be either a function or a vector of length nrow(data) or 1")
-    if (length(newA)==1L) newA <- rep_len(newA, nrow(data))
-  } else {
+  # test f.g_fun is a function, if not it must be either:
+  # 1) a named list of functions (numAnodes) or
+  # 2) a vector (numAnodes x 1) or
+  # 3) a matrix (n x numAnodes) of counterfactual treatment assignments
+  if (is.function(f.g_fun)) {
     if (!("data" %in% names(formals(f.g_fun)))) stop("functions f_gstar1 / f_gstar2 must have a named argument 'data'")
     newA <- .f_g_wrapper(data = data, f.g_fun = f.g_fun)
+    assert_that(is.matrix(newA) || is.vector(newA))
+    if (is.matrix(newA)) {
+      if (length(colnames(newA))==0 | !all(colnames(newA) %in% Anodes)) stop("the Anode matrix specified in f_gstar1/f_gstar2 must have column names matching Anodes")
+      assert_that(nrow(newA)==nrow(data) && ncol(newA)==length(Anodes))
+    } else {
+      if (length(Anodes) > 1) stop("the evaluation result of f_gstar1 / f_gstar2 must be a matrix for multivariate Anodes")
+      if (length(newA) != nrow(data)) stop("the evaluation result of f_gstar1 / f_gstar2 must be a vector of length n for univariate Anodes")
+    }
+
+  } else if (is.list(f.g_fun)) {
+    assert_that(length(f.g_fun)==length(Anodes))
+    assert_that(length(names(f.g_fun))>0)
+    assert_that(all(names(f.g_fun) %in% Anodes))
+    newA <- matrix(nrow=nrow(data), ncol=length(Anodes))
+    colnames(newA) <- Anodes
+    for (Anode in Anodes) {
+      newA[, Anode] <- .f_g_wrapper(data = data, f.g_fun = f.g_fun[[Anode]])
+    }
+
+  } else if (is.matrix(f.g_fun)){
+    newA <- f.g_fun
+    assert_that(nrow(newA)==nrow(data) && ncol(newA)==length(Anodes))
+    if (length(colnames(newA))==0 | !all(colnames(newA) %in% Anodes)) stop("the Anode matrix specified in f_gstar1/f_gstar2 must have column names matching Anodes")
+
+  } else {
+    newA <- as.vector(f.g_fun)
+    if (length(Anodes)==1) {
+      if (length(newA)!=nrow(data) && length(newA)!=1L) stop("f_gstar1/f_gstar2 must be either a function or a vector of length nrow(data) or 1")
+      # if (length(newA)==1L) {
+      #   # newA <- rep_len(newA, nrow(data))
+      # }
+    # allow vector (numAnodes x 1) for constant treatment assignment
+
+    } else {
+      if (length(newA) != length(Anodes)) stop("for multivariate Anodes f_gstar1/f_gstar2 must be either a vector of the same dim or a matrix with length(Anodes) cols and nrow(data) rows")
+    }
+    newA <- matrix(newA, nrow=nrow(data), ncol=length(Anodes), byrow=TRUE)
+    colnames(newA) <- Anodes
   }
   return(newA)
 }
@@ -198,6 +231,142 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms, levels = 1:nbins) {
   dummies_mat
 }
 
+
+#' R6 class for storing and managing the user-input data.
+#'
+#' The data is stored as a data.table under the public field \code{OdataDT}.
+#'
+#' @docType class
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords R6 class
+#' @details
+#' \itemize{
+#' \item{\code{nOdata}} - Maximum number of friends for any observation.
+#' \item{\code{nOdata}} - number of observations in the observed data frame.
+#' \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
+#' \code{iid_data_flag} - Is the input data iid (i.e., no network)?
+#' \item{\code{Wnodes}} - Names of the baseline covariates (not used).
+#' \item{\code{Anodes}} - Names of the intervention nodes.
+#' \item{\code{Lnodes}} - Names of the time-varying covariates (not used).
+#' \item{\code{Ynodes}} - Names of the outcome nodes (not used).
+#' \item{\code{A.g0.mat}} - Matrix of observed exposures
+#' \item{\code{A.gstar.mat}} - Matrix of counterfactual exposures.
+#' }
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(Odata, nFnode, iid_data_flag, nodes, ...)}}{...}
+#'   \item{\code{replaceVar(varName, newVarVal)}}{...}
+#'   \item{\code{replaceOneAnode(AnodeName, newAnodeVal)}}{...}
+#'   \item{\code{replaceManyAnodes(Anodes, newAnodesMat)}}{...}
+#' }
+#' @section Active Bindings:
+#' \describe{
+#'    \item{\code{ncols.sVar}}{...}
+#'    \item{\code{emptydat.sVar}}{...}
+#'    \item{\code{nodes}}{...}
+#'    \item{\code{dat.sVar}}{...}
+#'    \item{\code{emptydat.sVar}}{...}
+#'    \item{\code{nodes}}{...}
+#' }
+#'
+#' @importFrom assertthat assert_that
+#' @export
+OdataDT <- R6Class(classname = "OdataDT",
+  portable = TRUE,
+  class = TRUE,
+  public = list(
+    OdataDT = NULL,            # data.table used for creating the summary measures
+    nOdata = NA_integer_,      # n of samples in the OBSERVED (original) data
+    nFnode = "nF",
+    iid_data_flag = FALSE,
+    Wnodes = NULL,
+    Anodes = NULL,
+    Lnodes = NULL,
+    Ynodes = NULL,
+    A.g0.mat = NULL,
+    A.gstar.mat = NULL,
+
+    initialize = function(Odata, nFnode, iid_data_flag, nodes, ...) {
+      assert_that(is.data.frame(Odata))
+      self$OdataDT <- data.table::data.table(Odata)
+      self$nOdata <- nrow(self$OdataDT)
+      if (!missing(nFnode)) self$nFnode <- nFnode
+      self$iid_data_flag <- iid_data_flag
+      # if (!missing(nodes))
+      # self$nodes <- nodes
+      # self$Anodes <- Anodes
+      # self$Wnodes <- Wnodes
+      # self$Lnodes <- Lnodes
+      # self$Ynodes <- Ynodes
+      invisible(self)
+    },
+
+    replaceVar = function(varName, newVarVal) {
+      assert_that(is.integer(newVarVal) | is.numeric(newVarVal))
+      assert_that(length(newVarVal)==self$nOdata | length(newVarVal)==1)
+      assert_that(varName %in% colnames(self$OdataDT))
+      self$OdataDT[, (varName) := newVarVal]
+      invisible(self)
+    },
+
+    replaceOneAnode = function(AnodeName, newAnodeVal) {
+      self$replaceVar(AnodeName, newAnodeVal)
+      invisible(self)
+    },
+
+    replaceManyAnodes = function(Anodes, newAnodesMat) {
+      assert_that(is.matrix(newAnodesMat))
+      assert_that(ncol(newAnodesMat) == length(Anodes))
+      for (col in Anodes) {
+        idx <- which(Anodes %in% col)
+        assert_that(col %in% colnames(newAnodesMat))
+        assert_that(col %in% colnames(self$OdataDT))
+        self$OdataDT[, (col) := newAnodesMat[, idx]]
+      }
+      invisible(self)
+    }
+
+    # (OPTIONAL) ENABLE ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO DatNet
+    # will be automatically added to A ~ predictors
+    # add_deterministic = function(Odata, userDETcol) {
+    #   determ.g_user <- as.vector(Odata[,userDETcol]) # get deterministic As for the entire network of each unit (set by user)
+    #   # determ.gvals_user <- Odata[,AnodeDET] # add values to be assigned to deterministic nodes (already have: netA)
+    #   determ_cols_user <- .f.allCovars(k = self$Kmax, NetInd_k = self$netind_cl$NetInd_k, Var = determ.g_user,
+    #                                     VarNm = "determ.g_true", misval = gvars$misval)
+    #   # determ_cols <- (determ_cols_user | determ_cols_Friend)
+    #   determ_cols <- determ_cols_user
+    #   # THIS IS A VERY BAD WAY TO DO THAT, REMOVING
+    #   # self$mat.sVar <- cbind(determ_cols, self$mat.sVar)
+    #   determ_cols_type <- as.list(rep.int(gvars$sVartypes$bin, ncol(determ_cols)))
+    #   names(determ_cols_type) <- colnames(determ_cols)
+    #   self$type.sVar <- c(determ_cols_type, self$type.sVar)
+    #   invisible(self)
+    # },
+    # # Replaces all misval values in mat.netVar / mat.sVar with gvars$misXreplace
+    # fixmiss_netVar = function() {
+    #   self$mat.netVar[gvars$misfun(self$mat.netVar)] <- gvars$misXreplace
+    #   invisible(self)
+    # },
+  ),
+  active = list(
+    names.sVar = function() { colnames(self$OdataDT) },
+    ncols.sVar = function() { length(self$names.sVar) },
+    # emptydat.netVar = function() {self$mat.netVar <- NULL },    # wipe out mat.netVar
+    emptydat.sVar = function() { self$OdataDT <- NULL },         # wipe out mat.sVar
+    nodes = function(nodes) {
+      if (missing(nodes)) {
+        return(private$.nodes)
+      } else {
+        assert_that(is.list(nodes))
+        private$.nodes <- nodes
+      }
+    }
+  ),
+  private = list(
+    .nodes = list()           # names of the nodes in the data (Anode, Ynode, nFnode, etc..)
+  )
+)
+
 #' R6 class for storing and managing already evaluated summary measures \code{sW} or \code{sA} (but not both at the same time).
 #'
 #' Class for evaluating and storing arbitrary summary measures sVar.
@@ -215,7 +384,7 @@ make.bins_mtx_1 <- function(x.ordinal, nbins, bin.nms, levels = 1:nbins) {
 #' \item{\code{Kmax}} - Maximum number of friends for any observation.
 #' \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
 #' \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
-#' \item{\code{Odata}} - Pointer to the input (observed) data frame.
+#' \item{\code{Odata}} - Pointer to the user input data R6 object of class OdataDT
 #' \item{\code{mat.sVar}} - The evaluated matrix of summary measures for \code{sW} or \code{sA}.
 #' \item{\code{sVar.object}} - Instance of the \code{\link{DefineSummariesClass}} class which contains the summary measure expressions for \code{sW} or \code{sA}.
 #' \item{\code{type.sVar}} - named list of length \code{ncol(mat.sVar)} with \code{sVar} variable types: "binary"/"categor"/"contin".
@@ -253,7 +422,7 @@ DatNet <- R6Class(classname = "DatNet",
     Kmax = integer(),          # max n of Friends in the network
     nFnode = "nF",
     netind_cl = NULL,          # class NetIndClass object holding $NetInd_k network matrix
-    Odata = NULL,              # data.frame used for creating the summary measures in mat.sVar, saved each time make.sVar called
+    Odata = NULL,              # object of class OdataDT with observed data saved under OdataDT field as a data.table, used for creating the summary measures in mat.sVar
     mat.sVar = NULL,           # Matrix storing all evaluated sVars, with named columns
     sVar.object = NULL,        # DefineSummariesClass object that contains / evaluates sVar expressions
     type.sVar = NULL,          # named list with sVar types: list(names.sVar[i] = "binary"/"categor"/"contin"), can be overridden
@@ -267,18 +436,20 @@ DatNet <- R6Class(classname = "DatNet",
       if (!missing(nodes)) self$nodes <- nodes
       invisible(self)
     },
+
     # **********************
     # Define summary measures sVar
     # **********************
     make.sVar = function(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE) {
-      assert_that(is.data.frame(Odata))
-      self$nOdata <- nrow(Odata)
+      # assert_that(is.data.frame(Odata))
+      # self$nOdata <- nrow(Odata)
+      self$nOdata <- Odata$nOdata
       self$Odata <- Odata
       if (is.null(sVar.object)) {
         stop("Not Implemented. To Be replaced with netVar construction when sVar.object is null...")
       }
       self$sVar.object <- sVar.object
-      self$mat.sVar <- sVar.object$eval.nodeforms(data.df = Odata, netind_cl = self$netind_cl)
+      self$mat.sVar <- sVar.object$eval.nodeforms(data.df = Odata$OdataDT, netind_cl = self$netind_cl)
       # MAKE def_types_sVar an active binding? calling self$def_types_sVar <- type.sVar assigns, calling self$def_types_sVar defines.
       self$def_types_sVar(type.sVar) # Define the type of each sVar[i]: bin, cat or cont
       # normalize continuous and non-missing sVars, overwrite their columns in mat.sVar with normalized [0,1] vals
@@ -327,28 +498,6 @@ DatNet <- R6Class(classname = "DatNet",
       }
       invisible(self)
     },
-
-    # (OPTIONAL) ENABLE ADDING DETERMINISTIC/DEGENERATE Anode FLAG COLUMNS TO DatNet
-    # will be automatically added to A ~ predictors
-    # add_deterministic = function(Odata, userDETcol) {
-    #   determ.g_user <- as.vector(Odata[,userDETcol]) # get deterministic As for the entire network of each unit (set by user)
-    #   # determ.gvals_user <- Odata[,AnodeDET] # add values to be assigned to deterministic nodes (already have: netA)
-    #   determ_cols_user <- .f.allCovars(k = self$Kmax, NetInd_k = self$netind_cl$NetInd_k, Var = determ.g_user,
-    #                                     VarNm = "determ.g_true", misval = gvars$misval)
-    #   # determ_cols <- (determ_cols_user | determ_cols_Friend)
-    #   determ_cols <- determ_cols_user
-    #   # THIS IS A VERY BAD WAY TO DO THAT, REMOVING
-    #   # self$mat.sVar <- cbind(determ_cols, self$mat.sVar)
-    #   determ_cols_type <- as.list(rep.int(gvars$sVartypes$bin, ncol(determ_cols)))
-    #   names(determ_cols_type) <- colnames(determ_cols)
-    #   self$type.sVar <- c(determ_cols_type, self$type.sVar)
-    #   invisible(self)
-    # },
-    # # Replaces all misval values in mat.netVar / mat.sVar with gvars$misXreplace
-    # fixmiss_netVar = function() {
-    #   self$mat.netVar[gvars$misfun(self$mat.netVar)] <- gvars$misXreplace
-    #   invisible(self)
-    # },
 
     fixmiss_sVar = function() {
       self$mat.sVar[gvars$misfun(self$mat.sVar)] <- gvars$misXreplace
@@ -525,12 +674,9 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       }
     },
 
-    # WARNING: no checks for non-existance of a particular var in covars;
-    # if covar[j] doesn't exist, it just wont be included with no warning;
-    # return a data.frame with covars (predictors):
+    # return a covar matrix which will be used as a design matrix for BinOutModelClass
     get.dat.sWsA = function(rowsubset = TRUE, covars) {
       if (!missing(covars)) {
-
         # columns to select from main design matrix:
         sel.sWsA <- colnames(self$dat.sWsA)[(colnames(self$dat.sWsA) %in% covars)]
         dfsel <- self$dat.sWsA[rowsubset, sel.sWsA, drop = FALSE]
@@ -548,9 +694,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         found_vars <- covars %in% colnames(dfsel)
         if (!all(found_vars)) stop("some covariates can't be found (perhaps not declared as summary measures (def.sW(...) or def.sW(...))): "%+%
                                     paste(covars[!found_vars], collapse=","))
-
         return(dfsel)
-
       } else {
         return(self$dat.sWsA[rowsubset, , drop = FALSE])
       }
@@ -657,9 +801,11 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
     # When !is.null(f.g_fun) create p new datnetA.gstar's (n obs at a time), which are not saved separately (only combined);
     # When is.null(f.g_fun), returns combined cbind(sW, sA) for observed O.datnetW, O.datnetA;
     # TO ADD: Consider passing ahead a total number of sA that will be created by DatNet class (need it to pre-allocate self$dat.sWsA);
-    make.dat.sWsA = function(p = 1, f.g_fun = NULL, sA.object = NULL)  {
+    make.dat.sWsA = function(p = 1, f.g_fun = NULL, sA.object = NULL, DatNet.ObsP0 = NULL)  {
       datnetW <- self$datnetW
       datnetA <- self$datnetA
+      Odata <- self$datnetW$Odata
+
       assert_that(is.count(p))
       self$p <- p
       nobs <- datnetW$nOdata
@@ -670,47 +816,32 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         df.sWsA <- cbind(datnetW$dat.sVar, datnetA$dat.sVar) # assigning summary measures as data.frames:
       # need to sample A under f.g_fun (gstar or known g0), possibly re-evaluate sW from O.datnetW
       } else {
-        if (is.null(self$nodes$Anode)) stop("Anode was not appropriately specified and is null; can't replace observed Anode with that sampled under g_star")
-        Odata <- datnetW$Odata
+        if (is.null(self$nodes$Anodes)) stop("Anodes was not appropriately specified and is null; can't replace observed Anode with that sampled under g_star")
+        assert_that(!is.null(DatNet.ObsP0))
+
+        # Odata <- Odata
+
         # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping an old pointer to O.datnetA to be used later for prediction)
         datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes)
         df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
         colnames(df.sWsA) <- self$names.sWsA
+
         for (i in seq_len(p)) {
-
-          # * Does it make sense to also pass the input data?
-          A.gstar <- f.gen.A.star(data = cbind(datnetW$dat.sVar,datnetA$dat.sVar), f.g_fun = f.g_fun)
-          Odata[, self$nodes$Anode] <- A.gstar # replace A under g0 in Odata with A^* under g.star:
-          # Odata[, self$nodes$Anode := A.gstar]
-
-          # * Does it make sense to also convert Odata in a data.table and throw it in its own class? (will forever prohibit copy on modify...)
-          # print("class(Odata)"); print(class(Odata))
-          # browser()
-          # for (Anode in self$nodes$Anode) {
-          #   Odata[, Anode] <- A.gstar[,Anode]
-          # }
+          # ***************** CHANGE THIS TO JUST PASS THE MATRIX DatNetg0$dat.sVar INSTEAD OF cbind(...) ***************************
+          A.gstar.mat <- f.gen.A.star(data = DatNet.ObsP0$dat.sVar, f.g_fun = f.g_fun, Anodes = self$nodes$Anodes)
+          # Odata[, self$nodes$Anodes] <- A.gstar # replace A under g0 in Odata with A^* under g.star:
+          # A.gstar <- f.gen.A.star(data = cbind(datnetW$dat.sVar,datnetA$dat.sVar), f.g_fun = f.g_fun)
+          if (is.matrix(A.gstar.mat)) {
+            Odata$replaceManyAnodes(Anodes = self$nodes$Anodes, newAnodesMat = A.gstar.mat)
+          } else {
+            Odata$replaceOneAnode(AnodeName = self$nodes$Anodes, newAnodeVal = A.gstar.mat)
+          }
 
           datnetA.gstar$make.sVar(Odata = Odata, sVar.object = sA.object) # create new summary measures sA (under g.star)
           # Assigning the summary measures to one output data matrix:
           df.sWsA[((i - 1) * nobs + 1):(nobs * i), ] <- cbind(datnetW$dat.sVar, datnetA.gstar$dat.sVar)[, ]
         }
       }
-
-
-      # data.table::setDT(Odata)
-      # Anodes <- self$nodes$Anode
-      # Anodes <- c("nF.PA", "A")
-      # A.gstar <- cbind(nF.PA = A.gstar, A = rep(0,length(A.gstar)))
-      # if (is.matrix(A.gstar)) {
-      #   assert_that(ncol(A.gstar) == length(Anodes))
-      #   for (col in Anodes) {
-      #     idx <- which(Anodes %in% col)
-      #     Odata[, (col) := A.gstar[, idx]]
-      #   }
-      # } else {
-      #   Odata[, Anodes := A.gstar]
-      # }
-
 
       self$dat.sVar <- df.sWsA
       invisible(self)

@@ -218,7 +218,7 @@ Note that by making additional untestable assumptions, one can interpret $\psi_{
   as well the exposures and baseline covariates of unit's friends. 
   This is the second part of the two part specification of the structural equation model for the outcome \texttt{Y}. 
   The syntax is identical to \texttt{def.sW} function, except that \texttt{def.sA} can consists of functions of baseline covariates
-  as well as the exposure \texttt{Anode}.
+  as well as the exposure \texttt{Anodes}.
 \item [\emph{{eval.summaries}}] A convenience function that can be used for 
   validating and evaluating the user-specified summary measures. 
   Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \texttt{def.sW} and \texttt{def.sA}.
@@ -459,7 +459,7 @@ In the example below, we estimate mean population outcome under deterministic in
 ```{r, message=FALSE}
 res1 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax, 
                 sW = def_sW, sA = def_sA,
-                Anode = "A", Ynode = "Y",
+                Anodes = "A", Ynode = "Y",
                 f_gstar1 = 0L, optPars = list(n_MCsims = 1))
 res1$EY_gstar1$estimates
 res1$EY_gstar1$vars
@@ -487,7 +487,7 @@ Note that in this example we are also using the previously evaluated summary dat
 
 ```{r, message=FALSE}
 res2 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
-                    Anode = "A", Ynode = "Y", 
+                    Anodes = "A", Ynode = "Y", 
                     Qform = "Y ~ netA + netW2",
                     hform.g0 = "netA ~ netW2",
                     hform.gstar = "netA ~ nF",
@@ -514,7 +514,7 @@ eval_res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = 6, data = df_netKmax
                             NETIDmat = NetInd_mat_Kmax6, verbose = FALSE)
 
 res3 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
-                Anode = "A", Ynode = "Y",
+                Anodes = "A", Ynode = "Y",
                 Qform = "Y ~ A + sum.netAW2 + W + sum.netW3 + nF",
                 hform.g0 = "A + sum.netAW2 ~ sum.netW3",
                 hform.gstar = "A + sum.netAW2 ~ sum.netW3",
@@ -531,7 +531,7 @@ from 1 to 100.
 f.A_.2 <- function(data, ...) rbinom(n = nrow(data), size = 1, prob = 0.2)
 res4 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
                 sW = def_sW, sA = def_sA, 
-                Anode = "A", Ynode = "Y", 
+                Anodes = "A", Ynode = "Y", 
                 f_gstar1 = f.A_.2, optPars = list(n_MCsims = 100))
 res4$EY_gstar1$estimates
 ```
@@ -541,7 +541,7 @@ statically sets everyone's exposure to `A=1` and the intervention `f_gstar2` sta
 
 ```{r, message=FALSE}
 res5 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
-                sW = def_sW, sA = def_sA, Anode = "A", Ynode = "Y",
+                sW = def_sW, sA = def_sA, Anodes = "A", Ynode = "Y",
                 f_gstar1 = 1, optPars = list(f_gstar2 = 0, n_MCsims = 1))
 res5$ATE$estimates
 ```
@@ -722,7 +722,7 @@ names(res)
 ```{r, message=FALSE}
 tmlenet_options(maxNperBin = 1000, bin.method="equal.mass")
 f.gstar <- create_f.gstar(shift = shift.const, trunc = trunc.const)
-res1 <- tmlenet(data = datO, Anode = "sA", Ynode = "Y",
+res1 <- tmlenet(data = datO, Anodes = "sA", Ynode = "Y",
                 Kmax = Kmax,
                 NETIDmat = NetInd_mat,
                 f_gstar1 = f.gstar,
@@ -789,7 +789,7 @@ hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3 + net.mean.W1"
 ```{r, message=FALSE}
 res2 <- tmlenet(data = datO, Kmax = Kmax, NETIDmat = NetInd_mat,
                 sW = def_sW, sA = def_sA,
-                Anode = "sA", Ynode = "Y",
+                Anodes = "sA", Ynode = "Y",
                 f_gstar1 = f.gstar,
                 Qform = Qform.corr, hform.g0 = hform.g0, hform.gstar = hform.gstar,
                 optPars = list(n_MCsims = 1))
@@ -803,7 +803,7 @@ We now run the TMLE estimation for networks by calling the `tmlenet` function an
 ```{r, message=FALSE}
 res3 <- tmlenet(data = datO, Kmax = Kmax, NETIDmat = NetInd_mat, 
                 sW = def_sW, sA = def_sA, 
-                Anode = "sA", Ynode = "Y",
+                Anodes = "sA", Ynode = "Y",
                 f_gstar1 = f.gstar,
                 Qform = Qform.mis, hform.g0 = hform.g0, hform.gstar = hform.gstar,
                 optPars = list(n_MCsims = 1))

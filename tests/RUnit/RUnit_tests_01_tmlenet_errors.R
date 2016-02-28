@@ -1,3 +1,4 @@
+`%+%` <- function(a, b) paste0(a, b)
 # ---------------------------------------------------------------------------------
 # TEST SET 1
 # SIMPLE NETWORK TMLE
@@ -38,7 +39,7 @@ test.tmleneterrrors <- function() {
                     hform.g0 = "netA ~ netW2 + netW3_sum + nF",
                     hform.gstar = "netA ~ netW3_sum",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
-                    Anode = "A", Ynode = "Y",
+                    Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
@@ -49,7 +50,7 @@ test.tmleneterrrors <- function() {
                     hform.gstar = "netA ~ netW3_sum",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
-                    Anode = "A", Ynode = "Y",
+                    Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
@@ -60,7 +61,7 @@ test.tmleneterrrors <- function() {
                     hform.gstar = "sum.netW3 ~ sum.netW3 + nF",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
-                    Anode = "A", Ynode = "Y",
+                    Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
@@ -71,7 +72,7 @@ test.tmleneterrrors <- function() {
                     hform.gstar = "sum.netW3 ~ sum.netW3 + nF",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
-                    Anode = "A", Ynode = "Y",
+                    Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
@@ -82,7 +83,7 @@ test.tmleneterrrors <- function() {
                     hform.gstar = "sum.netAW2 ~ sum.netW3 + nF",
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
 
-                    Anode = "A", Ynode = "Y",
+                    Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                     f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
@@ -93,7 +94,7 @@ test.tmleneterrrors <- function() {
                   hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
 
-                  Anode = "A", Ynode = "Y",
+                  Anodes = "A", Ynode = "Y",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                   f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
@@ -103,29 +104,87 @@ test.tmleneterrrors <- function() {
                   Qform = " blah ~ sum.netW3 + sum.netAW2",
                   hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                   hform.gstar = "netA ~ sum.netW3",
-                  Anode = "A",
+                  Anodes = "A",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                   f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
 
   # Throws exception when f_gstar1 function doesn't have argument "data":
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
-                  Anode = "A", Ynode = "Y",
+                  Anodes = "A", Ynode = "Y",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                   f_gstar1 = f.A_wrong, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
   # Throws an exception when f_gstar1 is a vector of 1<length<n:
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
-                  Anode = "A", Ynode = "Y",
+                  Anodes = "A", Ynode = "Y",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
                   f_gstar1 = rep(1L,50), sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
-
-
-
-
 }
 
 
+test.tmlenetf.gen.A.star <- function() {
+  require('assertthat')
+  Anodes <- "A"%+%1
+  test.dat <- matrix(rnorm(50), nrow=10, ncol =5)
+  abar0 <- 0
+  abar1 <- rep(0,10)
+  abar2 <- function(data, ...) 1
+  abar3 <- function(data, ...) rep(1,10)
+
+  res_abar <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar0, Anodes = Anodes)
+  res_abar <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar1, Anodes = Anodes)
+  checkException(
+  res_abar <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar2, Anodes = Anodes)
+  )
+  res_abar <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar3, Anodes = Anodes)
+
+
+  Anodes <- "A"%+%c(1:5)
+  test.dat <- matrix(rnorm(50), nrow=10, ncol =5)
+  abar0 <- 0
+  abar1 <- c(0,1,1,0,1)
+  abar2 <- matrix(c(0,1,1,0,1), nrow=nrow(test.dat), ncol = length(Anodes), byrow=TRUE)
+  abar3 <- function(data, ...) 1
+  abar4 <- function(data, ...) rep(0,5)
+  abar5 <- function(data, ...) matrix(c(1,1,1,0,1), nrow=nrow(data), ncol = 5, byrow=FALSE)
+  abar6 <- function(data, ...) {
+    mat <- matrix(c(1,1,1,0,1), nrow=nrow(data), ncol = 5, byrow=FALSE)
+    colnames(mat) <- "A"%+%c(1:5)
+    return(mat)
+  }
+  abar7.a <- lapply(Anodes, function(Anode) return(def = function(data,...){c(0,1,1,0,1,0,1,1,0,1)}))
+  abar7.b <- abar7.a; names(abar7.b) <- Anodes
+
+
+  checkException(
+    abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar0, Anodes = Anodes)
+    )
+
+  abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar1, Anodes = Anodes)
+  checkEquals(is.matrix(abar_mat), TRUE)
+
+  checkException(
+  abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar2, Anodes = Anodes)
+  )
+  colnames(abar2) <- Anodes
+  abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar2, Anodes = Anodes)
+  colnames(abar2)[1] <- "A30"
+  checkException(
+  abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar2, Anodes = Anodes)
+  )
+
+  checkException(abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar3, Anodes = Anodes))
+
+  checkException(abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar4, Anodes = Anodes))
+
+  abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar6, Anodes = Anodes)
+
+  checkException(abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar7.a, Anodes = Anodes))
+
+  abar_mat <- tmlenet:::f.gen.A.star(data = test.dat, f.g_fun = abar7.b, Anodes = Anodes)
+  checkEquals(is.matrix(abar_mat), TRUE)
+}
 
 
 

@@ -46,7 +46,7 @@ res_K6 <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anode = "A", Ynode = "Y", f_gstar1 = 0L)
+                    Anodes = "A", Ynode = "Y", f_gstar1 = 0L)
 
 res_K6$EY_gstar1$estimates
 res_K6$EY_gstar1$vars

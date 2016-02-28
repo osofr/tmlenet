@@ -67,7 +67,7 @@ Qform3 <- "blah ~ netA + netW + nF"
 # Note that Ynode is optional when Qform is specified;
 options(tmlenet.verbose = FALSE) # set to TRUE to print status messages
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", f_gstar1 = 0L,
+                    Anodes = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
@@ -83,7 +83,7 @@ res_K6_1$EY_gstar1$CIs
 # but using the output "DatNet.ObsP0" of eval.summaries as input to tmlenet:
 #***************************************************************************************
 res_K6_1b <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
-                    Anode = "A", f_gstar1 = 0L,
+                    Anodes = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
@@ -97,7 +97,7 @@ res_K6_1b$EY_gstar1$CIs
 # Same as above but for covariate-based TMLE.
 #***************************************************************************************
 res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", f_gstar1 = 0L,
+                    Anodes = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
@@ -125,7 +125,7 @@ print(head(nF))
 print(all.equal(df_netKmax6[,"nFriends"], nF))
 
 res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                        Anode = "A", f_gstar1 = f.A_0,
+                        Anodes = "A", f_gstar1 = f.A_0,
                         Qform = "Y ~ sum.netW3 + sum.netAW2",
                         hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                         hform.gstar = "netA ~ sum.netW3",
@@ -145,19 +145,19 @@ def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRU
 
 # can define intervention by function f.A_0 that sets everyone's A to constant 0:
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", Ynode = "Y", f_gstar1 = f.A_0,
+                    Anodes = "A", Ynode = "Y", f_gstar1 = f.A_0,
                     NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # equivalent way to define intervention f.A_0 is to just set f_gstar1 to 0:
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", Ynode = "Y", f_gstar1 = 0L,
+                    Anodes = "A", Ynode = "Y", f_gstar1 = 0L,
                     NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # or set f_gstar1 to a vector of 0's of length nrow(data):
 res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", Ynode = "Y", f_gstar1 = rep_len(0L, nrow(df_netKmax6)),
+                    Anodes = "A", Ynode = "Y", f_gstar1 = rep_len(0L, nrow(df_netKmax6)),
                     NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
@@ -183,7 +183,7 @@ NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax2[, "Net_str"],
 # for a total sample size of nrow(data)*n_MCsims under f_gstar1)
 options(tmlenet.verbose = TRUE)
 res_K2_1 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", Ynode = "Y", f_gstar1 = f.A_.2,
+                    Anodes = "A", Ynode = "Y", f_gstar1 = f.A_.2,
                     NETIDmat = NetInd_mat, optPars = list(n_MCsims = 100))
 res_K2_1$EY_gstar1$estimates
 res_K2_1$EY_gstar1$vars
@@ -194,7 +194,7 @@ res_K2_1$EY_gstar1$CIs
 # f_gstar1 sets everyone A=1 vs f_gstar2 sets everyone A=0;
 #***************************************************************************************
 res_K2_2 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
-                    Anode = "A", Ynode = "Y",
+                    Anodes = "A", Ynode = "Y",
                     f_gstar1 = 1,
                     NETIDmat = NetInd_mat,
                     optPars = list(f_gstar2 = 0, n_MCsims = 1))

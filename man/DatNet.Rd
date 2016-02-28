@@ -21,7 +21,7 @@ Class for evaluating and storing arbitrary summary measures sVar.
 \item{\code{Kmax}} - Maximum number of friends for any observation.
 \item{\code{nFnode}} - Name of the vector that stores the number of friends for each observation (always set to 'nF').
 \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
-\item{\code{Odata}} - Pointer to the input (observed) data frame.
+\item{\code{Odata}} - Pointer to the user input data R6 object of class OdataDT
 \item{\code{mat.sVar}} - The evaluated matrix of summary measures for \code{sW} or \code{sA}.
 \item{\code{sVar.object}} - Instance of the \code{\link{DefineSummariesClass}} class which contains the summary measure expressions for \code{sW} or \code{sA}.
 \item{\code{type.sVar}} - named list of length \code{ncol(mat.sVar)} with \code{sVar} variable types: "binary"/"categor"/"contin".

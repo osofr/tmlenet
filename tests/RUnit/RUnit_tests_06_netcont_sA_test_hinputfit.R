@@ -95,7 +95,7 @@ test.shallowdeep.copy <- function() {
   print_tmlenet_opts()
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anode = "sA", Ynode = "Y", f_gstar1 = f.gstar,
+  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
@@ -175,7 +175,7 @@ test.usefitted.h <- function() {
   print_tmlenet_opts()
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anode = "sA", Ynode = "Y", f_gstar1 = f.gstar,
+  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
@@ -221,7 +221,7 @@ test.usefitted.h <- function() {
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
   
-  res2a <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anode = "sA", Ynode = "Y",
+  res2a <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y",
                   f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
@@ -239,7 +239,7 @@ test.usefitted.h <- function() {
   #------------------------------------------------------------------------------------------------------------
   # NULL'ed some fields in h_g0_SummariesModel -> will be NULL in the shallow copy => has to fail:
   checkException(
-  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anode = "sA", Ynode = "Y",
+  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y",
                   f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
@@ -249,7 +249,7 @@ test.usefitted.h <- function() {
                     h_g0_SummariesModel = h_g0_shallow_copy,
                     h_gstar_SummariesModel = h_gstar_SummariesModel)))
   # However, the deep copy should be allright and return results equivalent to results from the first tmlenet call:
-  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anode = "sA", Ynode = "Y",
+  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y",
                   f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,

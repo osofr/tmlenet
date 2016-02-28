@@ -144,7 +144,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   if (!is.null(f.g0)) {
     if (gvars$verbose) message("generating DatNet.g0 under known g0")
     DatNet.g0 <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-    DatNet.g0$make.dat.sWsA(p = p_h0, f.g_fun = f.g0, sA.object = sA)
+    DatNet.g0$make.dat.sWsA(p = p_h0, f.g_fun = f.g0, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
     if (gvars$verbose) {
       print("new DatNet.g0$dat.sWsA from known g0: "); print(head(DatNet.g0$dat.sWsA))
     }
@@ -171,7 +171,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # NEED TO PASS obsdat.sW.sA (observed data sWsA) to predict() funs.
   # If !is.null(f.g_fun) then DatNet.g0$dat.sWsA IS NOT THE OBSERVED data (sWsA), but rather sWsA data sampled under known g_0.
   # Option 1: Wipe out DatNet.g0$dat.sWsA with actually observed data - means that we can't use DatNet.g0$dat.sWsA in the future.
-  # Option 2: Create a new class DatNet.Obs of DatNet.sWsA - pain in the ass...
+  # Option 2: Create a new class DatNet.Obs of DatNet.sWsA (will be painful)
   # Going with OPTION 1 for now:
   # Already generated DatNet.ObsP0 in tmlenet:
   h_gN <- summeas.g0$predictAeqa(newdata = DatNet.ObsP0)
@@ -184,7 +184,8 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   }
 
   DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA)
+  # DatNet.gstar$datnetW$Odata$OdataDT
+  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
 
   if (gvars$verbose) {
     print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): "); print(class(DatNet.gstar$dat.sWsA))

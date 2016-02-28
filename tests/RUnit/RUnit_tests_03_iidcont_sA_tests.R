@@ -44,14 +44,15 @@ test.simple.fit.density.sA <- function() {
 
   def.nodeojb <- function(datO) {
     Kmax <- 1
-    nodes <- list(Anode = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
+    nodes <- list(Anodes = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
     def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
     def_sA <- def.sA(sA = "sA")
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
     # Define datNetObs:
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sW)
+    OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
+    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sW)
     checkTrue(tmlenet:::is.DatNet(datnetW))
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sA)
+    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
   }
@@ -264,7 +265,7 @@ run.1sim.tmlenet <- function(nsamp, psi0, Qform, f.gstar, trunc.const = 10, shif
   Kmax <- 1
   def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
   def_sA <- def.sA(sA = "sA")
-  tmlenet_res <- tmlenet(data = datO, Anode = "sA", Ynode = "Y",
+  tmlenet_res <- tmlenet(data = datO, Anodes = "sA", Ynode = "Y",
                           Kmax = Kmax,
                           # nFnode = NULL,
                           f_gstar1 = f.gstar,

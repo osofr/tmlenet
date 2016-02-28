@@ -286,7 +286,8 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
     # Evaluate the expressions one by one, standardize all names according to one naming convention,
     # cbinding results together into one output matrix
     eval.nodeforms = function(data.df, netind_cl) {
-      assert_that(is.data.frame(data.df))
+      assert_that(is.data.frame(data.df) | is.data.table(data.df))
+
       if (missing(netind_cl) && is.null(self$netind_cl)) stop("must specify netind_cl arg at least once")
       if (!missing(netind_cl)) self$netind_cl <- netind_cl
       self$Kmax <- self$netind_cl$Kmax

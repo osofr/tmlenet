@@ -137,18 +137,18 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 10, trunc
 test.net.fit.density.iptw <- function() {
   def.nodeojb.net <- function(Kmax, datO, NetInd_mat, gstar = FALSE) {
     if (gstar) {
-      Anode <- "trunc.sA.gstar"
+      Anodes <- "trunc.sA.gstar"
       def_sA <- def.sA(sA = trunc.sA.gstar,
                       net.mean.sA = ifelse(nF > 0, rowSums(trunc.sA.gstar[[1:Kmax]])/nF, 0),
                       replaceNAw0 = TRUE)
     } else {
-      Anode <- "sA"
+      Anodes <- "sA"
       def_sA <- def.sA(sA = sA,
                       net.mean.sA = ifelse(nF > 0, rowSums(sA[[1:Kmax]])/nF, 0),
                       replaceNAw0 = TRUE)
     }
 
-    nodes <- list(Anode = Anode, Wnodes = c("W1", "W2", "W3"))
+    nodes <- list(Anodes = Anodes, Wnodes = c("W1", "W2", "W3"))
 
     def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3",
                     net.mean.W1 = ifelse(nF > 0, rowSums(W1[[1:Kmax]])/nF, 0),
@@ -157,8 +157,9 @@ test.net.fit.density.iptw <- function() {
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO), Kmax = Kmax)
     netind_cl$NetInd <- NetInd_mat
     # Define datNetObs:
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sW)
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = datO, sVar.object = def_sA)
+    OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
+    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sW)
+    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
   }
