@@ -52,7 +52,6 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 10, trunc
   # Kmax - degree of each node
   generate.igraph.k.regular <- function(n, Kmax, ...) {
     if (n < 20) Kmax <- 5
-    browser()
     igraph.reg <- igraph::sample_k_regular(no.of.nodes = n, k = Kmax, directed = TRUE, multiple = FALSE)
     # From igraph object to sparse adj. matrix:
     sparse_AdjMat <- simcausal::igraph.to.sparseAdjMat(igraph.reg)

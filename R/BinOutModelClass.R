@@ -203,10 +203,12 @@ BinDat <- R6Class(classname = "BinDat",
       if (is.logical(self$subset_expr)) {
         subset_idx <- self$subset_expr
       # ******************************************************
-      # NOTE: Below subsetting by call/expression is currently not being used, all subsetting is done by subsetvars now for speed & memory efficiency
+      # NOTE: Below subsetting by call/expression is currently disabled, for speed & memory efficiency
+      # all subsetting is done by subsetvars (variable name(s) must be non-missing)
       # ******************************************************
       } else if (is.call(self$subset_expr)) {
-        subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
+        # subset_idx <- data$evalsubst(subsetexpr = self$subset_expr)
+        stop("disabled for memory/speed efficiency")
       } else if (is.character(self$subset_expr)) {
         subset_idx <- data$evalsubst(subsetvars = self$subset_expr)
       }

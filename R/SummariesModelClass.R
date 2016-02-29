@@ -245,8 +245,10 @@ RegressionClass <- R6Class("RegressionClass",
         self$predvars <- c(reg$outvar[-c(k_i:n_regs)], reg$predvars) # Predictors
       }
 
-      # the subset is a list when RegressionClass specifies several regression models at once,
+      # The subset is a list when RegressionClass specifies several regression models at once,
       # obtain the appropriate subset for this regression k_i and set it to self
+      # On the other hand, if subset is a vector of variable names, all of those variables will be used for
+      # choosing the subsets for all n_regs regressions.
       if (is.list(reg$subset)) {
         self$subset <- reg$subset[[k_i]]
       }
@@ -255,11 +257,13 @@ RegressionClass <- R6Class("RegressionClass",
         self$intrvls <- reg$intrvls[[outvar_idx]]
       }
 
-      # setting the self class for S3 dispatch on SummaryModel type
-      if (length(self$outvar)==1) {
+      # Setting the self class for S3 dispatch on SummaryModel type
+      if (reg$sep_predvars_sets) {
+        self$S3class <- "generic" # Multivariate/Univariate regression at the top level, need to do another round of S3 dispatch on SummaryModel
+      } else if (length(self$outvar)==1) {
         self$S3class <- self$outvar.class # Set class on outvar.class for S3 dispatch...
       } else if (length(self$outvar) > 1){
-        self$S3class <- "generic" # Multivariate outcome with one set of predictors, need to do another round of S3 dispatch on SummaryModel
+        stop("can't define a univariate regression for an outcome of length > 1")
       } else {
         stop("can't have an outcome with no class type")
       }
@@ -352,9 +356,11 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 	portable = TRUE,
 	class = TRUE,
 	public = list(
+    reg = NULL,
 		n_regs = integer(),        # total no. of reg. models (logistic regressions)
     parfit_allowed = FALSE,    # allow parallel fit of multivar outvar when 1) reg$parfit = TRUE & 2) all.outvar.bin = TRUE
     initialize = function(reg, ...) {
+      self$reg <- reg
 			self$n_regs <- length(reg$outvar) # Number of sep. logistic regressions to run
       all.outvar.bin <-  all(reg$outvar.class %in% gvars$sVartypes$bin)
 
@@ -531,6 +537,7 @@ def_regs_subset <- function(self) {
                                                           outvar = self$reg$bin_nms,
                                                           predvars = self$reg$predvars,
                                                           subset = new.subsets))
+    bin_regs$subset
   # Same but when pooling across bin indicators:
   } else {
     bin_regs$outvar.class <- gvars$sVartypes$bin

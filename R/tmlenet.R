@@ -298,42 +298,40 @@ get_vars_fromlist <- function(varname, sVar.map) {
 }
 # Parse the formulas for summary measure names and create a map to actual covariate names in sA & sW
 process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL) {
-  if (length(regform)==0L) {
+  # Getting predictors (sW names):
+  regformterms <- terms(regform)
+  sW.names <- attributes(regformterms)$term.labels 
+  sW.names.alt <- colnames(attributes(regformterms)$factors)
+  assert_that(all(sW.names == sW.names.alt))
 
-    return(list(outvars =  as.vector(unlist(sA.map)), predvars = as.vector(unlist(sW.map))))
+  # Getting outcomes (sA names):
+  out.var <- rownames(attributes(regformterms)$factors)[1] # character string
+  out.vars.form <- as.formula(". ~ " %+% out.var)
+  out.vars.terms <- terms(out.vars.form)
+  sA.names <- attributes(out.vars.terms)$term.labels
 
-  } else {
-
-    # Getting predictors (sW names):
-    regformterms <- terms(regform)
-    sW.names <- attributes(regformterms)$term.labels 
-    sW.names.alt <- colnames(attributes(regformterms)$factors)
-    assert_that(all(sW.names == sW.names.alt))
-
-    # Getting outcomes (sA names):
-    out.var <- rownames(attributes(regformterms)$factors)[1] # character string
-    out.vars.form <- as.formula(". ~ " %+% out.var)
-    out.vars.terms <- terms(out.vars.form)
-    sA.names <- attributes(out.vars.terms)$term.labels
-
-    outvars <- unlist(lapply(sA.names, get_vars_fromlist, sA.map))
-    predvars <- unlist(lapply(sW.names, get_vars_fromlist, sW.map))
-    return(list(outvars = outvars, predvars = predvars))
-  }
+  outvars <- unlist(lapply(sA.names, get_vars_fromlist, sA.map))
+  predvars <- unlist(lapply(sW.names, get_vars_fromlist, sW.map))
+  return(list(outvars = outvars, predvars = predvars))
 }
 
 # When several reg forms are specified (multivariate Anodes), process outvars into one vector and process predvars in a named list of vectors
 process_regforms <- function(regforms, sW.map = NULL, sA.map = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL) {
-  outvars <- vector(mode="list", length=length(regforms))
-  predvars <- vector(mode="list", length=length(regforms))
-
-  for (idx in seq_along(regforms)) {
-    res <- process_regform(as.formula(regforms[[idx]]), sW.map = NULL, sA.map = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL)
-    outvars[[idx]] <- res$outvars
-    predvars[[idx]] <- res$predvars
-    names(outvars)[idx] <- names(predvars)[idx] <- paste0(outvars[[idx]], collapse="+")
+  if (length(regforms)==0L) {
+    default.reg <- list(outvars =  list(as.vector(unlist(sA.map))), predvars = list(as.vector(unlist(sW.map))))
+    names(default.reg[["outvars"]]) <- names(default.reg[["predvars"]]) <- paste0(default.reg$outvars[[1]], collapse="+")
+    return(default.reg)
+  } else {
+    outvars <- vector(mode="list", length=length(regforms))
+    predvars <- vector(mode="list", length=length(regforms))
+    for (idx in seq_along(regforms)) {
+      res <- process_regform(as.formula(regforms[[idx]]), sW.map = sW.map, sA.map = sA.map, NETIDnode = NETIDnode, sep = sep, NETIDmat = NETIDmat)
+      outvars[[idx]] <- res$outvars
+      predvars[[idx]] <- res$predvars
+      names(outvars)[idx] <- names(predvars)[idx] <- paste0(outvars[[idx]], collapse="+")
+    }
+    return(list(outvars = outvars, predvars = predvars))
   }
-  return(list(outvars = outvars, predvars = predvars))
 }
 
 #' Evaluate Summary Measures sA and sW
@@ -1003,9 +1001,8 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   #----------------------------------------------------------------------------------
   # Optional regressions specs:
   #----------------------------------------------------------------------------------
-
   # Q.sVars <- process_regform(as.formula(Qform), sW.map = c(sW$sVar.names.map, sA$sVar.names.map), sA.map = node_l$Ynode)
-  Q.sVars <- process_regforms(Qform, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+  Q.sVars <- process_regforms(Qform, sW.map = c(sW$sVar.names.map, sA$sVar.names.map), sA.map = node_l$Ynode)
   # h.g0.sVars <- process_regform(as.formula(hform.g0[[1]]), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
   h.g0.sVars <- process_regforms(hform.g0, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
 
@@ -1015,7 +1012,6 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   } else {
     h.gstar.sVars <- h.g0.sVars
   }
-
 
   if (verbose) {
     print("Input regression(s) Qform (E(Y|sA,sW)): "); res <- lapply(Qform, function(Qform) print(as.formula(Qform),showEnv=FALSE))

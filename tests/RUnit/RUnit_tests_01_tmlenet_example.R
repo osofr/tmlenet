@@ -25,17 +25,21 @@ test.examples <- function() {
   #***************************************************************************************
   tmlenet:::checkpkgs(pkgs = c("stringr"))
   require(stringr)
-
-  # Max number of friends in the network:
-  Kmax <- 6
-  # Load simulation function:
+  Kmax <- 6 # max number of friends in the network
+  n <- 1000 # number of obs
+  # -------------------------------------------------------------------------------------------
+  # Load simulation function and simulate the network data:
+  # -------------------------------------------------------------------------------------------
   source("./datgen_nets/sim3_datgen_k6.R")  # to load from inside run-time test dir
   # source("../datgen_nets/sim3_datgen_k6.R") # to load from current file dir
   # Simulate network data:
   # set.seed(543)
-  n <- 1000
-  df_netKmax6 <- gendata_pop(nC = 1, n_arr = n, k_arr = Kmax, EC_arr = EC, f.g_list = "f.A", f.g_args_list = list(NULL), rndseed = 543)
+  # df_netKmax6 <- gendata_pop(nC = 1, n_arr = n, k_arr = Kmax, EC_arr = EC, f.g_list = "f.A", f.g_args_list = list(NULL), rndseed = 543)
   # save(df_netKmax6, file = "./df_netKmax6.rda")
+  # -------------------------------------------------------------------------------------------
+  # Load the previously simulated data directly:
+  # -------------------------------------------------------------------------------------------
+  data(df_netKmax6)
 
   print(head(df_netKmax6))
   #   IDs W1 W2 W3 A Y nFriends                  Net_str
@@ -61,22 +65,25 @@ test.examples <- function() {
   # Intercept based TMLE
   #----------------------------------------------------------------------------------
   options(tmlenet.verbose = FALSE)
+  # options(tmlenet.verbose = TRUE)
+
   def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
             def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
-  def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
-            def.sA(netA = A[[0:Kmax]])
+  def_sA <- def.sA(netA = A[[0:Kmax]]) +
+            def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
 
   #***************************************************************************************
   # # correct version(s):
   #***************************************************************************************
   # No Ynode:
-  res_K6_1a <- tmlenet(data = df_netKmax6, Kmax = Kmax, Anodes = "A", f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
-                      Qform = "Y ~ sum.netW3 + sum.netAW2",
-                      hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
-                      hform.gstar = "netA ~ sum.netW3",
-                      IDnode = "IDs", NETIDnode = "Net_str",
-                      optPars = list(n_MCsims = 1))
+  # current run:
+    res_K6_1a <- tmlenet(data = df_netKmax6, Kmax = Kmax, Anodes = "A", f_gstar1 = f.A_0, sW = def_sW, sA = def_sA,
+                        Qform = "Y ~ sum.netW3 + sum.netAW2",
+                        hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
+                        hform.gstar = "netA ~ sum.netW3",
+                        IDnode = "IDs", NETIDnode = "Net_str",
+                        optPars = list(n_MCsims = 1))
 
   tmle_idx <- rownames(res_K6_1a$EY_gstar1$estimates)%in%"tmle"
   h_iptw_idx <- rownames(res_K6_1a$EY_gstar1$estimates)%in%"h_iptw"

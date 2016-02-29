@@ -115,37 +115,40 @@ test.shallowdeep.copy <- function() {
   #-----------------------------------------------------------------------------------------
   # 1st layer of saved list of R6 objects:
   #-----------------------------------------------------------------------------------------
-  model <- h_g0_SummariesModel$getPsAsW.models()[[1]]
+  model <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]
   model$intrvls
   model$intrvls <- NULL
-  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$intrvls))
-  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$intrvls))
-  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$intrvls))
+  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$intrvls))
+  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$intrvls))
+  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$intrvls))
   #-----------------------------------------------------------------------------------------
   # RegressionClass pointer in ContinSummaryModel:
   #-----------------------------------------------------------------------------------------
-  regchild <- h_g0_SummariesModel$getPsAsW.models()[[1]]$reg
+  reg.toplevel <- h_g0_SummariesModel$getPsAsW.models()[[1]]$reg
+  reg.toplevel$sep_predvars_sets
+
+  regchild <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$reg
   regchild$intrvls
   regchild$intrvls <- NULL
-  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$reg$intrvls))
-  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$reg$intrvls))
-  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$reg$intrvls))
+  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$reg$intrvls))
+  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$reg$intrvls))
+  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$reg$intrvls))
   #-----------------------------------------------------------------------------------------
   # 2nd layer of saved list of R6 objects (BinOutModel):
   #-----------------------------------------------------------------------------------------
-  BinOutModel <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]
+  BinOutModel <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]
   BinOutModel$bw.j <- NULL
-  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bw.j))
-  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bw.j))
-  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bw.j))
+  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bw.j))
+  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bw.j))
+  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bw.j))
   #-----------------------------------------------------------------------------------------
   # Pointer in BinOutModel to BinDat:
   #-----------------------------------------------------------------------------------------
-  bindat <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat
+  bindat <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat
   bindat$nbins <- NULL
-  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat$nbins))
-  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat$nbins))
-  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat$nbins))
+  checkTrue(is.null(h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat$nbins))
+  checkTrue(is.null(shallow_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat$nbins))
+  checkTrue(!is.null(deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat$nbins))
 }
 
 test.usefitted.h <- function() {
@@ -201,16 +204,16 @@ test.usefitted.h <- function() {
 
   #-----------------------------------------------------------------------------------------
   # 1st layer of saved list of R6 objects:
-  model <- h_g0_SummariesModel$getPsAsW.models()[[1]]
+  model <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]
   model$intrvls <- NULL
   # RegressionClass pointer in ContinSummaryModel:
-  regchild <- h_g0_SummariesModel$getPsAsW.models()[[1]]$reg
+  regchild <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$reg
   regchild$intrvls <- NULL
   # 2nd layer of saved list of R6 objects (BinOutModel):
-  BinOutModel <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]
+  BinOutModel <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]
   BinOutModel$bw.j <- NULL
   # Pointer in BinOutModel to BinDat:
-  bindat <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat
+  bindat <- h_g0_SummariesModel$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$bindat
   bindat$nbins <- NULL
 
   #------------------------------------------------------------------------------------------------------------
@@ -248,6 +251,7 @@ test.usefitted.h <- function() {
                   optPars = list(n_MCsims = 1,
                     h_g0_SummariesModel = h_g0_shallow_copy,
                     h_gstar_SummariesModel = h_gstar_SummariesModel)))
+
   # However, the deep copy should be allright and return results equivalent to results from the first tmlenet call:
   res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y",
                   f_gstar1 = f.gstar,
@@ -268,11 +272,10 @@ test.usefitted.h <- function() {
   # TEST THAT tmlenet always makes a deep copy of input h model fits:
   #------------------------------------------------------------------------------------------------------------
   new_h_g0_copy <- res2b$EY_gstar1$h_g0_SummariesModel
-  model <- h_g0_deep_copy$getPsAsW.models()[[1]]
+  model <- h_g0_deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]
   model$intrvls <- NULL
-  checkTrue(is.null(h_g0_deep_copy$getPsAsW.models()[[1]]$intrvls))
-  checkTrue(!is.null(new_h_g0_copy$getPsAsW.models()[[1]]$intrvls))
-
+  checkTrue(is.null(h_g0_deep_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$intrvls))
+  checkTrue(!is.null(new_h_g0_copy$getPsAsW.models()[[1]]$getPsAsW.models()[[1]]$intrvls))
 
 }
 

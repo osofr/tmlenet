@@ -73,7 +73,6 @@ f.gen.A.star <- function(data, f.g_fun, Anodes) {
     }
 
   } else if (is.list(f.g_fun)) {
-    Anodes <- c("nF.PA", "A")
     assert_that(length(f.g_fun)==length(Anodes))
     assert_that(length(names(f.g_fun))>0)
     assert_that(all(names(f.g_fun) %in% Anodes))
@@ -668,8 +667,9 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           # THIS WAS A BOTTLENECK: for 500K w/ 1000 bins: 4-5sec
           # REPLACING WITH env that is made of data.frames instead of matrices
           # ******************************************************
-          eval.env <- c(data.frame(self$dat.sWsA), data.frame(self$dat.bin.sVar), as.list(gvars))
-          res <- try(eval(subsetexpr, envir = eval.env, enclos = baseenv())) # to evaluate vars not found in data in baseenv()
+          # eval.env <- c(data.frame(self$dat.sWsA), data.frame(self$dat.bin.sVar), as.list(gvars))
+          # res <- try(eval(subsetexpr, envir = eval.env, enclos = baseenv())) # to evaluate vars not found in data in baseenv()
+          stop("disabled for memory/speed efficiency")
           return(res)
         }
       }
