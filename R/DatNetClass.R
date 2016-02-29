@@ -73,6 +73,7 @@ f.gen.A.star <- function(data, f.g_fun, Anodes) {
     }
 
   } else if (is.list(f.g_fun)) {
+    Anodes <- c("nF.PA", "A")
     assert_that(length(f.g_fun)==length(Anodes))
     assert_that(length(names(f.g_fun))>0)
     assert_that(all(names(f.g_fun) %in% Anodes))
@@ -818,8 +819,6 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       } else {
         if (is.null(self$nodes$Anodes)) stop("Anodes was not appropriately specified and is null; can't replace observed Anode with that sampled under g_star")
         assert_that(!is.null(DatNet.ObsP0))
-
-        # Odata <- Odata
 
         # Will not be saving this object datnetA.gstar as self$datnetA (i.e., keeping an old pointer to O.datnetA to be used later for prediction)
         datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes)

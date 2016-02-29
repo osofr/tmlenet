@@ -299,7 +299,9 @@ get_vars_fromlist <- function(varname, sVar.map) {
 # Parse the formulas for summary measure names and create a map to actual covariate names in sA & sW
 process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL) {
   if (length(regform)==0L) {
+
     return(list(outvars =  as.vector(unlist(sA.map)), predvars = as.vector(unlist(sW.map))))
+
   } else {
 
     # Getting predictors (sW names):
@@ -318,6 +320,20 @@ process_regform <- function(regform, sW.map = NULL, sA.map = NULL, NETIDnode = N
     predvars <- unlist(lapply(sW.names, get_vars_fromlist, sW.map))
     return(list(outvars = outvars, predvars = predvars))
   }
+}
+
+# When several reg forms are specified (multivariate Anodes), process outvars into one vector and process predvars in a named list of vectors
+process_regforms <- function(regforms, sW.map = NULL, sA.map = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL) {
+  outvars <- vector(mode="list", length=length(regforms))
+  predvars <- vector(mode="list", length=length(regforms))
+
+  for (idx in seq_along(regforms)) {
+    res <- process_regform(as.formula(regforms[[idx]]), sW.map = NULL, sA.map = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL)
+    outvars[[idx]] <- res$outvars
+    predvars[[idx]] <- res$predvars
+    names(outvars)[idx] <- names(predvars)[idx] <- paste0(outvars[[idx]], collapse="+")
+  }
+  return(list(outvars = outvars, predvars = predvars))
 }
 
 #' Evaluate Summary Measures sA and sW
@@ -961,9 +977,9 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
     data$OdataDT[list(1),YnodeDET, with=FALSE]
   }
 
-  CheckVarNameExists(data$OdataDT, node_l$Anodes)
+  for (Anode in node_l$Anodes) CheckVarNameExists(data$OdataDT, Anode)
   # CheckVarNameExists(data, node_l$Anodes)
-  CheckVarNameExists(data$OdataDT, node_l$Ynode)
+  for (Ynode in node_l$Ynode) CheckVarNameExists(data$OdataDT, Ynode)
   # CheckVarNameExists(data, node_l$Ynode)
 
   #----------------------------------------------------------------------------------
@@ -987,21 +1003,27 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   #----------------------------------------------------------------------------------
   # Optional regressions specs:
   #----------------------------------------------------------------------------------
-  Q.sVars <- process_regform(as.formula(Qform), sW.map = c(sW$sVar.names.map, sA$sVar.names.map), sA.map = node_l$Ynode)
-  h.g0.sVars <- process_regform(as.formula(hform.g0), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+
+  # Q.sVars <- process_regform(as.formula(Qform), sW.map = c(sW$sVar.names.map, sA$sVar.names.map), sA.map = node_l$Ynode)
+  Q.sVars <- process_regforms(Qform, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+  # h.g0.sVars <- process_regform(as.formula(hform.g0[[1]]), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+  h.g0.sVars <- process_regforms(hform.g0, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+
   if (!is.null(hform.gstar)) {
-    h.gstar.sVars <- process_regform(as.formula(hform.gstar), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+    # h.gstar.sVars <- process_regform(as.formula(hform.gstar), sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+    h.gstar.sVars <- process_regforms(hform.gstar, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
   } else {
     h.gstar.sVars <- h.g0.sVars
   }
 
+
   if (verbose) {
-    print("Input regression Qform (E(Y|sA,sW)): " %+% Qform)
-    print("Derived regression Qform (E(Y|sA,sW)):"); str(Q.sVars)
-    print("Input regression hform.g0 (P(sA|sW) under g0): " %+% hform.g0)
-    print("Derived regression hform.g0 (P(sA|sW) under g0): "); str(h.g0.sVars)
-    print("Input regression hform.gstar (P(sA|sW) under g.star): " %+% hform.gstar)
-    print("Derived regression hform.gstar (P(sA|sW) under g.star): "); str(h.gstar.sVars)
+    print("Input regression(s) Qform (E(Y|sA,sW)): "); res <- lapply(Qform, function(Qform) print(as.formula(Qform),showEnv=FALSE))
+    print("Derived regression(s) from Qform:"); str(Q.sVars)
+    print("Input regression(s) hform.g0 (P(sA|sW) under g0): "); res <- lapply(hform.g0, function(hform.g0) print(as.formula(hform.g0),showEnv=FALSE))
+    print("Derived regression(s) from hform.g0: "); str(h.g0.sVars)
+    print("Input regression(s) hform.gstar (P(sA|sW) under g.star): "); res <- lapply(hform.gstar, function(hform.gstar) print(as.formula(hform.gstar),showEnv=FALSE))
+    print("Derived regression(s) from hform.gstar: "); str(h.gstar.sVars)
   }
 
   #-----------------------------------------------------------
@@ -1012,12 +1034,15 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
                                     paste0(Q.sVars$predvars[!check.Qpreds.exist], collapse = ","))
 
   if (verbose) {
-    message("================================================================")
-    message("fitting E(Y|sA,sW):= ", "P(" %+% node_l$Ynode %+% "=1 | " %+% paste(Q.sVars$predvars, collapse = ",") %+% ")")
-    message("================================================================")
+    for (idx in seq_along(node_l$Ynode)) {
+      message("================================================================")
+      message("fitting E(Y|sA,sW):= ", "P(" %+% node_l$Ynode[idx] %+% "=1 | " %+% paste(Q.sVars$predvars[[idx]], collapse = ",") %+% ")")
+      message("================================================================")
+    }
   }
+
   Qreg <- RegressionClass$new(outvar = node_l$Ynode,
-                              predvars = Q.sVars$predvars,
+                              predvars = Q.sVars$predvars[[1]],
                               subset = !determ.Q, ReplMisVal0 = TRUE)
   m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)
 

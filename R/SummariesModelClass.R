@@ -23,6 +23,12 @@ newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) {
   CategorSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 }
 
+# Summary model constructor for generic regression with multivariate outcome, but only one set of predictors
+newsummarymodel.generic <- function(reg, DatNet.sWsA.g0, ...) {
+  # if (gvars$verbose) print("Calling CategorSummaryModel constructor for categorical outcome: " %+% reg$outvar)
+  SummariesModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
+}
+
 ## ---------------------------------------------------------------------
 #' R6 class that defines regression models evaluating P(sA|sW), for summary measures (sW,sA)
 #'
@@ -48,9 +54,16 @@ newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) {
 #' @keywords R6 class
 #' @details
 #' \itemize{
+#' \item{\code{sep_predvars_sets}} - Logical indicating the type of regression to run, 
+#'    if \code{TRUE} fit the joint P(\code{outvar}|\code{predvars}) (default), 
+# '   if \code{FALSE}, fit P(\code{outvar[1]}|\code{predvars[[1]]})*...*P(\code{outvar[K]}|\code{predvars[[K]}].
+#'    More specifically, if \code{FALSE} (default), use the same predictors in \code{predvars} (vector of names) for all nodes in \code{outvar};
+#'    when \code{TRUE} uses separate sets in \code{predvars} (must be a named list of character vectors) for fitting each node in \code{outvar}.
 #' \item{\code{outvar.class}} - Character vector indicating a class of each outcome var: \code{bin} / \code{cont} / \code{cat}.
 #' \item{\code{outvar}} - Character vector of regression outcome variable names.
-#' \item{\code{predvars}} - Either a pool of all character predictors (\code{sW}) or regression-specific predictor names.
+#' \item{\code{predvars}} - Either a pooled character vector of all predictors (\code{sW}) or a vector of regression-specific predictor names.
+#'      When \code{sep_predvars_sets=TRUE}, this must be a named list of predictor names, the list names corresponding to each node name in \code{outvar},
+#'      and each list item being a vector specifying the regression predictors for a specific outcome in \code{outvar}.
 #' \item{{reg_hazard}} - Logical, if TRUE, the joint probability model P(outvar | predvars) is factorized as 
 #'    \\prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard).
 #' \item{\code{subset}} - Subset expression (later evaluated to logical vector in the envir of the data).
@@ -79,7 +92,8 @@ newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) {
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(outvar.class = gvars$sVartypes$bin,
+#'   \item{\code{new(sep_predvars_sets = FALSE,
+#'                   outvar.class = gvars$sVartypes$bin,
 #'                   outvar, predvars, subset, intrvls,
 #'                   ReplMisVal0 = TRUE,
 #'                   useglm = getopt("useglm"),
@@ -105,9 +119,15 @@ RegressionClass <- R6Class("RegressionClass",
   class = TRUE,
   portable = TRUE,
   public = list(
+    sep_predvars_sets = logical(), # The type of regression to run, either fitting the joint P(outvar|predvars) (default) or P(outvar[1]|predvars[[1]])*...*P(outvar[K]|predvars[[K]]
+                                    # if FALSE (default), use the same predictors in predvars (vector of names) for all nodes in outvar;
+                                    # if TRUE use separate sets in predvars (named list of character vectors) for fitting each node in outvar.
     outvar.class = character(),    # vector for classes of the outcome vars: bin / cont / cat
     outvar = character(),          # vector of regression outcome variable names
-    predvars = character(),        # either a pool of all predictors (sW) or regression-specific predictor names
+    predvars = character(),        # either a:
+                                    # (1) pool of all predictor names (sW);
+                                    # (2) regression-specific predictor names; or
+                                    # (3) list (of length(outvar)) of several predicator vectors, each such set is used as a separate regression for a node name in outvar
     reg_hazard = FALSE,            # If TRUE, the joint P(outvar|predvars) is factorized as \prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard)
     subset = NULL,                 # subset expression (later evaluated to logical vector in the envir of the data)
     ReplMisVal0 = TRUE,            # if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0)
@@ -128,7 +148,8 @@ RegressionClass <- R6Class("RegressionClass",
     levels = NULL,
     # family = NULL,               # (NOT IMPLEMENTED) to run w/ other than "binomial" family
     # form = NULL,                 # (NOT IMPLEMENTED) reg formula, if provided run using the usual glm / speedglm functions
-    initialize = function(outvar.class = gvars$sVartypes$bin,
+    initialize = function(sep_predvars_sets = FALSE,
+                          outvar.class = gvars$sVartypes$bin,
                           outvar, predvars, subset, intrvls,
                           ReplMisVal0 = TRUE, # Needed to add ReplMisVal0 = TRUE for case sA = (netA, sA[j]) with sA[j] continuous, was causing an error otherwise:
                           useglm = getopt("useglm"),
@@ -139,23 +160,29 @@ RegressionClass <- R6Class("RegressionClass",
                           max_nperbin = getopt("maxNperBin"),
                           pool_cont = getopt("poolContinVar")
                           ) {
-      assert_that(length(outvar.class) == length(outvar))
 
+      assert_that(length(outvar.class) == length(outvar))
+      self$sep_predvars_sets <- sep_predvars_sets
       self$outvar.class <- outvar.class
       self$outvar <- outvar
       self$predvars <- predvars
-      self$ReplMisVal0 <- ReplMisVal0
 
+      if (self$sep_predvars_sets) {
+        assert_that(is.list(predvars))
+        assert_that(is.list(outvar))
+        assert_that(length(predvars) == length(outvar))
+        if (length(names(predvars)) == 0) stop("when predvars is a list it must be named according to node names in outvar")
+        assert_that(all(names(predvars) %in% names(outvar)))
+      }
+
+      self$ReplMisVal0 <- ReplMisVal0
       self$useglm <- useglm
       self$parfit <- parfit
-
       self$nbins <- nbins
       self$bin_bymass <- bin_bymass
       self$bin_bydhist <- bin_bydhist
       self$max_nperbin <- max_nperbin
       self$pool_cont <- pool_cont
-
-      n_regs <- length(outvar)
 
       if (!missing(intrvls)) {
         assert_that(is.list(intrvls))
@@ -168,14 +195,18 @@ RegressionClass <- R6Class("RegressionClass",
 
       self$levels <- NULL
 
+      n_regs <- length(outvar)
+
       if (!missing(subset)) {
         self$subset <- subset
         if (length(subset) < n_regs) {
           self$subset <- rep_len(subset, n_regs)
         } else if (length(subset) > n_regs) {
           # ... TO FINISH ...
-          if (!is.logical(subset)) stop("not implemented")
           # increase n_regs to all combinations of (n_regs x subset)
+          # stop("subset cannot be longer than length(outvar)")
+          if (!is.logical(subset)) stop("not implemented")
+          # ... TO FINISH ...
         }
       } else {
         self$subset <- rep_len(list(TRUE), n_regs)
@@ -185,6 +216,8 @@ RegressionClass <- R6Class("RegressionClass",
     # take the clone of a parent RegressionClass (reg) for length(self$outvar) regressions
     # and set self to a single univariate k_i regression for outcome self$outvar[[k_i]]
     ChangeManyToOneRegresssion = function(k_i, reg) {
+      self$resetS3class()
+
       assert_that(!missing(k_i))
       if (missing(reg)) stop("reg must be also specified when k_i is specified")
       assert_that(is.count(k_i))
@@ -192,13 +225,24 @@ RegressionClass <- R6Class("RegressionClass",
 
       n_regs <- length(reg$outvar)
       self$outvar.class <- reg$outvar.class[[k_i]] # Class of the outcome var: binary, categorical, continuous:
-      self$outvar <- reg$outvar[[k_i]] # An outcome variable that is being modeled:
+      self$outvar <- reg$outvar[[k_i]]             # An outcome variable that is being modeled:
 
-      if (self$reg_hazard) {
-        # when modeling bin hazard indicators, no need to condition on previous outcomes as they will all be degenerate
-        self$predvars <- reg$predvars # Regression covars (predictors):
+      # modeling separate regressions (with different predictors for each outcome in outvar)
+      if (reg$sep_predvars_sets) {
+        self$sep_predvars_sets <- FALSE # (1) set the children objects to sep_predvars_sets <- FALSE
+        if (!(names(reg$predvars)[k_i] %in% names(reg$outvar)[k_i])) stop("the names of list items in predvars must be in the same order as the node names in outvar")
+        predvars_1 <- reg$predvars[[names(reg$outvar)[k_i]]]
+        predvars_2 <- reg$predvars[[k_i]]
+        if (!identical(predvars_1, predvars_2)) stop("fatal error: look up of reg$predvars[[...]] by outvar and by index k_i returning different results")
+        self$predvars <- reg$predvars[[k_i]] # (2) extract specific predictors from the named list reg$predvars for each outvar
+
+      # modeling bin hazard indicators, no need to condition on previous outcomes as they will all be degenerate
+      } else if (self$reg_hazard) {
+        self$predvars <- reg$predvars # Predictors
+
+      # factorization of the joint prob P(A,B,C|D):=P(A|D)*P(B|A,D)*P(C|A,B,D)
       } else {
-        self$predvars <- c(reg$outvar[-c(k_i:n_regs)], reg$predvars) # Regression covars (predictors):
+        self$predvars <- c(reg$outvar[-c(k_i:n_regs)], reg$predvars) # Predictors
       }
 
       # the subset is a list when RegressionClass specifies several regression models at once,
@@ -210,7 +254,16 @@ RegressionClass <- R6Class("RegressionClass",
         outvar_idx <- which(names(reg$intrvls) %in% self$outvar)
         self$intrvls <- reg$intrvls[[outvar_idx]]
       }
-      self$S3class <- self$outvar.class # Set class on self for S3 dispatch...
+
+      # setting the self class for S3 dispatch on SummaryModel type
+      if (length(self$outvar)==1) {
+        self$S3class <- self$outvar.class # Set class on outvar.class for S3 dispatch...
+      } else if (length(self$outvar) > 1){
+        self$S3class <- "generic" # Multivariate outcome with one set of predictors, need to do another round of S3 dispatch on SummaryModel
+      } else {
+        stop("can't have an outcome with no class type")
+      }
+
       return(invisible(self))
     },
 
@@ -222,7 +275,7 @@ RegressionClass <- R6Class("RegressionClass",
       self$predvars <- regs_list$predvars
       self$subset <- regs_list$subset
       return(invisible(self))
-    }, 
+    },
 
     resetS3class = function() class(self) <- c("RegressionClass", "R6")
 
@@ -232,8 +285,10 @@ RegressionClass <- R6Class("RegressionClass",
     # For S3 dispatch on newsummarymodel():
     S3class = function(newclass) {
       if (!missing(newclass)) {
-        if (length(newclass) > 1) stop("cannot set S3 class on RegressionClass with more than one outvar variable")
         if (length(class(self)) > 2) stop("S3 dispatch class on RegressionClass has already been set")
+
+        if (length(newclass) > 1) stop("cannot set S3 class on RegressionClass with more than one outvar variable")
+        
         class(self) <- c(class(self), newclass)
       } else {
         return(class(self))
@@ -304,13 +359,19 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       all.outvar.bin <-  all(reg$outvar.class %in% gvars$sVartypes$bin)
 
       if (reg$parfit & all.outvar.bin & (self$n_regs > 1)) self$parfit_allowed <- TRUE
+      #**** NOTE: for ltmle this should be changed to: if (reg$sep_predvars_sets) self$parfit_allowed <- TRUE
 
       if (gvars$verbose) {
         print("#----------------------------------------------------------------------------------")
         print("New instance of SummariesModel:")
         print("#----------------------------------------------------------------------------------")
-        print("Outcomes: " %+% paste(reg$outvar, collapse = ", "))
-        print("Predictors: " %+% paste(reg$predvars, collapse = ", "))
+        if (reg$sep_predvars_sets) {
+          print("Outcomes: "); print(unlist(lapply(reg$outvar, function(outvars) "(" %+% paste(outvars, collapse = ", ") %+% ")")))
+          print("Predictors: "); print(unlist(lapply(reg$predvars, function(predvars) "(" %+% paste(predvars, collapse = ", ") %+% ")")))
+        } else {
+          print("Outcomes: " %+% paste(reg$outvar, collapse = ", "))
+          print("Predictors: " %+% paste(reg$predvars, collapse = ", "))
+        }
         print("No. of regressions: " %+% self$n_regs)
         print("All outcomes binary? " %+% all.outvar.bin)
         if (self$parfit_allowed) print("Performing parallel fits: " %+% self$parfit_allowed)

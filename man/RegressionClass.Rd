@@ -28,9 +28,15 @@ This R6 class defines fields and methods that controls all the parameters for no
 }
 \details{
 \itemize{
+\item{\code{sep_predvars_sets}} - Logical indicating the type of regression to run,
+   if \code{TRUE} fit the joint P(\code{outvar}|\code{predvars}) (default),
+   More specifically, if \code{FALSE} (default), use the same predictors in \code{predvars} (vector of names) for all nodes in \code{outvar};
+   when \code{TRUE} uses separate sets in \code{predvars} (must be a named list of character vectors) for fitting each node in \code{outvar}.
 \item{\code{outvar.class}} - Character vector indicating a class of each outcome var: \code{bin} / \code{cont} / \code{cat}.
 \item{\code{outvar}} - Character vector of regression outcome variable names.
-\item{\code{predvars}} - Either a pool of all character predictors (\code{sW}) or regression-specific predictor names.
+\item{\code{predvars}} - Either a pooled character vector of all predictors (\code{sW}) or a vector of regression-specific predictor names.
+     When \code{sep_predvars_sets=TRUE}, this must be a named list of predictor names, the list names corresponding to each node name in \code{outvar},
+     and each list item being a vector specifying the regression predictors for a specific outcome in \code{outvar}.
 \item{{reg_hazard}} - Logical, if TRUE, the joint probability model P(outvar | predvars) is factorized as
    \\prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard).
 \item{\code{subset}} - Subset expression (later evaluated to logical vector in the envir of the data).
@@ -61,7 +67,8 @@ This R6 class defines fields and methods that controls all the parameters for no
 \section{Methods}{
 
 \describe{
-  \item{\code{new(outvar.class = gvars$sVartypes$bin,
+  \item{\code{new(sep_predvars_sets = FALSE,
+                  outvar.class = gvars$sVartypes$bin,
                   outvar, predvars, subset, intrvls,
                   ReplMisVal0 = TRUE,
                   useglm = getopt("useglm"),

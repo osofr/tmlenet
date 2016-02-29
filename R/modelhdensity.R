@@ -41,7 +41,7 @@ predict.hbars <- function(newdatnet = NULL, m.h.fit) {
 # fit models for m_gAi
 #---------------------------------------------------------------------------------
 fit.hbars <- function(DatNet.ObsP0, est_params_list) {
-  .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" "))  # defining the vector of c^A`s that needs evaluation under h(c)
+  # .f.mkstrNet <- function(Net) apply(Net, 1, function(Net_i) paste(Net_i, collapse=" "))  # defining the vector of c^A`s that needs evaluation under h(c)
   #---------------------------------------------------------------------------------
   # PARAMETERS FOR LOGISTIC ESTIMATION OF h
   #---------------------------------------------------------------------------------
@@ -82,12 +82,12 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
 
   # *****
   # Check that these summary measures exist in O.datnetW$names.sVar
-  check.sW.g0.exist <- unlist(lapply(sW.g0_nms, function(sWname) sWname %in% O.datnetW$names.sVar))
-  if (!all(check.sW.g0.exist)) stop("the following predictors from hform.g0 regression could not be located in sW summary measures: " %+%
+  check.sW.g0.exist <- unlist(lapply(unlist(sW.g0_nms), function(sWname) sWname %in% c(O.datnetW$names.sVar,O.datnetA$names.sVar)))
+  if (!all(check.sW.g0.exist)) stop("the following predictors from hform.g0 regression could not be located in sW/sA summary measures: " %+%
                                     paste0(sW.g0_nms[!check.sW.g0.exist], collapse = ","))
 
-  check.sW.gstar.exist <- unlist(lapply(sW.gstar_nms, function(sWname) sWname %in% O.datnetW$names.sVar))
-  if (!all(check.sW.gstar.exist)) stop("the following predictors from hform.gstar regression could not be located in sW summary measures: " %+%
+  check.sW.gstar.exist <- unlist(lapply(sW.gstar_nms, function(sWname) sWname %in% c(O.datnetW$names.sVar,O.datnetA$names.sVar)))
+  if (!all(check.sW.gstar.exist)) stop("the following predictors from hform.gstar regression could not be located in sW/sA summary measures: " %+%
                                     paste0(sW.gstar_nms[!check.sW.gstar.exist], collapse = ","))
 
   #---------------------------------------------------------------------------------
@@ -101,11 +101,15 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # Check that the outcome summary measures defined by h.g0.sVars$outvars and h.gstar.sVars$outvars are equivalent:
   # NOTE: might comment out in the future and allow different summary measures for sA_nms_g0 and sA_nms_gstar.
   # ***********
-  if (!all(sA_nms_g0 == sA_nms_gstar)) stop("the outcome variable names defined by regressions hform.g0 & hform.gstar are not identical;" %+%
+  for (idx in seq_along(sA_nms_g0)) {
+    if (!all(sA_nms_g0[[idx]] %in% sA_nms_gstar[[idx]])) {
+      stop("the outcome variable names defined by regressions hform.g0 & hform.gstar are not identical;" %+%
                                             " current implementation requires these to be the same.")
+    }
+  }
 
   # ***********
-  # Check that these summary measures exist in O.datnetW$names.sVar
+  # Check that these summary measures exist in O.datnetA$names.sVar
   check.sAg0.exist <- unlist(lapply(sA_nms_g0, function(sAname) sAname %in% O.datnetA$names.sVar))
   if (!all(check.sAg0.exist)) stop("the following outcomes from hform.g0 regression could not be located in sA summary measures: " %+%
                                     paste0(sA_nms_g0[!check.sAg0.exist], collapse = ","))
@@ -132,7 +136,8 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   ##########################################
   # Summary class params:
   ##########################################
-  sA_class <- O.datnetA$type.sVar[sA_nms_g0]
+  # sA_class <- O.datnetA$type.sVar[sA_nms_g0]
+  sA_class <- lapply(sA_nms_g0, function(sA_nms) O.datnetA$type.sVar[sA_nms])
 
   if (gvars$verbose) {
     message("================================================================")
@@ -152,10 +157,14 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     DatNet.g0 <- DatNet.ObsP0
   }
 
-  regclass.g0 <- RegressionClass$new(outvar.class = sA_class,
-                                        outvar = sA_nms_g0,
-                                        predvars = sW.g0_nms,
-                                        subset = subsets_expr)
+
+  # browser()
+
+  regclass.g0 <- RegressionClass$new(sep_predvars_sets = TRUE,
+                                    outvar.class = sA_class,
+                                    outvar = sA_nms_g0,
+                                    predvars = sW.g0_nms,
+                                    subset = subsets_expr)
 
   summeas.g0 <- SummariesModel$new(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
   if (!is.null(h_g0_SummariesModel)) {
@@ -175,6 +184,22 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # Going with OPTION 1 for now:
   # Already generated DatNet.ObsP0 in tmlenet:
   h_gN <- summeas.g0$predictAeqa(newdata = DatNet.ObsP0)
+  # ------------------------------------------------------------------------------------
+  # to obtain the decomposed of the above probability by each Anode (marginals):
+  # (directly analogous to the g0 component of gmat in ltmle package)
+  gmat.g0 <- matrix(nrow = length(h_gN), ncol = length(summeas.g0$getPsAsW.models()))
+  for (i in seq_along(summeas.g0$getPsAsW.models())) {
+    gmat.g0[,i] <- summeas.g0$getPsAsW.models()[[i]]$getcumprodAeqa()
+  }
+  test_h_gN <- gmat.g0[,1]*gmat.g0[,2]
+  message("sum(test_h_gN-h_gN): " %+% sum(test_h_gN-h_gN))
+  # h_gN_byAnode <- lapply(summeas.g0$getPsAsW.models(), function(gfactor_one_t) gfactor_one_t$getcumprodAeqa())
+  # h_gN_byAnode_1 <- summeas.g0$getPsAsW.models()[[1]]$getcumprodAeqa()
+  # h_gN_byAnode_2 <- summeas.g0$getPsAsW.models()[[2]]$getcumprodAeqa()
+  # sum(h_gN_byAnode_1)
+  # sum(h_gN_byAnode_2)
+
+
   # *********
 
   if (gvars$verbose) {
@@ -192,7 +217,8 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));
   }
 
-  regclass.gstar <- RegressionClass$new(outvar.class = sA_class,
+  regclass.gstar <- RegressionClass$new(sep_predvars_sets = TRUE,
+                                        outvar.class = sA_class,
                                         outvar = sA_nms_gstar,
                                         predvars = sW.gstar_nms,
                                         subset = subsets_expr
@@ -214,6 +240,17 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   }
   h_gstar <- summeas.gstar$predictAeqa(newdata = DatNet.ObsP0)
 
+  # ------------------------------------------------------------------------------------
+  # to obtain the decomposed of the above probability by each Anode (marginals):
+  # (directly analogous to the gstar component of gmat in ltmle package)
+  gmat.gstar <- matrix(nrow = length(h_gN), ncol = length(summeas.gstar$getPsAsW.models()))
+  for (i in seq_along(summeas.gstar$getPsAsW.models())) {
+    gmat.gstar[,i] <- summeas.gstar$getPsAsW.models()[[i]]$getcumprodAeqa()
+  }
+  test_h_gstar.N <- gmat.gstar[,1]*gmat.gstar[,2]
+  message("sum(test_h_gstar.N-h_gstar): " %+% sum(test_h_gstar.N-h_gstar))
+
+
   ###########################################
   # 3) Calculate final h_bar (h_tilde) as ratio of h_gstar / h_gN and bound it
   ##########################################
@@ -221,9 +258,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   h_gstar_h_gN[is.nan(h_gstar_h_gN)] <- 0     # 0/0 detection
   h_gstar_h_gN <- bound(h_gstar_h_gN, c(0, 1/lbound))
 
-  m.h.fit <- list(summeas.g0 = summeas.g0,
-                  summeas.gstar = summeas.gstar,
-                  lbound = lbound)
+  m.h.fit <- list(summeas.g0 = summeas.g0, summeas.gstar = summeas.gstar, lbound = lbound)
 
   return(list(h_gstar_h_gN = h_gstar_h_gN, m.h.fit = m.h.fit, DatNet.gstar = DatNet.gstar))
 }
