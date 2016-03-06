@@ -130,6 +130,17 @@ def.sA <- function(...) {
   return(node_evaluator)
 }
 
+#' @rdname def.sW
+#' @export
+def.sA.gstar <- function(...) {
+  # call outside fun that parses ... and assigns empty names "" if the names attribute not set:
+  sVar.exprs <- capture.exprs(...)
+  node_evaluator <- DefineSummariesClass$new(type = "sA.gstar")
+  node_evaluator$set.user.env(user.env = parent.frame())
+  node_evaluator$set.new.exprs(exprs_list = sVar.exprs)
+  return(node_evaluator)
+}
+
 # S3 method '+' for adding two DefineSummariesClass objects
 # Summary measure lists in both get added as c(,) into the summary measures in sVar1 object
 #' @rdname def.sW
@@ -152,10 +163,16 @@ def.sA <- function(...) {
 # Standardize all names (and fill-in the empty names) according TO THE *SAME* *NAMING* *CONVENTION*;
 # ------------------------------------------------------------------------------------------
 eval.standardize.expr <- function(expr.idx, self, data.df) {
+  # browser()
   # -------------------------------------------------------
   # First evaluate the expression result:
   # -------------------------------------------------------
-  evalres <- eval.nodeform.out(expr.idx = expr.idx, self = self, data.df = data.df)
+  # eval.nodeform.out_time <- system.time(
+    evalres <- eval.nodeform.out(expr.idx = expr.idx, self = self, data.df = data.df)
+    # )
+  # print("expr_char: " %+% self$exprs_list[[expr.idx]])
+  # print("eval.nodeform.out_time: "); print(eval.nodeform.out_time)
+
   expr_char <- self$exprs_list[[expr.idx]] # expression itself as string
   expr_nm <- names(self$exprs_list)[expr.idx] # current expression name
   expr_parents <- evalres[["par.nodes"]] # names of parents vars for this expression
@@ -293,40 +310,66 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       self$Kmax <- self$netind_cl$Kmax
       self$Nsamp <- nrow(data.df)
 
-      sVar.res_l <- lapply(seq_along(self$exprs_list), eval.standardize.expr, self = self, data.df = data.df)
-      self$new_expr_names <- lapply(sVar.res_l, '[[', 'new_expr_name')
+      sVar.res_l <- self$new_expr_names <- self$sVar.names.map <- vector(mode = "list", length = length(self$exprs_list))
+
+      eval_and_addDT <- system.time(
+        for (i in seq_along(self$exprs_list)) {
+
+          sVar.eval.res <- eval.standardize.expr(i, self = self, data.df = data.df)
+          # sVar.res_l[[i]] <- sVar.eval.res
+
+          self$new_expr_names[[i]] <- sVar.eval.res$new_expr_name
+          self$sVar.names.map[[i]] <- colnames(sVar.eval.res$evaled_expr)
+
+          for (colname in colnames(sVar.eval.res$evaled_expr))
+            data.df[, (colname):= sVar.eval.res$evaled_expr[,colname]]
+        }
+      )
+
+      print("eval_and_addDT"); print(eval_and_addDT)
+
+      # eval_only <- system.time(sVar.res_l <- lapply(seq_along(self$exprs_list), eval.standardize.expr, self = self, data.df = data.df))
+      # print("eval_only: "); print(eval_only)
+
+      # self$new_expr_names <- lapply(sVar.res_l, '[[', 'new_expr_name')
       names(self$new_expr_names) <- unlist(self$new_expr_names)
-
-      names(sVar.res_l) <- names(self$new_expr_names)
       names(self$exprs_list) <- names(self$new_expr_names)
-
+      # names(sVar.res_l) <- names(self$new_expr_names)
       # assign self$sVar.names.map based on newly standardized summary names:
-      self$sVar.names.map <- lapply(sVar.res_l, function(x) colnames(x[["evaled_expr"]]))
+      # self$sVar.names.map <- lapply(sVar.res_l, function(x) colnames(x[["evaled_expr"]]))
       names(self$sVar.names.map) <- names(self$new_expr_names)
 
+      # ************************************************************************************
+      # CHANGE THIS TO MERGING DUPLICATE SUMMARY MEASRURES INTO ONE
+      # ************************************************************************************
       # 1) remove all duplicate summary measures (by name), keeping the ones that were added last:
       if (length(unique(names(self$new_expr_names))) < length(names(self$new_expr_names))) {
         duplic_idx <- duplicated(self$new_expr_names, fromLast = TRUE)
         message("warning: detected duplicate summary measure names, (" %+%
                 paste0(self$new_expr_names[duplic_idx], collapse=",") %+%
                 "), all duplicates starting from first to last will be removed...")
-        sVar.res_l <- sVar.res_l[-duplic_idx]
+        # sVar.res_l <- sVar.res_l[-duplic_idx]
         self$sVar.names.map <- self$sVar.names.map[-duplic_idx]
         self$new_expr_names <- self$new_expr_names[-duplic_idx]
         self$exprs_list <- self$exprs_list[-duplic_idx]
       }
+      # mat.sVar <- do.call("cbind", lapply(sVar.res_l, function(x) x[["evaled_expr"]]))
 
-      mat.sVar <- do.call("cbind", lapply(sVar.res_l, function(x) x[["evaled_expr"]]))
-
+      # ************************************************************************************
+      # WILL BE PERFORMED AUTOMATICALLY WHEN ASSIGNING WITHIN data.table data.df
+      # ************************************************************************************
       # 2) remove duplicate columns, keeping the ones that were added last:
-      if (length(unique(colnames(mat.sVar))) < length(colnames(mat.sVar))) {
-        duplic_idx <- duplicated(colnames(mat.sVar), fromLast = TRUE)
-        message("warning: detected duplicate column names in summary evaluation matrix, (" %+%
-                paste0(colnames(mat.sVar)[duplic_idx], collapse=",") %+%
-                "), all duplicates starting from first to last will be removed...")
-        mat.sVar <- mat.sVar[,!duplic_idx]
-      }
-      return(mat.sVar)
+      # if (length(unique(colnames(mat.sVar))) < length(colnames(mat.sVar))) {
+      #   duplic_idx <- duplicated(colnames(mat.sVar), fromLast = TRUE)
+      #   message("warning: detected duplicate column names in summary evaluation matrix, (" %+%
+      #           paste0(colnames(mat.sVar)[duplic_idx], collapse=",") %+%
+      #           "), all duplicates starting from first to last will be removed...")
+      #   mat.sVar <- mat.sVar[,!duplic_idx]
+      # }
+      # browser()
+
+      # return(mat.sVar)
+      return(data.df)
     },
 
     # List of variable names from data.df with special var name (ANCHOR_ALLVARNMS_VECTOR_0):

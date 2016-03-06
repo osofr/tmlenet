@@ -3,12 +3,15 @@
 \name{def.sW}
 \alias{+.DefineSummariesClass}
 \alias{def.sA}
+\alias{def.sA.gstar}
 \alias{def.sW}
 \title{Define Summary Measures sA and sW}
 \usage{
 def.sW(...)
 
 def.sA(...)
+
+def.sA.gstar(...)
 
 \method{+}{DefineSummariesClass}(sVar1, sVar2)
 }

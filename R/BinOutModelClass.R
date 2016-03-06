@@ -33,7 +33,7 @@ logisfit.speedglmS3 <- function(datsum_obj) {
   if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA`s and avoid throwing exception
     m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
   } else {
-    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial()), silent = TRUE)
+    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), trace=FALSE, maxit=1000), silent = TRUE)
     if (inherits(m.fit, "try-error")) { # if failed, fall back on stats::glm
       message("speedglm::speedglm.wfit failed, falling back on stats:glm.fit; ", m.fit)
       return(logisfit.glmS3(datsum_obj))
@@ -234,7 +234,7 @@ BinDat <- R6Class(classname = "BinDat",
         colnames(private$X_mat) <- c("Intercept", self$predvars)
       } else {
         # *** THIS IS THE ONLY LOCATION IN THE PACKAGE WHERE CALL TO DatNet.sWsA$get.dat.sWsA() IS MADE ***
-        private$X_mat <- as.matrix(cbind(Intercept = 1, data$get.dat.sWsA(self$subset_idx, self$predvars)))        
+        private$X_mat <- as.matrix(cbind(Intercept = 1, data$get.dat.sWsA(self$subset_idx, self$predvars)))
         # To find and replace misvals in X_mat:
         if (self$ReplMisVal0) private$X_mat[gvars$misfun(private$X_mat)] <- gvars$misXreplace
       }

@@ -4,7 +4,7 @@ as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 allNA = function(x) all(is.na(x))
  
 if(FALSE) {
-  library("RUnit")
+  # CHECK AND BUILD PACKAGE:  library("RUnit")
   library("roxygen2")
   library("devtools")
   setwd(".."); setwd(".."); getwd()
@@ -18,7 +18,6 @@ if(FALSE) {
   # system("echo $PATH") # see the current path env var
   # system("R CMD Rd2pdf tmlenet")  # just create the pdf manual from help files
 
-  # CHECK AND BUILD PACKAGE:
   getwd()
   # setwd("./tmlenet"); setwd(".."); getwd()
   devtools::check(args = "--as-cran")
@@ -37,7 +36,7 @@ if(FALSE) {
   system("R CMD check --as-cran tmlenet_0.1.0.tar.gz") # check R package tar ball prior to CRAN submission
       ## system("R CMD check --no-manual --no-vignettes tmlenet") # check without building the pdf manual and not building vignettes
       ## system("R CMD build tmlenet --no-build-vignettes --as-cran")
-      ## system("R CMD build tmlenet")  
+      ## system("R CMD build tmlenet")
   # devtools::use_travis() # SET UP TRAVIS CONFIG FILE
   # INSTALLING FROM SOURCE:
   # install.packages("./tmlenet_0.2.0.tar.gz", repos = NULL, type="source", dependencies=TRUE)

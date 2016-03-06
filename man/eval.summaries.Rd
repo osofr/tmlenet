@@ -4,8 +4,9 @@
 \alias{eval.summaries}
 \title{Evaluate Summary Measures sA and sW}
 \usage{
-eval.summaries(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL,
-  sep = " ", NETIDmat = NULL, verbose = getOption("tmlenet.verbose"))
+eval.summaries(data, Kmax, sW, sA, sA.gstar, IDnode = NULL,
+  NETIDnode = NULL, sep = " ", NETIDmat = NULL,
+  verbose = getOption("tmlenet.verbose"))
 }
 \arguments{
 \item{data}{Same as \code{\link{tmlenet}} input argument.}

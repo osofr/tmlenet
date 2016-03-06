@@ -21,8 +21,7 @@ The data is stored as a data.table under the public field \code{OdataDT}.
 \item{\code{Anodes}} - Names of the intervention nodes.
 \item{\code{Lnodes}} - Names of the time-varying covariates (not used).
 \item{\code{Ynodes}} - Names of the outcome nodes (not used).
-\item{\code{A.g0.mat}} - Matrix of observed exposures
-\item{\code{A.gstar.mat}} - Matrix of counterfactual exposures.
+\item{\code{A_g0_DT}} - Data.table of observed exposures
 }
 }
 \section{Methods}{

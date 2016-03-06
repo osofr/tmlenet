@@ -140,6 +140,73 @@ RhsVars <- function(f) {
   return(all.vars(f[[3]]))
 }
 
+#************************************************
+# TMLEs
+#************************************************  
+tmle.update <- function(estnames, Y, off, h_wts, determ.Q, predictQ = TRUE) {
+  QY.star <- NA
+  ctrl <- glm.control(trace = FALSE, maxit = 1000)
+  if ("TMLE_A" %in% estnames) {
+    #************************************************
+    # TMLE A: estimate the TMLE update via univariate ML (epsilon is coefficient for h^*/h) - ONLY FOR NON-DETERMINISTIC SUBSET
+    #************************************************
+    SuppressGivenWarnings(
+      m.Q.star <- speedglm::speedglm.wfit(X = matrix(h_wts, ncol=1), y = Y, family = quasibinomial(), trace = FALSE, maxit = 1000, offset = off),
+      GetWarningsToSuppress(TRUE))
+    m.Q.star.coef <- m.Q.star$coef
+    # m.Q.star.fit <- list(coef = m.Q.star$coef, linkfun = "logit_linkinv", fitfunname = "speedglm")
+    # class(m.Q.star.fit) <- c(class(m.Q.star.fit), c("speedglmS3"))
+    
+    # SuppressGivenWarnings(m.Q.star <- glm(Y ~ -1 + h_wts + offset(off), data = data.frame(Y = Y, off = off, h_wts = h_wts),
+    #                                           subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
+    # m.Q.star.coef <- coef(m.Q.star)
+
+    if (predictQ) {
+      QY.star <- Y
+      if (!is.na(m.Q.star.coef)) QY.star <- plogis(off + m.Q.star.coef * h_wts)
+    }
+
+  } else if ("TMLE_B" %in% estnames) {
+    #************************************************
+    # TMLE B: estimate the TMLE update via weighted univariate ML (espsilon is intercept)
+    #************************************************
+    SuppressGivenWarnings(
+      m.Q.star <- speedglm::speedglm.wfit(X = matrix(1L, ncol=1, nrow=length(Y)), y = Y, weights = h_wts, offset = off,
+                                        family = quasibinomial(), trace = FALSE, maxit = 1000),
+      GetWarningsToSuppress(TRUE))
+    # family = binomial()
+    m.Q.star.coef <- m.Q.star$coef
+    # m.Q.star.fit <- list(coef = m.Q.star$coef, linkfun = "logit_linkinv", fitfunname = "speedglm")
+    # class(m.Q.star.fit) <- c(class(m.Q.star.fit), c("speedglmS3"))
+    # SuppressGivenWarnings(m.Q.star <- glm(Y ~ offset(off), data = data.frame(Y = Y, off = off), weights = h_wts,
+                                              # subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
+    # m.Q.star.coef <- coef(m.Q.star)
+
+    if (predictQ) {
+      QY.star <- Y
+      if (!is.na(m.Q.star.coef)) QY.star <- plogis(off + m.Q.star.coef)
+    }
+  }
+  #************************************************
+  # (DISABLED) g_IPTW estimator (based on full likelihood factorization, prod(g^*)/prod(g_N):
+  #************************************************
+  # 02/16/13: IPTW estimator (Y_i * prod_{j \\in Fi} [g*(A_j|c^A)/g0_N(A_j|c^A)])
+  # g_wts <- iptw_est(k = est_params_list$Kmax, data = data, node_l = nodes, m.gN = est_params_list$m.g0N,
+  #                      f.gstar = est_params_list$f.gstar, f.g_args = est_params_list$f.g_args, family = "binomial",
+  #                      NetInd_k = est_params_list$NetInd_k, lbound = est_params_list$lbound, max_npwt = est_params_list$max_npwt,
+  #                      f.g0 = est_params_list$f.g0, f.g0_args = est_params_list$f.g0_args)
+  # Y_IPTW_g <- Y
+  # Y_IPTW_g[!determ.Q] <- Y[!determ.Q] * g_wts[!determ.Q]
+  #************************************************
+  # (DISABLED) g_IPTW-based clever covariate TMLE (based on FULL likelihood factorization), covariate based fluctuation
+  #************************************************
+  # SuppressGivenWarnings(m.Q.star_giptw <- glm(Y ~ -1 + g_wts + offset(off),
+  #                                           data = data.frame(Y = Y, off = off, g_wts = g_wts),
+  #                                           subset = !determ.Q, family = "quasibinomial", control = ctrl),
+  #                                           GetWarningsToSuppress(TRUE))
+  return(list(m.Q.star.coef = m.Q.star.coef, QY.star = QY.star))
+}
+
 #---------------------------------------------------------------------------------
 # Estimate h_bar under g_0 and g* given observed data and vector of c^Y's data is an DatNet.sWsA object
 #---------------------------------------------------------------------------------
@@ -168,73 +235,58 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   #************************************************
   # h^*/h_N clever covariate:
   #************************************************
-
   fit.hbars_t <- system.time(fit.hbars.res <- fit.hbars(DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_params_list)) # fit the clever covariate
-
   DatNet.gstar <- fit.hbars.res$DatNet.gstar
   m.h.fit <- fit.hbars.res$m.h.fit
   h_wts <- fit.hbars.res$h_gstar_h_gN
 
   #************************************************
   # IPTW_h estimator:
-  #************************************************  
+  #************************************************
   h_IPTW <- Y
   h_IPTW[!determ.Q] <- Y[!determ.Q] * h_wts[!determ.Q]
   h_IPTW <- mean(h_IPTW)
 
-
   #************************************************
-  # TMLEs
-  #************************************************  
-  if ("TMLE_A" %in% estnames) {
-    #************************************************
-    # TMLE A: estimate the TMLE update via univariate ML (epsilon is coefficient for h^*/h) - ONLY FOR NON-DETERMINISTIC SUBSET
-    #************************************************
-    ctrl <- glm.control(trace = FALSE, maxit = 1000)
-    SuppressGivenWarnings(m.Q.star <- glm(Y ~ -1 + h_wts + offset(off), data = data.frame(Y = Y, off = off, h_wts = h_wts),
-                                              subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
-    QY.star <- Y
-    if (!is.na(coef(m.Q.star))) QY.star <- plogis(off + coef(m.Q.star) * h_wts)
-
-  } else if ("TMLE_B" %in% estnames) {
-    #************************************************
-    # TMLE B: estimate the TMLE update via weighted univariate ML (espsilon is intercept)
-    #************************************************
-    ctrl <- glm.control(trace = FALSE, maxit = 1000)
-    SuppressGivenWarnings(m.Q.star <- glm(Y ~ offset(off), data = data.frame(Y = Y, off = off), weights = h_wts,
-                                              subset = !determ.Q, family = "quasibinomial", control = ctrl), GetWarningsToSuppress(TRUE))
-    QY.star <- Y
-    if (!is.na(coef(m.Q.star))) QY.star <- plogis(off + coef(m.Q.star))
-  }
-
+  # Get a TMLE update:
   #************************************************
-  # (DISABLED) g_IPTW estimator (based on full likelihood factorization, prod(g^*)/prod(g_N):
-  #************************************************
-	# 02/16/13: IPTW estimator (Y_i * prod_{j \\in Fi} [g*(A_j|c^A)/g0_N(A_j|c^A)])
-	# g_wts <- iptw_est(k = est_params_list$Kmax, data = data, node_l = nodes, m.gN = est_params_list$m.g0N,
-  #                      f.gstar = est_params_list$f.gstar, f.g_args = est_params_list$f.g_args, family = "binomial",
-  #                      NetInd_k = est_params_list$NetInd_k, lbound = est_params_list$lbound, max_npwt = est_params_list$max_npwt,
-  #                      f.g0 = est_params_list$f.g0, f.g0_args = est_params_list$f.g0_args)
-  # Y_IPTW_g <- Y
-  # Y_IPTW_g[!determ.Q] <- Y[!determ.Q] * g_wts[!determ.Q]
-  #************************************************
-  # (DISABLED) g_IPTW-based clever covariate TMLE (based on FULL likelihood factorization), covariate based fluctuation
-  #************************************************
-	# SuppressGivenWarnings(m.Q.star_giptw <- glm(Y ~ -1 + g_wts + offset(off),
-  #                                						data = data.frame(Y = Y, off = off, g_wts = g_wts),
-  #                                						subset = !determ.Q, family = "quasibinomial", control = ctrl),
-  #                                						GetWarningsToSuppress(TRUE))
+  # epsilon (intercept or coefficient for h): tmle.obj$m.Q.star  
+  # boot_idx <- seq.int(DatNet.ObsP0$nobs)
+  tmle.obj <- tmle.update(estnames = estnames, Y = Y, off = off, h_wts = h_wts, determ.Q = determ.Q)
+  print("tmle.obj$m.Q.star.coef"); print(tmle.obj$m.Q.star.coef)
 
   #************************************************
   # Run Monte-Carlo (MC) evaluation for all plug-in estimators (TMLE & Gcomp), under stochastic intervention g^*:
 	#************************************************
-  MC_fit_params <- append(est_params_list, list(m.Q.star = m.Q.star))
+  MC_fit_params <- append(est_params_list, list(m.Q.star = tmle.obj$m.Q.star.coef))
 
-  syst1 <- system.time(MCS_res <- get.MCS_ests(DatNet.ObsP0 = DatNet.ObsP0, 
-                                                DatNet.gstar = DatNet.gstar, 
-                                                MC_fit_params = MC_fit_params, 
-                                                m.h.fit = m.h.fit))
+  # browser()
+  # swap the nodes to put back A and sA under g.star:
+  if (DatNet.ObsP0$datnetW$Odata$curr.data.A.g0) {
+    DatNet.gstar$datnetA$Odata$swapAnodes()
+    if (!DatNet.gstar$datnetA$Odata$restored.sA.Vars)
+      DatNet.gstar$datnetA$make.sVar(sVar.object = sA) # just recreate the summaries sA based on current Anode values in the data
+  }
 
+  # generate new A's under f.gstar, then re-create new summaries sA:
+  # DatNet.gstar$make.dat.sWsA(p = 1, f.g_fun = est_params_list$f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
+
+  # DatNet.gstar$datnetA$Odata$OdataDT
+  # DatNet.gstar$datnetA$Odata$A_g0_DT
+  # DatNet.gstar$datnetA$Odata$sA_g0_DT
+  # both should be the same, as both are pointing to the same data.table:
+  # head(DatNet.ObsP0$dat.sVar)
+  # head(DatNet.gstar$dat.sVar)
+
+  MC.Eval.psi <- get.MCS_ests(DatNet.ObsP0 = DatNet.ObsP0,
+                              DatNet.gstar = DatNet.gstar,
+                              MC_fit_params = MC_fit_params,
+                              m.h.fit = m.h.fit)
+
+  # -----------------------------------------------------------------
+  # Mean estimates
+  # -----------------------------------------------------------------  
+  MCS_res <- MC.Eval.psi$psi_est_mean
   ests <- c(TMLE = MCS_res[["TMLE"]],
             h_IPTW = h_IPTW, # IPTW estimator based on h - clever covariate:
             MLE = MCS_res[["MLE"]])
@@ -255,16 +307,16 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
 
   QY_mat <- matrix(0L, nrow = DatNet.ObsP0$nobs, ncol = 2)
   colnames(QY_mat) <- c("QY.init", "QY.star")
-  QY_mat[,] <- cbind(QY.init, QY.star)
+  QY_mat[,] <- cbind(QY.init, tmle.obj$QY.star)
 
 
   if (gvars$verbose)  {
     print("time spent fitting new fit.hbars.res:"); print(fit.hbars_t)
     if ("TMLE_A" %in% estnames) {
-      parsubmodel_fits <- rbind(coef(m.Q.star))
+      parsubmodel_fits <- rbind(m.Q.star.coef)
       rownames(parsubmodel_fits) <- c("epsilon (clever covariate coefficient)")
     } else if ("TMLE_B" %in% estnames) {
-      parsubmodel_fits <- rbind(coef(m.Q.star))
+      parsubmodel_fits <- rbind(m.Q.star.coef)
       rownames(parsubmodel_fits) <- c("alpha (intercept)")
     }
     print("new parsubmodel_fits: "); print(parsubmodel_fits)
@@ -276,10 +328,27 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
     print("new MC.ests mat: "); print(ests_mat)
   }
 
+
+  # -----------------------------------------------------------------
+  # instance of an R6 object mcEvalPsi:
+  # -----------------------------------------------------------------
+  psi.evaluator <- MC.Eval.psi$psi.evaluator 
+
   return(list( ests_mat = ests_mat,
                wts_mat = wts_mat,
                fWi_mat = fWi_mat,
                QY_mat = QY_mat,
+
+               # var_tmleB_boot = var_tmleB_boot,
+               psi.evaluator = psi.evaluator, # for par. bootstrap
+               m.Q.init = m.Q.init,           # for par. bootstrap
+               m.h.fit = m.h.fit,             # for par. bootstrap
+               DatNet.gstar = DatNet.gstar,   # for par. bootstrap
+               sW = est_params_list$sW,       # for par. bootstrap
+               sA = est_params_list$sA,       # for par. bootstrap
+               f.gstar = est_params_list$f.gstar, # for par. bootstrap
+               # h_wts = h_wts,                 # for par. bootstrap
+
                h_g0_SummariesModel = m.h.fit$summeas.g0,
                h_gstar_SummariesModel = m.h.fit$summeas.gstar
               ))
@@ -366,7 +435,7 @@ process_regforms <- function(regforms, sW.map = NULL, sA.map = NULL, NETIDnode =
 #' @seealso \code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.
 #' @example tests/examples/3_eval.summaries_examples.R
 #' @export
-eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
+eval.summaries <- function(data, Kmax, sW, sA, sA.gstar, IDnode = NULL, NETIDnode = NULL, sep = ' ', NETIDmat = NULL, 
                             verbose = getOption("tmlenet.verbose")) {
   iid_data_flag <- FALSE  # set to true if no network is provided (will run iid TMLE)
   nFnode = "nF"
@@ -456,6 +525,44 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
   datnetA$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
 
   DatNet.ObsP0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+
+
+
+# # ------------------------------------------------------------------------------------------------
+#   browser()
+#   # datnetA.gstar <- DatNet$new(netind_cl = netind_cl)
+#   # datnetA.gstar$make.sVar(Odata = OdataDT_R6, sVar.object = sA.gstar)
+#   # head(datnetA.gstar$dat.sVar)
+#   # mean(datnetA.gstar$dat.sVar[,"A"]) # 0.101
+#   # mean(datnetA.gstar$dat.sVar[,"sum.net.A"]) # 2.159
+
+#   # First call updates "A" (but evaluates all summaries using OdataDT_R6)
+#   sA.gstar$exprs_list
+#   matA.gstar <- sA.gstar$eval.nodeforms(data.df = OdataDT_R6$OdataDT)
+#   head(matA.gstar)
+#   class(matA.gstar)
+#   colnames(matA.gstar)
+#   mean(matA.gstar[,"A"]); 
+#   mean(matA.gstar[,"sum.net.A"]);
+#   OdataDT_R6$replaceOneAnode(AnodeName = "A", newAnodeVal = matA.gstar[,"A"])
+#   # OdataDT_R6$replaceManyAnodes(Anodes = self$nodes$Anodes, newAnodesMat = A.gstar.mat)
+
+#   # The second call now updates "A" and "sum.net.A", since the summary "sum.net.A" will now use the previously udpated "A"
+#   matA.gstar <- sA.gstar$eval.nodeforms(data.df = OdataDT_R6$OdataDT)
+#   head(matA.gstar)
+#   class(matA.gstar)
+#   colnames(matA.gstar)
+#   mean(matA.gstar[,"A"]); 
+#   mean(matA.gstar[,"sum.net.A"]);
+
+#   OdataDT_R6$replaceOneAnode(AnodeName = "sum.net.A", newAnodeVal = matA.gstar[,"sum.net.A"])
+#   # OdataDT_R6$replaceManyAnodes(Anodes = self$nodes$Anodes, newAnodesMat = A.gstar.mat)
+  
+#   # sA.gstar$netind_cl
+#   head(OdataDT_R6$OdataDT)
+#   mean(OdataDT_R6$OdataDT[["A"]]) # [1] 0.23
+#   mean(OdataDT_R6$OdataDT[["sum.net.A"]]) # [1] 2.159
+# # ------------------------------------------------------------------------------------------------
 
   # return(list(sW.matrix = sW.matrix, sA.matrix = sA.matrix, NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
   return(list(NETIDmat = netind_cl$NetInd, DatNet.ObsP0 = DatNet.ObsP0))
@@ -936,9 +1043,12 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   }
 
   if (missing(DatNet.ObsP0)) {
-    DatNet.ObsP0 <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, 
-                                    IDnode = IDnode, NETIDnode = NETIDnode, 
-                                    sep = sep, NETIDmat = NETIDmat, verbose = FALSE)$DatNet.ObsP0
+    time_evalsumm <- system.time(
+      DatNet.ObsP0 <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, 
+                                      IDnode = IDnode, NETIDnode = NETIDnode, 
+                                      sep = sep, NETIDmat = NETIDmat, verbose = FALSE)$DatNet.ObsP0
+      )
+    print("time eval.summaries(...): "); print(time_evalsumm)
     data <- DatNet.ObsP0$datnetW$Odata
   } else {
     data <- DatNet.ObsP0$datnetW$Odata
@@ -951,6 +1061,8 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anodes = Anodes, AnodeDET = AnodeDET,
                   Ynode = Ynode, YnodeDET = YnodeDET)
   data$nodes <- node_l
+
+  data$backupAnodes(Anodes = node_l$Anodes, sA = sA)
 
   nobs <- DatNet.ObsP0$nobs
   DatNet.ObsP0$nodes <- node_l
@@ -1040,7 +1152,12 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   Qreg <- RegressionClass$new(outvar = node_l$Ynode,
                               predvars = Q.sVars$predvars[[1]],
                               subset = !determ.Q, ReplMisVal0 = TRUE)
-  m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)
+
+  # time_Qregfit <- system.time(
+    m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)
+    # )
+  # print("time_Qregfit"); print(time_Qregfit)
+  
 
   #----------------------------------------------------------------------------------
   # Create an object with model estimates, data & network information that is passed on to estimation procedure

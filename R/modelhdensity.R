@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------
 # Fit and Predict the IPTW (clever covariate) for summary measures (sW,sA): 
-# P_{g^*}(sA | sW)/P_{g0}(sA | sW)
+# P_{\bar{g}^*}(sA | sW)/P_{\bar{g}0}(sA | sW)
 #-----------------------------------------------------------------------------
 
 # @title Predict h weights under g_0 and g_star using existing m.h.fit model fit
@@ -175,7 +175,11 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
                                     subset = subsets_expr)
   regclass.g0$S3class <- "generic"
   # using S3 method dispatch on regclass.g0:
-  summeas.g0 <- newsummarymodel(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
+  # time_summeas.g0 <- system.time(
+    summeas.g0 <- newsummarymodel(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
+    # )
+  # print("time_summeas.g0: "); print(time_summeas.g0)
+  
   # summeas.g0 <- SummariesModel$new(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
   if (!is.null(h_g0_SummariesModel)) {
     # 1) verify h_g0_SummariesModel is consistent with summeas.g0
@@ -183,8 +187,12 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     # 2) deep copy model fits in h_g0_SummariesModel to summeas.g0
     summeas.g0 <- h_g0_SummariesModel$clone(deep=TRUE)
   } else {
-    summeas.g0$fit(data = DatNet.g0)
+    time_summeas.g0.fit <- system.time(
+      summeas.g0$fit(data = DatNet.g0)
+    )
+    print("time_summeas.g0.fit: "); print(time_summeas.g0.fit)
   }
+
 
   # *********
   # NEED TO PASS obsdat.sW.sA (observed data sWsA) to predict() funs.
@@ -193,31 +201,27 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # Option 2: Create a new class DatNet.Obs of DatNet.sWsA (will be painful)
   # Going with OPTION 1 for now:
   # Already generated DatNet.ObsP0 in tmlenet:
-  h_gN <- summeas.g0$predictAeqa(newdata = DatNet.ObsP0)
+  time_h_gN <- system.time(
+    h_gN <- summeas.g0$predictAeqa(newdata = DatNet.ObsP0)
+  )
+  print("time_h_gN: "); print(time_h_gN)
+
   if (length(h_gN)!=DatNet.ObsP0$nobs) stop("the IPW weight prediction under g0 return invalid vector length: " %+% length(h_gN))
   # ------------------------------------------------------------------------------------
   # to obtain the decomposed of the above probability by each Anode (marginals):
   # (directly analogous to the g0 component of gmat in ltmle package)
-  gmat.g0 <- matrix(nrow = length(h_gN), ncol = length(summeas.g0$getPsAsW.models()))
-  for (i in seq_along(summeas.g0$getPsAsW.models())) {
-    gmat.g0[,i] <- summeas.g0$getPsAsW.models()[[i]]$getcumprodAeqa()
-  }
-  cum.gmat.g0 <- matrixStats::rowCumprods(gmat.g0)
-  # message("sum(cum.gmat.g0-h_gN): " %+% sum(cum.gmat.g0[,ncol(cum.gmat.g0)]-h_gN))
+  # gmat.g0 <- matrix(nrow = length(h_gN), ncol = length(summeas.g0$getPsAsW.models()))
+  # for (i in seq_along(summeas.g0$getPsAsW.models())) {
+  #   gmat.g0[,i] <- summeas.g0$getPsAsW.models()[[i]]$getcumprodAeqa()
+  # }
+  # cum.gmat.g0 <- matrixStats::rowCumprods(gmat.g0)
+  # # message("sum(cum.gmat.g0-h_gN): " %+% sum(cum.gmat.g0[,ncol(cum.gmat.g0)]-h_gN))
   # ------------------------------------------------------------------------------------
 
   if (gvars$verbose) {
     message("================================================================")
     message("fitting h_gstar based on summary measures: ", "P(" %+% paste(sA_nms_gstar, collapse = ",") %+% " | " %+% paste(sW.gstar_nms, collapse = ",") %+% ")")
     message("================================================================")
-  }
-
-  DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
-
-  if (gvars$verbose) {
-    print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): "); print(class(DatNet.gstar$dat.sWsA))
-    print(dim(DatNet.gstar$dat.sWsA)); print(head(DatNet.gstar$dat.sWsA));
   }
 
 
@@ -228,12 +232,25 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
                                         subset = subsets_expr)
   regclass.gstar$S3class <- "generic"
   # Define Intervals Under g_star to Be The Same as under g0:
-  summeas.gstar <- newsummarymodel(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0)
+  time_summeas.gstar <- system.time(
+    summeas.gstar <- newsummarymodel(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0)
+  )
+  print("time_summeas.gstar: "); print(time_summeas.gstar)
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0)
   # Define Intervals Under g_star Based on Summary Measures Generated under g_star:
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.gstar)
   # Define Intervals Under g_star Based on Union of Summary Measures under g_star and g0:
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0, datnet.gstar = DatNet.gstar)
+
+  DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
+  time_make.dat.sWsA_gstar <- system.time(
+    DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
+  )
+  print("time_make.dat.sWsA_gstar: "); print(time_make.dat.sWsA_gstar)
+  if (gvars$verbose) {
+    print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): ")
+    print(head(DatNet.gstar$dat.sWsA))
+  }
 
   if (!is.null(h_gstar_SummariesModel)) {
     # 1) verify h_gstar_SummariesModel is consistent with summeas.gstar
@@ -241,28 +258,70 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     # 2) deep copy the object with model fits to summeas.gstar
     summeas.gstar <- h_gstar_SummariesModel$clone(deep=TRUE)
   } else {
-    summeas.gstar$fit(data = DatNet.gstar)
+    time_summeas.gstar.fit <- system.time(
+      summeas.gstar$fit(data = DatNet.gstar)
+    )
+    print("time_summeas.gstar.fit: "); print(time_summeas.gstar.fit)
   }
-  h_gstar <- summeas.gstar$predictAeqa(newdata = DatNet.ObsP0)
+
+  # All data is now stored in a single global data.table, which is ALWAYS modified IN PLACE
+  # For that reason, DatNet.gstar$make.dat.sWsA() call above over-wrote Anodes and sA in Odata$Odata_DT
+  # These now need to be restored to the original Anodes and sA under g0:
+
+  # 1) back-up Anodes and sA generated under f.g.star so that we don't have to re-generate them again & then restore old Anodes and sA (under g.0)
+  DatNet.gstar$datnetA$Odata$swapAnodes()
+
+ # 2) verify sA's were also restored and if not, regenerate them
+  if (!DatNet.ObsP0$datnetA$Odata$restored.sA.Vars)
+    DatNet.ObsP0$datnetA$make.sVar(sVar.object = sA)
+ 
+  # browser()
+  # DatNet.gstar$datnetA$Odata$OdataDT
+  # DatNet.gstar$datnetA$Odata$A_g0_DT
+  # DatNet.gstar$datnetA$Odata$sA_g0_DT
+ 
+  time_h_gstar_predict <- system.time(
+    h_gstar <- summeas.gstar$predictAeqa(newdata = DatNet.ObsP0)
+  )
+  print("time_h_gstar_predict: "); print(time_h_gstar_predict)
+
   if (length(h_gstar)!=DatNet.ObsP0$nobs) stop("the IPW weight prediction under gstar return invalid vector length: " %+% length(h_gstar))
 
   # ------------------------------------------------------------------------------------
   # to obtain the decomposed probability by each Anode (marginals):
   # (directly analogous to the gstar component of gmat in ltmle package)
-  gmat.gstar <- matrix(nrow = length(h_gstar), ncol = length(summeas.gstar$getPsAsW.models()))
-  for (i in seq_along(summeas.gstar$getPsAsW.models())) {
-    gmat.gstar[,i] <- summeas.gstar$getPsAsW.models()[[i]]$getcumprodAeqa()
-  }
-  cum.gmat.gstar <- matrixStats::rowCumprods(gmat.gstar)
+  # gmat.gstar <- matrix(nrow = length(h_gstar), ncol = length(summeas.gstar$getPsAsW.models()))
+  # for (i in seq_along(summeas.gstar$getPsAsW.models())) {
+  #   gmat.gstar[,i] <- summeas.gstar$getPsAsW.models()[[i]]$getcumprodAeqa()
+  # }
+  # cum.gmat.gstar <- matrixStats::rowCumprods(gmat.gstar)
   # message("sum(gmat.gstar-h_gstar): " %+% sum(cum.gmat.gstar[,ncol(cum.gmat.gstar)]-h_gstar))
   # ------------------------------------------------------------------------------------
 
   ###########################################
-  # 3) Calculate final h_bar (h_tilde) as ratio of h_gstar / h_gN and bound it
+  # 3A) Calculate final h_bar (h_tilde) as ratio of h_gstar / h_gN and bound it
   ##########################################
   h_gstar_h_gN <- h_gstar / h_gN
   h_gstar_h_gN[is.nan(h_gstar_h_gN)] <- 0     # 0/0 detection
   h_gstar_h_gN <- bound(h_gstar_h_gN, c(0, 1/lbound))
+
+
+  ###########################################
+  # 3B) Directly evaluating IPTW for static interventions (doesn't need DatNet.gstar)
+  ##########################################
+  # Ag0mat <- DatNet.ObsP0$get.dat.sWsA(covars = DatNet.ObsP0$nodes$Anodes)
+  # Agstarmat <- f.gen.A.star(data = DatNet.ObsP0$dat.sVar, f.g_fun = f.gstar, Anodes = DatNet.ObsP0$nodes$Anodes)
+  # h_gstar_I <- Agstarmat == Ag0mat
+  # h_gstar_cum <- h_gstar_I[,1]
+  # for (i in seq(ncol(h_gstar_I))[-1]) {
+  #   h_gstar_cum <- h_gstar_cum*h_gstar_I[,i]
+  # }
+  # h_gstar_h_gN <- h_gstar_cum / h_gN
+  # h_gstar_h_gN[is.nan(h_gstar_h_gN)] <- 0     # 0/0 detection
+  # h_gstar_h_gN <- bound(h_gstar_h_gN, c(0, 1/lbound))
+  # m.h.fit <- list(summeas.g0 = summeas.g0, summeas.gstar = NULL, lbound = lbound)
+  # return(list(h_gstar_h_gN = h_gstar_h_gN, m.h.fit = m.h.fit, DatNet.gstar = NULL))
+
 
   ###########################################
   # IPTW BY TIME POINT:
@@ -271,8 +330,6 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # (2) Be able to easily replace summeas.gstar object with KNOWN probabilities (when gstar is a known user-supplied stochastic intervention)
   # gmat <- cum.gmat.gstar / cum.gmat.g0
   ###########################################
-
   m.h.fit <- list(summeas.g0 = summeas.g0, summeas.gstar = summeas.gstar, lbound = lbound)
-
   return(list(h_gstar_h_gN = h_gstar_h_gN, m.h.fit = m.h.fit, DatNet.gstar = DatNet.gstar))
 }

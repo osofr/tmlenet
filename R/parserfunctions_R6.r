@@ -325,6 +325,7 @@ eval.nodeform.full <- function(expr_call, expr_str, self, data.env) {
   # }
 
   data.env <- c(self$node_fun, data.env)
+  names(data.env)
 
   if (is.call(modified_call) && identical(try(modified_call[[1]]), quote(`{`))) { # check for '{' as first function, if so, remove first func, turn call into a list of calls and do lapply on eval
     modified_call_nocurl <- modified_call[-1]
@@ -411,8 +412,10 @@ eval.nodeform.out <- function(expr.idx, self, data.df) {
   data.env <- c(eval.sVar.params, data.df)
 
   if (eval.asis) {
+    # print("expression being eval'ed with eval.nodeform.asis(): " %+% expr_str)
     return(eval.nodeform.asis(expr_call = expr_call, expr_str = expr_str, self = self, data.env = data.env))
   } else {
+    # print("expression being eval'ed with eval.nodeform.full(): " %+% expr_str)
     return(eval.nodeform.full(expr_call = expr_call, expr_str = expr_str, self = self, data.env = data.env))
   }
 }
@@ -537,6 +540,8 @@ Define_sVar <- R6Class("Define_sVar",
       # For W[[0]] to work without if else below need to do this:
       # NetInd_k <- cbind(c(1:n), NetInd_k) and then netidx <- netidx + 1
       `[[` = function(var, netidx, ...) {
+        # browser()
+
         env <- parent.frame()
         t <- env$t # t <- get("t", envir = env)
         if (!is.null(t)) stop("simultaneous time varying node references Var[t] and network references Var[[netidx]] are currently not supported")
@@ -553,6 +558,8 @@ Define_sVar <- R6Class("Define_sVar",
         if (identical(class(netidx),"logical")) netidx <- which(netidx)
         netVars_eval <- matrix(0L, nrow = n, ncol = length(netidx))
         colnames(netVars_eval) <- netvar(var.chr, netidx)
+
+        # make_net_mat_time <- system.time(
         for (neti in seq_along(netidx)) {
           if (netidx[neti] %in% 0L) {
             netVars_eval[, neti] <- var.val
@@ -562,8 +569,15 @@ Define_sVar <- R6Class("Define_sVar",
             # netVars_eval[is.na(netVars_eval[, neti]), neti] <- env$misXreplace
           }
         }
+        # )
+        # print("make_net_mat_time: "); print(make_net_mat_time)
+
         # Don't need to do this if env$misXreplace==gvars$misval (i.e., when want to leave NAs as is)
-        netVars_eval[is.na(netVars_eval)] <- env$misXreplace
+        # replaceNA_time <- system.time(
+          netVars_eval[is.na(netVars_eval)] <- env$misXreplace
+          # )
+        # print("replaceNA_time"); print(replaceNA_time)
+        
         return(netVars_eval)
       }
     ),

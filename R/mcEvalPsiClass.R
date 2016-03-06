@@ -23,14 +23,19 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
 
   genMC.reps <- function(nrep)  {
     GCOMP <- evaluator$get.gcomp(m.Q.init) # QY.init (G-Comp estimator) - est probY based on model for Q_Y
+
     if ("TMLE_A" %in% estnames) {
       TMLE <- evaluator$get.tmleA(m.Q.starA = m.Q.star, m.h.fit = m.h.fit) # TMLE A (adjusted by coefficient epsilon on h_bar ratio)
     } else if ("TMLE_B" %in% estnames) {
       TMLE <- evaluator$get.tmleB(m.Q.starB = m.Q.star) # TMLE B (adjusted by intercept epsilon where h_bar were used as weights)
+      # print("time_evalMC_tmle: "); print(time_evalMC_tmle)
     } else {
       TMLE <- NA
     }
-    fiWs_list <- evaluator$get.fiW() # Get fi_W - hold W fixed to observed values
+    time_evalMC_get.fiW <- system.time(
+      fiWs_list <- evaluator$get.fiW() # Get fi_W - hold W fixed to observed values
+    )
+    print("time_evalMC_get.fiW"); print(time_evalMC_get.fiW)
 
     # Put all estimators together and add names (defined in out_nms outside of this function):
     mean_psis_all <- c(TMLE = mean(TMLE), MLE = mean(GCOMP), fiWs_list$fiW_Qinit)
@@ -47,7 +52,10 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
     return(mean_psis_all)
   }
 
-  psi_est_mean <- genMC.reps(1)
+  time_eval_MC <- system.time(
+    psi_est_mean <- genMC.reps(1)
+    )
+  print("time_eval_MC: "); print(time_eval_MC)
 
   # ********************************************************
   # HAVE NOT YET IMPLEMENTED DYNAMIC MC CONVERGENCE TESTING IN THIS VS:
@@ -76,7 +84,7 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
   # }   
   # # print("nrepeat"); print(nrepeat)
 
-  return(psi_est_mean)
+  return(list(psi_est_mean = psi_est_mean, psi.evaluator = evaluator))
 }
 
 ## ---------------------------------------------------------------------
@@ -153,6 +161,11 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       self$m.Q.init <- m.Q.init
       DatNet.ObsP0 <- self$DatNet.ObsP0
       DatNet.gstar <- self$DatNet.gstar
+
+      if (DatNet.gstar$datnetA$Odata$curr.data.A.g0) {
+        stop("gcomp predictions must be under Anodes from f.gstar, while current data Anodes in DatNet.gstar are set to the observed data")
+      }
+
       # print("getting predictions for gcomp...")
       QY.init <- m.Q.init$predict(newdata = DatNet.gstar)$getprobA1
       QY.init[DatNet.ObsP0$det.Y] <- DatNet.ObsP0$noNA.Ynodevals[DatNet.ObsP0$det.Y]
@@ -165,10 +178,10 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
     get.tmleA = function(m.Q.starA, m.h.fit) {
       if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first")
       h_iptw <- predict.hbars(newdatnet = self$DatNet.gstar, m.h.fit = m.h.fit)
-      if (!is.na(coef(m.Q.starA))) {
+      if (!is.na(m.Q.starA)) {
         self$m.Q.starA <- m.Q.starA
         off <- qlogis(self$QY.init)
-        self$QY.starA <- plogis(off + coef(m.Q.starA)*h_iptw)
+        self$QY.starA <- plogis(off + m.Q.starA*h_iptw)
       } else {
         self$QY.starA <- self$QY.init
       }
@@ -180,15 +193,31 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
     # output is a vector of length n*p
     get.tmleB = function(m.Q.starB) {
       if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first")
-      if (!is.na(coef(m.Q.starB))) {
+      if (!is.na(m.Q.starB)) {
         self$m.Q.starB <- m.Q.starB
         off <- qlogis(self$QY.init)
-        self$QY.starB <- plogis(off + coef(m.Q.starB))
+        self$QY.starB <- plogis(off + m.Q.starB)
       } else {
         self$QY.starB <- self$QY.init
       }
       # QY.star_B[determ.Q] <- samp_data[determ.Q, Ynode]  # will be incorrect when W's are resampled
       invisible(self$QY.starB)
+    },
+
+    # m.Q.starB - epsilon_N based on the least favorable model update
+    # boot_idx - bootstrap index
+    get.boot.tmleB = function(m.Q.starB, boot_idx = NULL) {
+      if (is.null(self$QY.init)) stop("call mcEvalPsi$get.gcomp first")
+      if (is.null(boot_idx)) boot_idx <- TRUE
+
+      if (!is.na(m.Q.starB)) {
+        # off <- qlogis(self$QY.init) # - offset
+        QY.starB <- plogis(qlogis(self$QY.init)[boot_idx] + m.Q.starB)
+      } else {
+        QY.starB <- self$QY.init[boot_idx]
+      }
+      # QY.star_B[determ.Q] <- samp_data[determ.Q, Ynode]  # will be incorrect when W's are resampled
+      return(QY.starB)
     },
 
     # get an estimate of fiW (hold ALL W's fixed at once) - a component of TMLE Var
@@ -224,9 +253,9 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
     #   g_iptw <- iptw_est(k=k, data=samp_data, node_l=node_l, m.gN=m.g0N, f.gstar=f.gstar, f.g_args=f.g_args,
     #                       family=family, NetInd_k=NetInd_k, lbound=lbound, max_npwt=max_npwt, f.g0=f.g0, f.g0_args=f.g0_args)
     #   determ.Q <- samp_data$determ.Q
-    #   if (!is.na(coef(m.Q.star_iptw))) {
+    #   if (!is.na(m.Q.star_iptw)) {
     #     off <- qlogis(QY.init)
-    #     QY.star <- plogis(off + coef(m.Q.star_iptw)*g_iptw)
+    #     QY.star <- plogis(off + m.Q.star_iptw*g_iptw)
     #     #************************************************
     #     # QY.star[determ.Q] <- 1
     #     QY.star[determ.Q] <- samp_data[determ.Q, Ynode]
