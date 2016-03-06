@@ -343,7 +343,7 @@ par_bootstrap_tmle <- function(estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_m
 
   # names(tmle_g_out)
 
-  n_boots <- 5
+  n_boots <- 100
   boot_eps <- vector(mode = "numeric", length = n_boots)
   boot_gcomp <- vector(mode = "numeric", length = n_boots)
   boot_tmle_B <- vector(mode = "numeric", length = n_boots)
