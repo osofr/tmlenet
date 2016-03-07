@@ -402,6 +402,8 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
   portable = TRUE,
   class = TRUE,
   public = list(
+    outvar = character(),   # outcome name(s)
+    predvars = character(), # names of predictor vars
     cont.sVar.flag = logical(),
     bw.j = numeric(),
     glmfitclass = "glmS3", # default glm fit class
@@ -411,6 +413,10 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     initialize = function(reg, ...) {
       assert_that(is.flag(reg$useglm))
       if (!reg$useglm) self$glmfitclass <- "speedglmS3"
+
+      self$outvar <- reg$outvar
+      self$predvars <- reg$predvars
+
       self$bindat <- BinDat$new(reg = reg, ...) # postponed adding data in BinDat until self$fit() is called
       class(self$bindat) <- c(class(self$bindat), self$glmfitclass)
       if (gvars$verbose) {
@@ -425,7 +431,6 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       } else {
         self$bw.j <- 1L
       }
-
       invisible(self)
     },
 
@@ -435,7 +440,6 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() 
       # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
-
       # **********************************************************************
       # to save RAM space when doing many stacked regressions no longer predicting in fit:
       # **********************************************************************
@@ -464,7 +468,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
         stop("must provide newdata for BinOutModel$predict()")
       }
       # re-populate bindat with new X_mat:
-      self$bindat$newdata(newdata = newdata, getoutvar = FALSE, ...) 
+      self$bindat$newdata(newdata = newdata, getoutvar = FALSE, ...)
       if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
         stop("BinOutModel$predict is not applicable to pooled regression, call BinOutModel$predictAeqa instead")
       } else {
@@ -521,6 +525,50 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       # **********************************************************************
       return(probAeqa)
     },
+
+    sampleA = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a`s)
+      assert_that(self$is.fitted)
+      assert_that(!missing(newdata))
+      self$bindat$newdata(newdata = newdata, getoutvar = TRUE) # populate bindat with new design matrix covars X_mat
+      assert_that(is.logical(self$getsubset))
+      n <- newdata$nobs
+      # obtain predictions (likelihood) for response on fitted data (from long pooled regression):
+      if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
+        stop("not implemented")
+        # probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit) # overwrite probA1 with new predictions:
+      } else {
+        # get probability P(sA[j]=1|sW=newdata) from newdata, then sample from rbinom
+        probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
+        sampleA <- rep.int(0L, n)
+        sampleA[self$getsubset] <- rbinom(n = n, size = 1, prob = probA1)
+
+
+      #   indA <- newdata$get.outvar(self$getsubset, self$getoutvarnm) # Always a vector of 0/1
+      #   assert_that(is.integerish(indA)) # check that obsdat.sA is always a vector of of integers
+      #   probAeqa <- rep.int(1L, n) # for missing, the likelihood is always set to P(A = a) = 1.
+      #   assert_that(!any(is.na(probA1[self$getsubset]))) # check that predictions P(A=1 | dmat) exist for all obs.
+      #   probA1 <- probA1[self$getsubset]
+      #   # discrete version for the joint density:
+      #   probAeqa[self$getsubset] <- probA1^(indA) * (1 - probA1)^(1L - indA)
+      #   # continuous version for the joint density:
+      #   # probAeqa[self$getsubset] <- (probA1^indA) * exp(-probA1)^(1 - indA)
+      #   # Alternative intergrating the last hazard chunk up to x:
+      #   # difference of sA value and its left most bin cutoff: x - b_{j-1}
+      #   if (!missing(bw.j.sA_diff)) {
+      #     # + integrating the constant hazard all the way up to value of each sa:
+      #     # probAeqa[self$getsubset] <- probAeqa[self$getsubset] * (1 - bw.j.sA_diff[self$getsubset]*(1/self$bw.j)*probA1)^(indA)
+      #     # cont. version of above:
+      #     probAeqa[self$getsubset] <- probAeqa[self$getsubset] * exp(-bw.j.sA_diff[self$getsubset]*(1/self$bw.j)*probA1)^(indA)
+      #   }
+      }
+      # **********************************************************************
+      # to save RAM space when doing many stacked regressions wipe out all internal data:
+      self$wipe.alldat
+      # private$probAeqa <- probAeqa # NOTE disabling internal saving of probAeqa
+      # **********************************************************************
+      return(sampleA)
+    },
+
     show = function() {self$bindat$show()}
     # ,
     # # return new R6 object that only contains a copy of the fits in self

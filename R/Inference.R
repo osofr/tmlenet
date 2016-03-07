@@ -152,7 +152,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   # TMLE inference based on the iid IC:
   IC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO)
-  print("var_tmle: " %+% as.numeric(var_tmle/n))
+  # print("var_tmle: " %+% as.numeric(var_tmle/n))
 
   # ------------------------------------------------------------------------------------------------------------
   # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC: 
@@ -164,7 +164,8 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   var_tmle_2 <- var_IC_Q_tmle + var_IC_W_tmle
   print("var_IC_Q_tmle: " %+% as.numeric(var_IC_Q_tmle/n))
   print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
-  print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
+
+  # print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
   # print("total n of non-zero entries in connectmtx_1stO / N^2: "); print(sum(connectmtx_1stO)/(n^2))
   # setting var est. for the data-adaptive target param (conditional on W)
   # var_tmle <- var_IC_Q_tmle
@@ -277,340 +278,168 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   return(list(as.var_mat = as.var_mat, iid.vars_mat = iid.vars_mat))
 }
 
-
-# bootstrap tmle by resampling (sW,sA,Y) with replacement
-bootstrap_tmle <- function(estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat, fWi_mat) {
-  # browser()
-  # names(tmle_g_out)
-
-  # QY.init <- DatNet.ObsP0$noNA.Ynodevals # getting all node vals, inc. deterministic  
-  # QY.init[!DatNet.ObsP0$det.Y] <- m.Q.init$predict(newdata = DatNet.ObsP0)$getprobA1[!DatNet.ObsP0$det.Y] # getting predictions P(Y=1) for non-DET Y
+# bootstrap tmle by resampling (sW,sA,Y) with replacement (as if iid)
+bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat) {
   QY.init <- QY_mat[, "QY.init"] 
   off <- qlogis(QY.init)  # offset
-
-  # fWi <- fWi_mat[, "fWi_Qinit"]
-
-  # fit.hbars_t <- system.time(fit.hbars.res <- fit.hbars(DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_params_list)) # fit the clever covariate
-  # m.h.fit <- fit.hbars.res$m.h.fit
   DatNet.gstar <- tmle_g_out$DatNet.gstar
-
   psi.evaluator <- tmle_g_out$psi.evaluator
   m.Q.init <- tmle_g_out$m.Q.init
   m.h.fit <- tmle_g_out$m.h.fit
-  
-  # h_wts <- tmle_g_out$h_wts
   h_wts <- wts_mat[, "h_wts"]
-
   Y <- DatNet.ObsP0$noNA.Ynodevals
   determ.Q <- DatNet.ObsP0$det.Y
-
-  # m.h.fit$summeas.g0,
-  # m.h.fit$summeas.gstar
 
   #************************************************
   # BOOTSTRAP TMLE UPDATES:
   #************************************************
-  n_boots <- 100
-  boot_eps <- vector(mode = "numeric", length = n_boots)
-  boot_tmle_B <- vector(mode = "numeric", length = n_boots)
-  boot_time <- system.time(
-    for (i in (1:n_boots)) {
-        boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
-        boot.tmle.obj <- tmle.update(estnames = estnames,
-                                     Y = Y[boot_idx], off = off[boot_idx], h_wts = h_wts[boot_idx], 
-                                     determ.Q = determ.Q[boot_idx], predictQ = FALSE)
-        boot_eps[i] <- boot.tmle.obj$m.Q.star.coef
-        boot_tmle_B[i] <- mean(psi.evaluator$get.boot.tmleB(m.Q.starB = boot_eps[i], boot_idx = boot_idx))
-    }
-  )
+  # n.boot <- 100
+  boot_eps <- vector(mode = "numeric", length = n.boot)
+  boot_tmle_B <- vector(mode = "numeric", length = n.boot)
+  for (i in (1:n.boot)) {
+      boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
+      boot.tmle.obj <- tmle.update(estnames = estnames,
+                                   Y = Y[boot_idx], off = off[boot_idx], h_wts = h_wts[boot_idx], 
+                                   determ.Q = determ.Q[boot_idx], predictQ = FALSE)
+      boot_eps[i] <- boot.tmle.obj$m.Q.star.coef
+      boot_tmle_B[i] <- mean(psi.evaluator$get.boot.tmleB(m.Q.starB = boot_eps[i], boot_idx = boot_idx))
+  }
   var_tmleB_boot <- var(boot_tmle_B)
-
-  print("boot_time for n_boots = " %+% n_boots); print(boot_time)
   print("mean(boot_eps): "); print(mean(boot_eps))
   print("mean(boot_tmle_B): "); print(mean(boot_tmle_B))
   print("var(boot_tmle_B): "); print(var(boot_tmle_B))
 
   return(var_tmleB_boot)
-
 }
 
-# parametric bootstrap
-# f.g0, 
-par_bootstrap_tmle <- function(estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat, fWi_mat) {
-  f.g0 <- function(data) {
-    return(A = rbinom(n = nrow(data), size = 1, prob = 0.25))
+# recursively check for outvar name until found, then return the appropriate SummaryModel object:
+findRegSummaryObj <- function(fit.obj, outvar) {
+  if (is.list(fit.obj$outvar) | (length(fit.obj$outvar)>1)) {
+    for (fit.obj.level in fit.obj$getPsAsW.models()) {
+      return(findRegSummaryObj(fit.obj.level, outvar))
+    }
+  } else if (fit.obj$outvar %in% outvar) {
+    return(fit.obj)
   }
+}
 
-  # names(tmle_g_out)
 
-  n_boots <- 100
-  boot_eps <- vector(mode = "numeric", length = n_boots)
-  boot_gcomp <- vector(mode = "numeric", length = n_boots)
-  boot_tmle_B <- vector(mode = "numeric", length = n_boots)
+# Parametric bootstrap, sampling W as iid, A from m.g.N and Y from m.Q.init.N
+par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat) {
+  # n.boot <- 50
+  # ******** REPLACED this with the actual f.g0 or model fit g.N *********
+  # f.g0 <- function(data) {
+  #   return(A = rbinom(n = nrow(data), size = 1, prob = 0.25))
+  # }
+  f.g0 <- NULL
 
-  # 0. Save the original input data.table OdataDT, otherwise it will be over-written
+  boot_eps <- vector(mode = "numeric", length = n.boot)
+  boot_gcomp <- vector(mode = "numeric", length = n.boot)
+  boot_tmle_B <- vector(mode = "numeric", length = n.boot)
+  boot_IC_tmle <- vector(mode = "numeric", length = n.boot)
 
   psi.evaluator <- tmle_g_out$psi.evaluator
-  
-  if (!DatNet.ObsP0$datnetW$Odata$curr.data.A.g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes() # use the observed Anodes
+  gcomp_est <- tmle_g_out$ests_mat["MLE",]
+  tmle_B_est <- tmle_g_out$ests_mat["TMLE",]
 
+  # Always start with the observed Anodes
+  if (!DatNet.ObsP0$datnetW$Odata$curr.data.A.g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
+
+  # Save the original input data.table OdataDT, otherwise it will be over-written:
   OdataDT <- DatNet.ObsP0$datnetW$Odata$OdataDT
+  noNA.Ynodevals <- DatNet.ObsP0$noNA.Ynodevals
+  det.Y <- DatNet.ObsP0$det.Y
 
   DatNet.g0.boot <- DatNet.ObsP0
   DatNet.gstar <- tmle_g_out$DatNet.gstar
 
-# OdataDT
-#           ID HUB PA nF nF.PA W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 A sum.net.A        probY Y
-#     1:     1   1  0 46     4  4  1      0        1        0        0        1        1 1         6 0.9992165879 1
-#     2:     2   1  0 56     8  2  0      1        1        1        1        1        1 1         3 0.9517114768 1
-#     3:     3   1  0 49     8  4  0      0        0        1        0        1        0 1         5 0.9998742474 1
-#     4:     4   1  0 47     6  5  0      0        0        0        0        0        0 1         1 0.1456751954 0
-#     5:     5   1  1 54     5  4  0      0        1        1        1        1        0 1         5 0.9999999927 1
-#    ---                                                                                                           
-# 49996: 49996   0  0  5     0  4  0      0        0        0        1        1        0 0         0 0.0005424175 0
-# 49997: 49997   0  0  5     0  4  1      1        1        0        1        1        0 0         2 0.0431513304 1
-# 49998: 49998   0  0  5     2  3  0      0        1        1        1        0        1 0         0 0.0001210807 0
-# 49999: 49999   0  0  5     0  2  0      0        0        0        1        0        0 0         3 0.0001554654 0
-# 50000: 50000   0  0  5     0  3  0      1        1        1        1        0        1 0         2 0.0001554654 0
-
-# mean(OdataDT[["A"]]) # A is under g.star now
-# [1] 0.09728
-
-# head(DatNet.g0.boot$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF A nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
-# [1,]   1   1  4  1      0        1        0        0        1        1 46 1     4       1             0         6                  24
-# [2,]   1   1  2  0      1        1        1        1        1        1 56 0     8       0             0         3                  24
-# [3,]   1   1  4  0      0        0        1        0        1        0 49 0     8       0             0         5                  40
-# [4,]   1   1  5  0      0        0        0        0        0        0 47 1     6       1             0         1                   6
-# [5,]   1   0  4  0      0        1        1        1        1        0 54 0     5       0             0         5                  25
-# [6,]   1   1  4  0      1        0        1        0        0        1 54 0     5       0             0         3                  15
-
-# head(DatNet.gstar$dat.sVar)
-#     HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF A nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
-# [1,]   1   1  4  1      0        1        0        0        1        1 46 1     4       1             0        11                  44
-# [2,]   1   1  2  0      1        1        1        1        1        1 56 1     8       1             0        13                 104
-# [3,]   1   1  4  0      0        0        1        0        1        0 49 1     8       1             0        12                  96
-# [4,]   1   1  5  0      0        0        0        0        0        0 47 1     6       1             0         4                  24
-# [5,]   1   0  4  0      0        1        1        1        1        0 54 1     5       0             0         5                  25
-# [6,]   1   1  4  0      1        0        1        0        0        1 54 1     5       1             0         7                  35
-
-# head(DatNet.g0.boot$datnetW$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF
-# [1,]   1   1  4  1      0        1        0        0        1        1 46
-# [2,]   1   1  2  0      1        1        1        1        1        1 56
-# [3,]   1   1  4  0      0        0        1        0        1        0 49
-# [4,]   1   1  5  0      0        0        0        0        0        0 47
-# [5,]   1   0  4  0      0        1        1        1        1        0 54
-# [6,]   1   1  4  0      1        0        1        0        0        1 54
-
-# head(DatNet.gstar$datnetW$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF
-# [1,]   1   1  4  1      0        1        0        0        1        1 46
-# [2,]   1   1  2  0      1        1        1        1        1        1 56
-# [3,]   1   1  4  0      0        0        1        0        1        0 49
-# [4,]   1   1  5  0      0        0        0        0        0        0 47
-# [5,]   1   0  4  0      0        1        1        1        1        0 54
-# [6,]   1   1  4  0      1        0        1        0        0        1 54
-
-# head(DatNet.g0.boot$datnetA$dat.sVar)
-#      A nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
-# [1,] 1     4       1             0         6                  24
-# [2,] 0     8       0             0         3                  24
-# [3,] 0     8       0             0         5                  40
-# [4,] 1     6       1             0         1                   6
-# [5,] 0     5       0             0         5                  25
-# [6,] 0     5       0             0         3                  15
-
-# head(DatNet.gstar$datnetA$dat.sVar)
-#      A nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
-# [1,] 1     4       1             0         6                  24
-# [2,] 0     8       0             0         3                  24
-# [3,] 0     8       0             0         5                  40
-# [4,] 1     6       1             0         1                   6
-# [5,] 0     5       0             0         5                  25
-# [6,] 0     5       0             0         3                  15
-
-
-# loop over n_boots
-  boot_time <- system.time(
-    for (i in (1:n_boots)) {
-
-  # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar. Re-shuffle pre-saved values of Y and det.Y
+  # loop over n.boot
+  for (i in (1:n.boot)) { 
+    # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar; Re-shuffle pre-saved values of Y and det.Y:
     boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
+
     DatNet.g0.boot$datnetW$Odata$OdataDT <- OdataDT[boot_idx, ]
     DatNet.g0.boot$datnetW$make.sVar(sVar.object = tmle_g_out$sW)
+    DatNet.g0.boot$datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
+    DatNet.g0.boot$det.Y <- det.Y[boot_idx]
+    DatNet.g0.boot$noNA.Ynodevals <- noNA.Ynodevals[boot_idx]
 
-    DatNet.g0.boot$det.Y <- DatNet.g0.boot$det.Y[boot_idx]
-    DatNet.g0.boot$noNA.Ynodevals <- DatNet.g0.boot$noNA.Ynodevals[boot_idx]
+    # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0) & Re-create the summary measures (sW,sA) based on new DatNet.ObsP0:
+    if (is.null(f.g0)) {
+      for (Anode in DatNet.ObsP0$datnetW$Odata$nodes$Anodes) {
+        model.sVar.gN <- findRegSummaryObj(tmle_g_out$m.h.fit$summeas.g0, outvar = Anode)
+        # probA1 <- model.sVar.gN$predict(newdata = DatNet.g0.boot)$getprobA1
+        A.sample.gN <- model.sVar.gN$sampleA(newdata = DatNet.g0.boot)
+        # mean(A.sample.gN)
+        DatNet.g0.boot$datnetW$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
+      }
+    DatNet.g0.boot$make.dat.sWsA()
 
-# head(DatNet.g0.boot$datnetW$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF
-# [1,]   0   1  2  0      0        1        1        1        1        1 46
-# [2,]   0   1  4  1      1        0        0        0        1        0 56
-# [3,]   0   1  3  0      1        0        1        0        1        1 49
-# [4,]   0   1  1  0      1        1        1        1        0        1 47
-# [5,]   0   1  3  1      1        1        1        0        0        0 54
-# [6,]   0   1  4  1      0        1        0        1        1        1 54
-# head(DatNet.gstar$datnetW$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF
-# [1,]   0   1  2  0      0        1        1        1        1        1 46
-# [2,]   0   1  4  1      1        0        0        0        1        0 56
-# [3,]   0   1  3  0      1        0        1        0        1        1 49
-# [4,]   0   1  1  0      1        1        1        1        0        1 47
-# [5,]   0   1  3  1      1        1        1        0        0        0 54
-# [6,]   0   1  4  1      0        1        0        1        1        1 54
-
-
-# head(DatNet.g0.boot$datnetW$Odata$OdataDT)
-#       ID HUB PA nF nF.PA W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 A sum.net.A        probY Y
-# 1: 26690   0  0  6     0  2  0      0        1        1        1        1        1 0         4 1.473071e-03 0
-# 2: 37923   0  0  7     1  4  1      1        0        0        0        1        0 0         3 4.315133e-02 0
-# 3:  3414   0  0 23     2  3  0      1        0        1        0        1        1 0         3 2.426364e-03 0
-# 4: 27356   0  0 11     1  1  0      1        1        1        1        0        1 0         1 5.719814e-05 0
-# 5: 49128   0  0  5     0  3  1      1        1        1        0        0        0 0         3 6.066238e-03 0
-# 6: 16666   0  0 13     1  4  1      0        1        0        1        1        1 0         2 2.085815e-02 1
-# head(DatNet.gstar$datnetW$Odata$OdataDT)
-#       ID HUB PA nF nF.PA W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 A sum.net.A        probY Y
-# 1: 26690   0  0  6     0  2  0      0        1        1        1        1        1 0         4 1.473071e-03 0
-# 2: 37923   0  0  7     1  4  1      1        0        0        0        1        0 0         3 4.315133e-02 0
-# 3:  3414   0  0 23     2  3  0      1        0        1        0        1        1 0         3 2.426364e-03 0
-# 4: 27356   0  0 11     1  1  0      1        1        1        1        0        1 0         1 5.719814e-05 0
-# 5: 49128   0  0  5     0  3  1      1        1        1        0        0        0 0         3 6.066238e-03 0
-# 6: 16666   0  0 13     1  4  1      0        1        0        1        1        1 0         2 2.085815e-02 1
-# head(DatNet.gstar$datnetW$Odata$OdataDT)
-#       ID HUB PA nF nF.PA W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 A sum.net.A        probY Y
-# 1: 26690   0  0  6     0  2  0      0        1        1        1        1        1 1         4 1.473071e-03 0
-# 2: 37923   0  0  7     1  4  1      1        0        0        0        1        0 1         3 4.315133e-02 0
-# 3:  3414   0  0 23     2  3  0      1        0        1        0        1        1 1         3 2.426364e-03 0
-# 4: 27356   0  0 11     1  1  0      1        1        1        1        0        1 1         1 5.719814e-05 0
-# 5: 49128   0  0  5     0  3  1      1        1        1        0        0        0 1         3 6.066238e-03 0
-# 6: 16666   0  0 13     1  4  1      0        1        0        1        1        1 1         2 2.085815e-02 1
-  
-  # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0) & Re-create the summary measures (sW,sA) based on new DatNet.ObsP0
-
-    # head(DatNet.g0.boot$datnetA$dat.sVar)
-    # datnetA_make.sVar_time <-  system.time(
-    #   DatNet.g0.boot$datnetA$make.sVar(sVar.object = tmle_g_out$sA)
-    #   )
-    # print("datnetA_make.sVar_time"); print(datnetA_make.sVar_time)    
-    # head(DatNet.g0.boot$datnetA$dat.sVar)
-
-    # head(DatNet.g0.boot$dat.sVar)
-    # make.dat.sWsA_time <- system.time(
+    } else if (!is.null(f.g0)) {
       DatNet.g0.boot$make.dat.sWsA(p = 1, f.g_fun = f.g0, sA.object = tmle_g_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
-      # )
-    # print("make.dat.sWsA_time: "); print(make.dat.sWsA_time)
+    }
+    DatNet.g0.boot$datnetA$Odata$curr.data.A.g0 <- TRUE
 
-# head(DatNet.g0.boot$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF A nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
-# [1,]   0   1  2  0      0        1        1        1        1        1 46 0     0       0             0        10                   0
-# [2,]   0   1  4  1      1        0        0        0        1        0 56 0     1       0             0        18                  18
-# [3,]   0   1  3  0      1        0        1        0        1        1 49 0     2       0             0        17                  34
-# [4,]   0   1  1  0      1        1        1        1        0        1 47 1     1       1             0         9                   9
-# [5,]   0   1  3  1      1        1        1        0        0        0 54 1     0       1             0        12                   0
-# [6,]   0   1  4  1      0        1        0        1        1        1 54 0     1       0             0        15                  15
-# head(DatNet.gstar$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF A nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
-# [1,]   1   1  4  1      0        1        0        0        1        1 46 1     4       1             0        11                  44
-# [2,]   1   1  2  0      1        1        1        1        1        1 56 1     8       1             0        13                 104
-# [3,]   1   1  4  0      0        0        1        0        1        0 49 1     8       1             0        12                  96
-# [4,]   1   1  5  0      0        0        0        0        0        0 47 1     6       1             0         4                  24
-# [5,]   1   0  4  0      0        1        1        1        1        0 54 1     5       0             0         5                  25
-# [6,]   1   1  4  0      1        0        1        0        0        1 54 1     5       1             0         7                  35
-# after re-creating DatNet.gstar under bootstrapped W:
-# head(DatNet.gstar$dat.sVar)
-#      HUB PA0 W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 nF A nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
-# [1,]   0   1  2  0      0        1        1        1        1        1 46 1     0       1             0        36                   0
-# [2,]   0   1  4  1      1        0        0        0        1        0 56 1     1       1             0        37                  37
-# [3,]   0   1  3  0      1        0        1        0        1        1 49 1     2       1             0        37                  74
-# [4,]   0   1  1  0      1        1        1        1        0        1 47 1     1       1             0        37                  37
-# [5,]   0   1  3  1      1        1        1        0        0        0 54 1     0       1             0        33                   0
-# [6,]   0   1  4  1      0        1        0        1        1        1 54 1     1       1             0        32                  32
-
-    # DatNet.g0 <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-    # head(DatNet.g0.boot$dat.sVar)
-    # DatNet.g0.boot$make.dat.sWsA()
-    # head(DatNet.g0.boot$dat.sVar)
-    # mean(DatNet.g0.boot$dat.sVar[,"A"])
-    # DatNet.g0.boot$datnetW$Odata$OdataDT
-    # mean(DatNet.g0.boot$datnetW$Odata$OdataDT[["A"]])
-    # #---------------------------------------------------------------------------------
-    # # BUILDING OBSERVED sW & sA: (obsdat.sW - a dataset (matrix) of n observed summary measures sW)
-    # #---------------------------------------------------------------------------------
-    # datnetW <- DatNet$new(netind_cl = netind_cl, nFnode = nFnode)
-    # # datnetW$make.sVar(Odata = data, sVar.object = sW)
-    # datnetW$make.sVar(Odata = OdataDT_R6[], sVar.object = sW)
-    # datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
-    # datnetA <- DatNet$new(netind_cl = netind_cl)
-    # # datnetA$make.sVar(Odata = data, sVar.object = sA)
-    # datnetA$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
-    # DatNet.ObsP0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
-
-  # 4. Predict P(Y_i=1|sW,sA) using m.Q.init (the initial fit \bar{Q}_N) based on newly resampled (sW,sA)
-
-    # these are the new bootstrapped Y's that are deterministically assigned:
+    # 4. Predict P(Y_i=1|sW,sA) using m.Q.init (the initial fit \bar{Q}_N) based on newly resampled (sW,sA):
     detY.boot <- DatNet.ObsP0$det.Y
     QY.init.boot <- DatNet.ObsP0$noNA.Ynodevals
     QY.init.boot[!detY.boot] <- tmle_g_out$m.Q.init$predict(newdata = DatNet.g0.boot)$getprobA1[!detY.boot] # getting predictions P(Y=1) for non-DET Y
     off.boot <- qlogis(QY.init.boot)  # offset
-    # length(QY.init.boot); head(QY.init.boot)
 
-  # 5. Sample a vector of new (Y_i, i=1,...,N)
-
-    # psi.evaluator$sampleY(Qprob = QY.init)?
+    # 5. Sample a vector of new (Y_i, i=1,...,N):
+    # **** TO BE REPLACED WITH SOMETHING LIKE B psi.evaluator$sampleY(Qprob = QY.init) ****
     Y.boot <- rbinom(n = length(QY.init.boot), size = 1, prob = QY.init.boot)
-    # length(Y.boot); head(Y.boot)
 
-  # 6. Predict new weights h_wts = P_{\bar{g}^*_N}(sA | sW)/P_{\bar{g}_0}(sA | sW) 
-  # using the existing fits m.h.fit$summeas.g0 and m.h.fit$summeas.gstar and the newly resampled (sW,sA)
-
+    # 6. Predict new weights h_wts = P_{\bar{g}^*_N}(sA | sW)/P_{\bar{g}_0}(sA | sW) :
+    # using previously fitted m.h.fit$summeas.g0 and m.h.fit$summeas.gstar and the newly resampled (sW,sA) under Q.W.N, m.g.N
     h_wts.boot <- predict.hbars(newdatnet = DatNet.g0.boot, m.h.fit = tmle_g_out$m.h.fit)
-    # head(h_wts.boot)
 
-  # 7. Fit a TMLE update epsilon on this new data.
-
+    # 7. Fit a TMLE update epsilon on this new bootstapped dataset:
     boot.tmle.obj <- tmle.update(estnames = estnames,
-                                 Y = Y.boot, off = off.boot, h_wts = h_wts.boot, 
+                                 Y = Y.boot, off = off.boot, h_wts = h_wts.boot,
                                  determ.Q = detY.boot, predictQ = FALSE)
-
     boot_eps[i] <- boot.tmle.obj$m.Q.star.coef
 
-
-  # 8. Re-create DatNet.gstar with boostrapped summaires sW and sA generated under f.gstar
-
+    # 8. Re-create DatNet.gstar with boostrapped summaires sW and sA generated under f.gstar:
     DatNet.gstar$make.dat.sWsA(p = 1, f.g_fun = tmle_g_out$f.gstar, sA.object = tmle_g_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
 
-  # 9. Evaluate the substitution estimator and the components of the EIC D_Y and D_W
-    # head(DatNet.gstar$dat.sVar)
-    # ******** STILL NEED TO VERIFY THAT get.gcomp & get.tmleB IS ACTUALLY USING BOOTSTRAPPED DATA....*********
-    boot_gcomp[i] <- mean(psi.evaluator$get.gcomp(m.Q.init = tmle_g_out$m.Q.init))
+    # 9. Evaluate the substitution estimator and the components of the EIC D_Y and D_W:
+    fWi.boot <- psi.evaluator$get.gcomp(m.Q.init = tmle_g_out$m.Q.init)
+    boot_gcomp[i] <- mean(fWi.boot)
     boot_tmle_B[i] <- mean(psi.evaluator$get.tmleB(m.Q.starB = boot.tmle.obj$m.Q.star.coef))
 
-    }
-  )
+    obsYvals.boot = DatNet.ObsP0$noNA.Ynodevals
+    boot_IC_tmle[i] <- mean(h_wts.boot * (obsYvals.boot - QY.init.boot) + (fWi.boot - boot_tmle_B[i]))
+  }
 
-  # browser()
   var_gcomp_boot <- var(boot_gcomp)
   var_tmleB_boot <- var(boot_tmle_B)
-  
+
   # plot(density(boot_gcomp))
   # plot(density(boot_tmle_B))
 
-  print("boot_time for n_boots = " %+% n_boots); print(boot_time)
-  #  [1] "boot_time for n_boots = 10"
-  #   user  system elapsed 
-  # 35.144  12.216  51.154 
+  # print("boot_time for n.boot = " %+% n.boot); print(boot_time)
+  # [1] "boot_time for n.boot = 500"
+  #    user  system elapsed
+  # 708.094 134.648 844.491
   print("mean(boot_eps): "); print(mean(boot_eps))
+  print("gcomp_est: "); print(gcomp_est)
+  print("mean(boot_gcomp): "); print(mean(boot_gcomp))
+  print("var(boot_gcomp): "); print(var(boot_gcomp))
+  
+  print("tmle_B_est: "); print(tmle_B_est)
   print("mean(boot_tmle_B): "); print(mean(boot_tmle_B))
   print("var(boot_tmle_B): "); print(var(boot_tmle_B))
-  print("var(var_gcomp_boot): "); print(var(boot_gcomp))
+
+  print("mean(boot_IC_tmle)"); print(mean(boot_IC_tmle))
+  print("var(boot_IC_tmle) / nobs"); print(var(boot_IC_tmle)/DatNet.ObsP0$nobs)
 
   return(var_tmleB_boot)
 }
 
 
 # create output object with param ests of EY_gstar, vars and CIs for given gstar (or ATE if two tmle obj are passed)
-make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out, tmle_g2_out=NULL) {
+make_EYg_obj <- function(estnames, estoutnames, alpha, boot.var, n.boot, DatNet.ObsP0, tmle_g_out, tmle_g2_out=NULL) {
   nobs <- DatNet.ObsP0$nobs
   NetInd_k <- DatNet.ObsP0$netind_cl$NetInd_k
   nF <- DatNet.ObsP0$netind_cl$nF
@@ -639,6 +468,22 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
     print("time to estimate Vars: "); print(getVar_time)  
   }
 
+  # ------------------------------------------------------------------------------------------
+  # PARAMETRIC BOOSTRAP variance estimate:
+  # ------------------------------------------------------------------------------------------
+  if (boot.var) {
+    # var_tmleB_boot <- bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat)
+    var_tmleB_boot <- par_bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat)
+  } else {
+    var_tmleB_boot <- NA
+  }
+
+  as.var_tmleB_boot <- matrix(var_tmleB_boot * nobs, nrow = 1, ncol = 1)
+  rownames(as.var_tmleB_boot) <- rownames(as.vars_obj$as.var_mat)[1]
+  colnames(as.var_tmleB_boot) <- colnames(as.vars_obj$as.var_mat)
+  # ------------------------------------------------------------------------------------------
+  # PARAMETRIC BOOSTRAP:
+  # ------------------------------------------------------------------------------------------
   get_CI <- function(xrow, n) {
     f_est_CI <- function(n, psi, sigma2_N) { # get CI
       z_alpha <- qnorm(1-alpha/2)
@@ -652,34 +497,33 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
 
   CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$as.var_mat), 1, get_CI, n = nobs))
   colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
+
+  # CIs based on bootstrapped variance:
+  boot.CIs_mat <- t(apply(cbind(ests_mat["TMLE",,drop=FALSE], as.var_tmleB_boot), 1, get_CI, n = nobs))
+  colnames(boot.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
   
-  # CIs based on IID variance :
+  # CIs based on IID variance:
   iid.CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$iid.vars_mat), 1, get_CI, n = nobs))
   colnames(iid.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
-
-
-  # ------------------------------------------------------------------------------------------
-  # PARAMETRIC BOOSTRAP:
-  # ------------------------------------------------------------------------------------------
-  # var_tmleB_boot <- bootstrap_tmle(estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat, fWi_mat)
-  var_tmleB_boot <- par_bootstrap_tmle(estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat, fWi_mat)
-
 
   # ------------------------------------------------------------------------------------------
   # RENAME ESTIMATORS FOR THE FINAL OUTPUT:
   # ------------------------------------------------------------------------------------------
   rownames(ests_mat) <- estoutnames
   rownames(as.vars_obj$as.var_mat) <- estoutnames
+  rownames(as.var_tmleB_boot) <- estoutnames[1]
   rownames(as.vars_obj$iid.vars_mat) <- estoutnames
+  
   rownames(CIs_mat) <- estoutnames
+  rownames(boot.CIs_mat) <- estoutnames[1]
   rownames(iid.CIs_mat) <- estoutnames
 
   EY_g.star <- list(estimates = ests_mat,
                     vars = (as.vars_obj$as.var_mat / nobs),
-                    CIs = CIs_mat,
+                    var_tmleB_boot = (as.var_tmleB_boot / nobs),
                     iid.vars = (as.vars_obj$iid.vars_mat / nobs),
-                    # var_tmleB_boot = tmle_g_out$var_tmleB_boot,
-                    var_tmleB_boot = var_tmleB_boot,
+                    CIs = CIs_mat,
+                    boot.CIs = boot.CIs_mat,
                     iid.CIs = iid.CIs_mat,
                     h_g0_SummariesModel = NULL,
                     h_gstar_SummariesModel = NULL)

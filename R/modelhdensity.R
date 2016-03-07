@@ -175,11 +175,9 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
                                     subset = subsets_expr)
   regclass.g0$S3class <- "generic"
   # using S3 method dispatch on regclass.g0:
-  # time_summeas.g0 <- system.time(
-    summeas.g0 <- newsummarymodel(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
-    # )
-  # print("time_summeas.g0: "); print(time_summeas.g0)
+  summeas.g0 <- newsummarymodel(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
   
+
   # summeas.g0 <- SummariesModel$new(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
   if (!is.null(h_g0_SummariesModel)) {
     # 1) verify h_g0_SummariesModel is consistent with summeas.g0
@@ -187,10 +185,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     # 2) deep copy model fits in h_g0_SummariesModel to summeas.g0
     summeas.g0 <- h_g0_SummariesModel$clone(deep=TRUE)
   } else {
-    time_summeas.g0.fit <- system.time(
-      summeas.g0$fit(data = DatNet.g0)
-    )
-    print("time_summeas.g0.fit: "); print(time_summeas.g0.fit)
+    summeas.g0$fit(data = DatNet.g0)
   }
 
 
@@ -224,7 +219,6 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     message("================================================================")
   }
 
-
   regclass.gstar <- RegressionClass$new(sep_predvars_sets = TRUE,
                                         outvar.class = sA_class,
                                         outvar = sA_nms_gstar,
@@ -232,10 +226,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
                                         subset = subsets_expr)
   regclass.gstar$S3class <- "generic"
   # Define Intervals Under g_star to Be The Same as under g0:
-  time_summeas.gstar <- system.time(
-    summeas.gstar <- newsummarymodel(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0)
-  )
-  print("time_summeas.gstar: "); print(time_summeas.gstar)
+  summeas.gstar <- newsummarymodel(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0)
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0)
   # Define Intervals Under g_star Based on Summary Measures Generated under g_star:
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.gstar)
@@ -243,10 +234,8 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0, datnet.gstar = DatNet.gstar)
 
   DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-  time_make.dat.sWsA_gstar <- system.time(
-    DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
-  )
-  print("time_make.dat.sWsA_gstar: "); print(time_make.dat.sWsA_gstar)
+  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
+
   if (gvars$verbose) {
     print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): ")
     print(head(DatNet.gstar$dat.sWsA))
@@ -258,10 +247,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     # 2) deep copy the object with model fits to summeas.gstar
     summeas.gstar <- h_gstar_SummariesModel$clone(deep=TRUE)
   } else {
-    time_summeas.gstar.fit <- system.time(
-      summeas.gstar$fit(data = DatNet.gstar)
-    )
-    print("time_summeas.gstar.fit: "); print(time_summeas.gstar.fit)
+    summeas.gstar$fit(data = DatNet.gstar)
   }
 
   # All data is now stored in a single global data.table, which is ALWAYS modified IN PLACE
@@ -274,16 +260,8 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
  # 2) verify sA's were also restored and if not, regenerate them
   if (!DatNet.ObsP0$datnetA$Odata$restored.sA.Vars)
     DatNet.ObsP0$datnetA$make.sVar(sVar.object = sA)
- 
-  # browser()
-  # DatNet.gstar$datnetA$Odata$OdataDT
-  # DatNet.gstar$datnetA$Odata$A_g0_DT
-  # DatNet.gstar$datnetA$Odata$sA_g0_DT
- 
-  time_h_gstar_predict <- system.time(
-    h_gstar <- summeas.gstar$predictAeqa(newdata = DatNet.ObsP0)
-  )
-  print("time_h_gstar_predict: "); print(time_h_gstar_predict)
+
+  h_gstar <- summeas.gstar$predictAeqa(newdata = DatNet.ObsP0)
 
   if (length(h_gstar)!=DatNet.ObsP0$nobs) stop("the IPW weight prediction under gstar return invalid vector length: " %+% length(h_gstar))
 

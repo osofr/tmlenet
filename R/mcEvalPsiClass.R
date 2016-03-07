@@ -170,6 +170,7 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       QY.init <- m.Q.init$predict(newdata = DatNet.gstar)$getprobA1
       QY.init[DatNet.ObsP0$det.Y] <- DatNet.ObsP0$noNA.Ynodevals[DatNet.ObsP0$det.Y]
       self$QY.init <- QY.init
+
       invisible(QY.init)
     },
 

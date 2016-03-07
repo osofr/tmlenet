@@ -326,8 +326,7 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
         }
       )
 
-      print("eval_and_addDT"); print(eval_and_addDT)
-
+      # print("eval_and_addDT"); print(eval_and_addDT)
       # eval_only <- system.time(sVar.res_l <- lapply(seq_along(self$exprs_list), eval.standardize.expr, self = self, data.df = data.df))
       # print("eval_only: "); print(eval_only)
 

@@ -7,10 +7,10 @@
 tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   Qform = NULL, hform.g0 = NULL, hform.gstar = NULL, NETIDmat = NULL,
   IDnode = NULL, NETIDnode = NULL, verbose = getOption("tmlenet.verbose"),
-  optPars = list(alpha = 0.05, lbound = 0.005, family = "binomial", n_MCsims =
-  10, runTMLE = c("tmle.intercept", "tmle.covariate"), YnodeDET = NULL, f_gstar2
-  = NULL, sep = " ", f_g0 = NULL, h_g0_SummariesModel = NULL,
-  h_gstar_SummariesModel = NULL))
+  optPars = list(bootstrap.var = FALSE, n.bootstrap = 100, alpha = 0.05,
+  lbound = 0.005, family = "binomial", runTMLE = c("tmle.intercept",
+  "tmle.covariate"), YnodeDET = NULL, f_gstar2 = NULL, sep = " ", f_g0 = NULL,
+  h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
 }
 \arguments{
 \item{DatNet.ObsP0}{Instance of class \code{\link{DatNet.sWsA}} returned under the same name by the \code{\link{eval.summaries}} function.
@@ -70,7 +70,7 @@ an empty \code{""} string). See Details.}
 Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.}
 
 \item{optPars}{A named list of additional optional parameters to be passed to \code{tmlenet}, such as
- \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{runTMLE}, \code{YnodeDET}, \code{f_gstar2}, \code{sep},
+ \code{bootstrap.var}, \code{n.bootstrap}, \code{alpha}, \code{lbound}, \code{family}, \code{runTMLE}, \code{YnodeDET}, \code{f_gstar2}, \code{sep},
  \code{f_g0}, \code{h_g0_SummariesModel} and
  \code{h_gstar_SummariesModel}. See Details below for the description of each parameter.}
 }
@@ -148,18 +148,18 @@ Additional parameters can be also specified as a named list \code{optPars} argum
 \code{tmlenet} function. The items that can be specified in \code{optPars} are:
 \itemize{
 
+\item \code{bootstrap.var} - When set to \code{TRUE}, parametric bootstrap will be performed in order
+to obtain an alternative estimate the TMLE variance (note that this will significantly increase the running time);
+
+\item \code{n.bootstrap} - Number of bootstrap samples, default is 100; Set to higher values, such as, 500+ to obtain a more precise
+estimate of the tmle variance;
+
 \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs);
 
 \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
 
 \item \code{family} - Family specification for regression models, defaults to binomial (CURRENTLY ONLY BINOMIAL
  FAMILY IS IMPLEMENTED).
-
-\item \code{n_MCsims} - Number of Monte-Carlo simulations performed, each of sample size \code{nrow(data)},
-   for generating new exposures under \code{f_gstar1} or \code{f_gstar2} (if specified) or \code{f_g0} (if specified).
-   These newly generated exposures are utilized when fitting the conditional densities P(\code{sA}|\code{sW})
-   and when evaluating the substitution estimators \strong{GCOMP} and \strong{TMLE}
-   under stochastic interventions \code{f_gstar1} or \code{f_gstar2}.
 
 \item \code{runTMLE} - Choose which of the two TMLEs to run, "tmle.intercept" or "tmle.covariate". The default is "tmle.intercept".
 
@@ -176,7 +176,7 @@ Additional parameters can be also specified as a named list \code{optPars} argum
 
 \item \code{f_g0} - A function for generating true treatment mechanism under observed \code{Anodes}, if known (for example in a
    randomized trial). This is used for estimating P(\code{sA}|\code{sW}) under \code{g0} by sampling large vector of \code{Anodes}
-   (of length \code{nrow(data)*n_MCsims}) from \code{f_g0} function;
+   (of length \code{nrow(data)}) from \code{f_g0} function;
 
 \item \code{h_g0_SummariesModel} - Previously fitted model for P(\code{sA}|\code{sW}) under observed exposure mechanism \code{g0},
    returned by the previous runs of the \code{tmlenet} function.

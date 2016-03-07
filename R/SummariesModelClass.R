@@ -357,11 +357,17 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 	class = TRUE,
 	public = list(
     reg = NULL,
+    outvar = character(),   # outcome name(s)
+    predvars = character(), # names of predictor vars
 		n_regs = integer(),        # total no. of reg. models (logistic regressions)
     parfit_allowed = FALSE,    # allow parallel fit of multivar outvar when 1) reg$parfit = TRUE & 2) all.outvar.bin = TRUE
-    initialize = function(reg, ...) {
+    initialize = function(reg, no_set_outvar = FALSE, ...) {
       self$reg <- reg
-			self$n_regs <- length(reg$outvar) # Number of sep. logistic regressions to run
+
+      if (!no_set_outvar) self$outvar <- reg$outvar
+      self$predvars <- reg$predvars
+
+      self$n_regs <- length(reg$outvar) # Number of sep. logistic regressions to run
       all.outvar.bin <-  all(reg$outvar.class %in% gvars$sVartypes$bin)
 
       if (reg$parfit & all.outvar.bin & (self$n_regs > 1)) self$parfit_allowed <- TRUE
@@ -461,23 +467,47 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       assert_that(is.DatNet.sWsA(newdata))
 			n <- newdata$nobs
       if (!self$parfit_allowed) {
-			 cumprodAeqa <- rep.int(1, n)
-       # loop over all regressions in PsAsW.models:
-			 for (k_i in seq_along(private$PsAsW.models)) {
-				    cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$predictAeqa(newdata = newdata, ...)
-			 }
+        cumprodAeqa <- rep.int(1, n)
+        # loop over all regressions in PsAsW.models:
+        for (k_i in seq_along(private$PsAsW.models)) {
+          cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$predictAeqa(newdata = newdata, ...)
+        }
       } else if (self$parfit_allowed) {
         val <- checkpkgs(pkgs=c("foreach", "doParallel", "matrixStats"))
         mcoptions <- list(preschedule = TRUE)
         probAeqa_list <- foreach::foreach(k_i = seq_along(private$PsAsW.models), .options.multicore = mcoptions) %dopar% {
           private$PsAsW.models[[k_i]]$predictAeqa(newdata = newdata, ...)
         }
-          probAeqa_mat <- do.call('cbind', probAeqa_list)
-          cumprodAeqa <- matrixStats::rowProds(probAeqa_mat)
+        probAeqa_mat <- do.call('cbind', probAeqa_list)
+        cumprodAeqa <- matrixStats::rowProds(probAeqa_mat)
       }
       private$cumprodAeqa <- cumprodAeqa
 			return(cumprodAeqa)
-		}
+		},
+
+    sampleA = function(newdata, ...) {
+      stop("not implemented")
+
+      assert_that(!missing(newdata))
+      assert_that(is.DatNet.sWsA(newdata))
+      n <- newdata$nobs
+      
+      cumprodAeqa <- rep.int(1, n)
+
+      # loop over all regressions in PsAsW.models, sample CONDITIONALLY on observations that haven't been put in a specific bin yet
+
+      for (k_i in seq_along(private$PsAsW.models)) {
+        cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$sampleA(newdata = newdata, ...)
+      }
+
+      probAeqa_list <- foreach::foreach(k_i = seq_along(private$PsAsW.models)) %do% {
+        private$PsAsW.models[[k_i]]$sampleA(newdata = newdata, ...)
+      }
+      probAeqa_mat <- do.call('cbind', probAeqa_list)
+      cumprodAeqa <- matrixStats::rowProds(probAeqa_mat)
+
+      return(cumprodAeqa)
+    }    
 	),
 
 	active = list(
@@ -641,7 +671,7 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
         # print("ContinSummaryModel reg$nbins: " %+% self$reg$nbins)
       }
       bin_regs <- def_regs_subset(self = self)
-      super$initialize(reg = bin_regs, ...)
+      super$initialize(reg = bin_regs, no_set_outvar = TRUE, ...)
     },
 
     # Transforms data for continous outcome to discretized bins sA[j] -> BinsA[1], ..., BinsA[M] and calls $super$fit on that transformed data
@@ -697,7 +727,12 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
       private$cumprodAeqa <- cumprodAeqa
       return(cumprodAeqa)
+    },
+
+    sampleA = function() {
+      stop("not implemented")
     }
+
   ),
   active = list(
     cats = function() {seq_len(self$reg$nbins)}
@@ -770,7 +805,7 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
         # print("CategorSummaryModel reg$nbins: " %+% self$reg$nbins)
       }
       bin_regs <- def_regs_subset(self = self)
-      super$initialize(reg = bin_regs, ...)
+      super$initialize(reg = bin_regs, no_set_outvar = TRUE, ...)
     },
 
     # Transforms data for categorical outcome to bin indicators sA[j] -> BinsA[1], ..., BinsA[M] and calls $super$fit on that transformed data
@@ -815,6 +850,10 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       self$wipe.alldat # wiping out all data traces in ContinSummaryModel...
       private$cumprodAeqa <- cumprodAeqa
       return(cumprodAeqa)
+    },
+
+    sampleA = function() {
+      stop("not implemented")
     }
   ),
   active = list(

@@ -260,7 +260,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
 	#************************************************
   MC_fit_params <- append(est_params_list, list(m.Q.star = tmle.obj$m.Q.star.coef))
 
-  # browser()
   # swap the nodes to put back A and sA under g.star:
   if (DatNet.ObsP0$datnetW$Odata$curr.data.A.g0) {
     DatNet.gstar$datnetA$Odata$swapAnodes()
@@ -270,7 +269,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
 
   # generate new A's under f.gstar, then re-create new summaries sA:
   # DatNet.gstar$make.dat.sWsA(p = 1, f.g_fun = est_params_list$f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
-
   # DatNet.gstar$datnetA$Odata$OdataDT
   # DatNet.gstar$datnetA$Odata$A_g0_DT
   # DatNet.gstar$datnetA$Odata$sA_g0_DT
@@ -526,10 +524,7 @@ eval.summaries <- function(data, Kmax, sW, sA, sA.gstar, IDnode = NULL, NETIDnod
 
   DatNet.ObsP0 <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
 
-
-
 # # ------------------------------------------------------------------------------------------------
-#   browser()
 #   # datnetA.gstar <- DatNet$new(netind_cl = netind_cl)
 #   # datnetA.gstar$make.sVar(Odata = OdataDT_R6, sVar.object = sA.gstar)
 #   # head(datnetA.gstar$dat.sVar)
@@ -629,16 +624,16 @@ eval.summaries <- function(data, Kmax, sW, sA, sA.gstar, IDnode = NULL, NETIDnod
 #' @param hform.gstar Regression formula for estimating the conditional density P(\code{sA} | \code{sW}) under interventions 
 #'  \code{f_gstar1} or \code{f_gstar2}.
 #'  When omitted, the same regression formula as in \code{hform.g0} will be used for \code{hform.gstar}. See Details.
-# @param gform  (Optional) Regression formula for the joint treatment mechanism, g, that includes the product of all
-# friends treatments, P(A_i, A_{F_i} | W). See Details.
+# @param gform  (Optional) Regression formula for treatment(s) A: P(A_i | W). See Details.
 # @param args_f_g1star (Optional) Additional arguments to be passed to \code{f_gstar1} intervention function
 # @param args_f_g2star (Optional) Additional arguments to be passed to \code{f_gstar2} intervention function
 #' @param verbose Set to \code{TRUE} to print messages on status and information to the console. 
 #'  Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.
 #' @param optPars A named list of additional optional parameters to be passed to \code{tmlenet}, such as
-#'  \code{alpha}, \code{lbound}, \code{family}, \code{n_MCsims}, \code{runTMLE}, \code{YnodeDET}, \code{f_gstar2}, \code{sep}, 
+#'  \code{bootstrap.var}, \code{n.bootstrap}, \code{alpha}, \code{lbound}, \code{family}, \code{runTMLE}, \code{YnodeDET}, \code{f_gstar2}, \code{sep}, 
 #'  \code{f_g0}, \code{h_g0_SummariesModel} and
 #'  \code{h_gstar_SummariesModel}. See Details below for the description of each parameter.
+# (REMOVED) \code{n_MCsims}
 #((NOT IMPLEMENTED)) @param Q.SL.library SuperLearner libraries for outcome, Q
 #((NOT IMPLEMENTED)) @param g.SL.library SuperLearner libraries for treatment mechanism, g
 #((NOT IMPLEMENTED)) @param h_f.g0_args Additional arguments to be passed to f_g0
@@ -696,18 +691,24 @@ eval.summaries <- function(data, Kmax, sW, sA, sA.gstar, IDnode = NULL, NETIDnod
 #' \code{tmlenet} function. The items that can be specified in \code{optPars} are:
 #' \itemize{
 #'
+#' \item \code{bootstrap.var} - When set to \code{TRUE}, parametric bootstrap will be performed in order 
+#' to obtain an alternative estimate the TMLE variance (note that this will significantly increase the running time); 
+#' 
+#' \item \code{n.bootstrap} - Number of bootstrap samples, default is 100; Set to higher values, such as, 500+ to obtain a more precise 
+#' estimate of the tmle variance;
+#' 
 #' \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs); 
 #'
 #' \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
 #'
 #' \item \code{family} - Family specification for regression models, defaults to binomial (CURRENTLY ONLY BINOMIAL
 #'  FAMILY IS IMPLEMENTED).
-#'
-#' \item \code{n_MCsims} - Number of Monte-Carlo simulations performed, each of sample size \code{nrow(data)}, 
-#'    for generating new exposures under \code{f_gstar1} or \code{f_gstar2} (if specified) or \code{f_g0} (if specified).
-#'    These newly generated exposures are utilized when fitting the conditional densities P(\code{sA}|\code{sW})
-#'    and when evaluating the substitution estimators \strong{GCOMP} and \strong{TMLE}
-#'    under stochastic interventions \code{f_gstar1} or \code{f_gstar2}.
+#
+#(REMOVED)\item \code{n_MCsims} - Number of Monte-Carlo simulations performed, each of sample size \code{nrow(data)}, 
+#    for generating new exposures under \code{f_gstar1} or \code{f_gstar2} (if specified) or \code{f_g0} (if specified).
+#    These newly generated exposures are utilized when fitting the conditional densities P(\code{sA}|\code{sW})
+#    and when evaluating the substitution estimators \strong{GCOMP} and \strong{TMLE}
+#    under stochastic interventions \code{f_gstar1} or \code{f_gstar2}.
 #'
 #' \item \code{runTMLE} - Choose which of the two TMLEs to run, "tmle.intercept" or "tmle.covariate". The default is "tmle.intercept".
 #'
@@ -724,7 +725,8 @@ eval.summaries <- function(data, Kmax, sW, sA, sA.gstar, IDnode = NULL, NETIDnod
 #'
 #' \item \code{f_g0} - A function for generating true treatment mechanism under observed \code{Anodes}, if known (for example in a
 #'    randomized trial). This is used for estimating P(\code{sA}|\code{sW}) under \code{g0} by sampling large vector of \code{Anodes}
-#'    (of length \code{nrow(data)*n_MCsims}) from \code{f_g0} function;
+#'    (of length \code{nrow(data)}) from \code{f_g0} function;
+# (of length \code{nrow(data)*n_MCsims})
 #'
 #' \item \code{h_g0_SummariesModel} - Previously fitted model for P(\code{sA}|\code{sW}) under observed exposure mechanism \code{g0}, 
 #'    returned by the previous runs of the \code{tmlenet} function. 
@@ -937,10 +939,12 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
                     IDnode = NULL, NETIDnode = NULL, 
                     verbose = getOption("tmlenet.verbose"),
                     optPars = list(
+                      bootstrap.var = FALSE,
+                      n.bootstrap = 100,
                       alpha = 0.05,
                       lbound = 0.005,
                       family = "binomial", # NOT YET IMPLEMENTED
-                      n_MCsims = 10,
+                      # n_MCsims = 1,
                       # n_MCsims = ifelse(!missing(data),ceiling(sqrt(nrow(data))),10),
                       runTMLE = c("tmle.intercept", "tmle.covariate"),
                       YnodeDET = NULL,
@@ -964,12 +968,14 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   g.SL.library <- c("SL.glm", "SL.step", "SL.glm.interaction") # NOT USED
   max_npwt <- 50 # NOT USED YET
   h_logit_sep_k <- FALSE # NOT USED YET
+  bootstrap.var <- ifelse(is.null(optPars$bootstrap.var), FALSE, optPars$bootstrap.var)
+  n.bootstrap <- ifelse(is.null(optPars$n.bootstrap), 100, optPars$n.bootstrap)
   alpha <- ifelse(is.null(optPars$alpha), 0.05, optPars$alpha)
   lbound <- ifelse(is.null(optPars$lbound), 0.005, optPars$lbound)
   family <- ifelse(is.null(optPars$family), "binomial", optPars$family)
   sep <- ifelse(is.null(optPars$sep), ' ', optPars$sep)
   assert_that(is.character(sep) && length(sep)==1L)
-  n_MCsims <- ifelse(is.null(optPars$n_MCsims), 10, optPars$n_MCsims)
+  n_MCsims <- ifelse(is.null(optPars$n_MCsims), 1, optPars$n_MCsims)
   f_g0 <- if(is.null(optPars$f_g0)) {NULL} else {optPars$f_g0}
   if (!is.null(f_g0)) assert_that(is.function(f_g0))
   YnodeDET <- if(is.null(optPars$YnodeDET)) {NULL} else {optPars$YnodeDET}
@@ -1060,8 +1066,8 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   # new version of nodes:
   node_l <- list(nFnode = DatNet.ObsP0$datnetW$nFnode, Anodes = Anodes, AnodeDET = AnodeDET,
                   Ynode = Ynode, YnodeDET = YnodeDET)
-  data$nodes <- node_l
 
+  data$nodes <- node_l
   data$backupAnodes(Anodes = node_l$Anodes, sA = sA)
 
   nobs <- DatNet.ObsP0$nobs
@@ -1093,7 +1099,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   # CheckVarNameExists(data, node_l$Ynode)
 
   #----------------------------------------------------------------------------------
-  # NOTE: YnodeVals = obsYvals, det.Y = determ.Q need to be added to DatNet.ObsP0 after returned its eval.summaries()
+  # NOTE: YnodeVals = obsYvals, det.Y = determ.Q need to be added to DatNet.ObsP0 after returned from eval.summaries()
   #----------------------------------------------------------------------------------
   obsYvals <- data$OdataDT[[node_l$Ynode]]
   DatNet.ObsP0$addYnode(YnodeVals = obsYvals, det.Y = determ.Q)
@@ -1153,11 +1159,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
                               predvars = Q.sVars$predvars[[1]],
                               subset = !determ.Q, ReplMisVal0 = TRUE)
 
-  # time_Qregfit <- system.time(
-    m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)
-    # )
-  # print("time_Qregfit"); print(time_Qregfit)
-  
+  m.Q.init <- BinOutModel$new(glm = FALSE, reg = Qreg)$fit(data = DatNet.ObsP0)
 
   #----------------------------------------------------------------------------------
   # Create an object with model estimates, data & network information that is passed on to estimation procedure
@@ -1213,12 +1215,19 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
   #----------------------------------------------------------------------------------
   # Create output list (estimates, as. variances, CIs)
   #----------------------------------------------------------------------------------
-  EY_gstar1 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out)
+  EY_gstar1 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, 
+                            boot.var = bootstrap.var, n.boot = n.bootstrap,
+                            DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out)
   EY_gstar2 <- NULL
   ATE <- NULL
   if (!is.null(f_gstar2)) {
-    EY_gstar2 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out=tmle_g2_out)
-    ATE <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
+    EY_gstar2 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha,
+                              boot.var = bootstrap.var, n.boot = n.bootstrap,
+                              DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out=tmle_g2_out)
+
+    ATE <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, 
+                        boot.var = bootstrap.var, n.boot = n.bootstrap,
+                        DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
 	}
 
 	tmlenet.res <- list(EY_gstar1 = EY_gstar1, EY_gstar2 = EY_gstar2, ATE = ATE)
