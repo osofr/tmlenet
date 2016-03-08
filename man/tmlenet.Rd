@@ -81,8 +81,6 @@ Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.}
  \code{bootstrap.var}, \code{n.bootstrap}, \code{alpha}, \code{lbound}, \code{family}, \code{runTMLE}, \code{YnodeDET}, \code{sep},
  \code{f_g0}, \code{h_g0_SummariesModel} and
  \code{h_gstar_SummariesModel}. See Details below for the description of each parameter.}
-
-\item{Anodes}{Exposure (treatment) variable name (column name in \code{data}); exposures can be either binary, categorical or continuous.}
 }
 \value{
 A named list with 3 items containing the estimation results for:

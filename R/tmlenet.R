@@ -555,7 +555,7 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def_sW}}.
 #' @param sA Summary measures constructed from exposures \code{Anodes} and baseline covariates. This must be an object of class
 #'  \code{DefineSummariesClass} that is returned by calling the function \code{\link{def_sW}}.
-#' @param Anodes Exposure (treatment) variable name (column name in \code{data}); exposures can be either binary, categorical or continuous.
+# @param Anodes Exposure (treatment) variable name (column name in \code{data}); exposures can be either binary, categorical or continuous.
 #  This variable can be instead specified with argument \code{sA} by adding a call \code{+def_sA(Anodes="ExposureVarName")} to \code{sA}.
 # @param AnodeDET Optional column name for indicators of deterministic values of exposures in \code{Anodes}, 
 #  should be coded as (\code{TRUE}/\code{FALSE}) or (\code{1}/\code{0});
