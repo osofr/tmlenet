@@ -45,24 +45,24 @@ test.simple.fit.density.sA <- function() {
   def.nodeojb <- function(datO) {
     Kmax <- 1
     nodes <- list(Anodes = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
-    def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
-    def_sA <- def.sA(sA = "sA")
+    sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+    sA <- def_sA(sA = "sA")
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
     # Define datNetObs:
     OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sW)
+    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
     checkTrue(tmlenet:::is.DatNet(datnetW))
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sA)
+    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
-    return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
+    return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
   }
 
   nsamp <- 10000
   # nsamp <- 100000
   datO <- get.density.sAdat(nsamp)
   nodeobjs <- def.nodeojb(datO)
-  testm.sW <- nodeobjs$def_sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
-  testm.sA <- nodeobjs$def_sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
+  testm.sW <- nodeobjs$sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
+  testm.sA <- nodeobjs$sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
 
   DatNet_object <- nodeobjs$datNetObs
   head(DatNet_object$dat.sWsA)
@@ -263,13 +263,13 @@ run.1sim.tmlenet <- function(nsamp, psi0, Qform, f.gstar, trunc.const = 10, shif
   print("head(datO)"); print(head(datO))
   print("summary(datO)"); print(summary(datO))
   Kmax <- 1
-  def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
-  def_sA <- def.sA(sA = "sA")
+  sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+  sA <- def_sA(sA = "sA")
   tmlenet_res <- tmlenet(data = datO, Anodes = "sA", Ynode = "Y",
                           Kmax = Kmax,
                           # nFnode = NULL,
                           f_gstar1 = f.gstar,
-                          sW = def_sW, sA = def_sA,
+                          sW = sW, sA = sA,
                           Qform = Qform,
                           hform.g0 = "sA ~ W1 + W2 + W3",
                           hform.gstar = "sA ~ W1 + W2 + W3",

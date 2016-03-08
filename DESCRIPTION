@@ -22,7 +22,7 @@ Description: Estimation of average causal effects for single time point
     user-specified summary measure(s) sA.i, where sA.i is any function of i's
     baseline covariates and exposure (W.i,A.i) and the baseline covariates and
     exposures of i's friends. The summary measures are defined with functions
-    def.sW and def.sA. See ?'tmlenet-package' for a general overview.
+    def_sW and def_sA. See ?'tmlenet-package' for a general overview.
 URL: https://github.com/osofr/tmlenet
 BugReports: https://github.com/osofr/tmlenet/issues
 Depends:

@@ -315,14 +315,11 @@ bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, w
 # recursively check for outvar name until found, then return the appropriate SummaryModel object:
 findRegSummaryObj <- function(fit.obj, outvar) {
   if (is.list(fit.obj$outvar) | (length(fit.obj$outvar)>1)) {
-    for (fit.obj.level in fit.obj$getPsAsW.models()) {
-      return(findRegSummaryObj(fit.obj.level, outvar))
-    }
+    return(unlist(lapply(fit.obj$getPsAsW.models(), findRegSummaryObj, outvar)))
   } else if (fit.obj$outvar %in% outvar) {
     return(fit.obj)
   }
 }
-
 
 # Parametric bootstrap, sampling W as iid, A from m.g.N and Y from m.Q.init.N
 par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat) {
@@ -343,7 +340,7 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_ma
   tmle_B_est <- tmle_g_out$ests_mat["TMLE",]
 
   # Always start with the observed Anodes
-  if (!DatNet.ObsP0$datnetW$Odata$curr.data.A.g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
+  if (!DatNet.ObsP0$datnetW$Odata$curr_data_A_g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
 
   # Save the original input data.table OdataDT, otherwise it will be over-written:
   OdataDT <- DatNet.ObsP0$datnetW$Odata$OdataDT
@@ -354,7 +351,7 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_ma
   DatNet.gstar <- tmle_g_out$DatNet.gstar
 
   # loop over n.boot
-  for (i in (1:n.boot)) { 
+  for (i in (1:n.boot)) {
     # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar; Re-shuffle pre-saved values of Y and det.Y:
     boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
 
@@ -366,19 +363,21 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_ma
 
     # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0) & Re-create the summary measures (sW,sA) based on new DatNet.ObsP0:
     if (is.null(f.g0)) {
-      for (Anode in DatNet.ObsP0$datnetW$Odata$nodes$Anodes) {
+      for (Anode in DatNet.ObsP0$Odata$nodes$Anodes) {
         model.sVar.gN <- findRegSummaryObj(tmle_g_out$m.h.fit$summeas.g0, outvar = Anode)
-        # probA1 <- model.sVar.gN$predict(newdata = DatNet.g0.boot)$getprobA1
+        if (is.list(model.sVar.gN)) model.sVar.gN <- model.sVar.gN[[1]]
         A.sample.gN <- model.sVar.gN$sampleA(newdata = DatNet.g0.boot)
+        # probA1 <- model.sVar.gN$predict(newdata = DatNet.g0.boot)$getprobA1
         # mean(A.sample.gN)
-        DatNet.g0.boot$datnetW$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
+        # table(OdataDT[[Anode]])
+        # table(A.sample.gN)
+        # table(DatNet.g0.boot$datnetW$Odata$OdataDT[[Anode]])
+        DatNet.g0.boot$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
       }
-    DatNet.g0.boot$make.dat.sWsA()
-
     } else if (!is.null(f.g0)) {
       DatNet.g0.boot$make.dat.sWsA(p = 1, f.g_fun = f.g0, sA.object = tmle_g_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
     }
-    DatNet.g0.boot$datnetA$Odata$curr.data.A.g0 <- TRUE
+    DatNet.g0.boot$Odata$curr_data_A_g0 <- TRUE
 
     # 4. Predict P(Y_i=1|sW,sA) using m.Q.init (the initial fit \bar{Q}_N) based on newly resampled (sW,sA):
     detY.boot <- DatNet.ObsP0$det.Y
@@ -401,7 +400,7 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_ma
     boot_eps[i] <- boot.tmle.obj$m.Q.star.coef
 
     # 8. Re-create DatNet.gstar with boostrapped summaires sW and sA generated under f.gstar:
-    DatNet.gstar$make.dat.sWsA(p = 1, f.g_fun = tmle_g_out$f.gstar, sA.object = tmle_g_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
+    DatNet.gstar$make.dat.sWsA(p = 1, f.g_fun = tmle_g_out$f.gstar, new.sA.object = tmle_g_out$new.sA, sA.object = tmle_g_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
 
     # 9. Evaluate the substitution estimator and the components of the EIC D_Y and D_W:
     fWi.boot <- psi.evaluator$get.gcomp(m.Q.init = tmle_g_out$m.Q.init)

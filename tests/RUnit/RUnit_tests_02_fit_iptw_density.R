@@ -137,19 +137,19 @@ test.net.fit.density.iptw <- function() {
   def.nodeojb.net <- function(Kmax, datO, NetInd_mat, gstar = FALSE) {
     if (gstar) {
       Anodes <- "trunc.sA.gstar"
-      def_sA <- def.sA(sA = trunc.sA.gstar,
+      sA <- def_sA(sA = trunc.sA.gstar,
                       net.mean.sA = ifelse(nF > 0, rowSums(trunc.sA.gstar[[1:Kmax]])/nF, 0),
                       replaceNAw0 = TRUE)
     } else {
       Anodes <- "sA"
-      def_sA <- def.sA(sA = sA,
+      sA <- def_sA(sA = sA,
                       net.mean.sA = ifelse(nF > 0, rowSums(sA[[1:Kmax]])/nF, 0),
                       replaceNAw0 = TRUE)
     }
 
     nodes <- list(Anodes = Anodes, Wnodes = c("W1", "W2", "W3"))
 
-    def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3",
+    sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3",
                     net.mean.W1 = ifelse(nF > 0, rowSums(W1[[1:Kmax]])/nF, 0),
                     replaceNAw0 = TRUE)
     # directly assign already existing network:
@@ -157,10 +157,10 @@ test.net.fit.density.iptw <- function() {
     netind_cl$NetInd <- NetInd_mat
     # Define datNetObs:
     OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sW)
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sA)
+    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
-    return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
+    return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
   }
 
   nsamp <- 10000
@@ -180,16 +180,16 @@ test.net.fit.density.iptw <- function() {
   nodeobjs.gstar <- def.nodeojb.net(Kmax = Kmax, datO = datO, NetInd_mat = NetInd_mat, gstar = TRUE)
 
   # g0:
-  testm.sW <- nodeobjs.g0$def_sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
+  testm.sW <- nodeobjs.g0$sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
   # names(nodeobjs.g0)
   # head(nodeobjs.g0$datNetObs$mat.sVar)
-  print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs.g0$def_sW$sVar.names.map); print(head(datO))
-  testm.sA <- nodeobjs.g0$def_sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
-  print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs.g0$def_sA$sVar.names.map); print(head(datO))
+  print("testm.sW"); print(head(testm.sW)); print("testm.sW map"); print(nodeobjs.g0$sW$sVar.names.map); print(head(datO))
+  testm.sA <- nodeobjs.g0$sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.g0$netind_cl)
+  print("testm.sA"); print(head(testm.sA)); print("testm.sA map"); print(nodeobjs.g0$sA$sVar.names.map); print(head(datO))
 
   # gstar:
-  testm.sW.gstar <- nodeobjs.gstar$def_sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
-  testm.sA.gstar <- nodeobjs.gstar$def_sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
+  testm.sW.gstar <- nodeobjs.gstar$sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
+  testm.sA.gstar <- nodeobjs.gstar$sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs.gstar$netind_cl)
 
   # Define est_params_list:
   reg.sVars <- list(outvars = c("sA", "net.mean.sA"), predvars = c("W1", "W2", "W3", "net.mean.W1"))

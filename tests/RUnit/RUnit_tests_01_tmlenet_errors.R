@@ -27,11 +27,11 @@ test.tmleneterrrors <- function() {
   #----------------------------------------------------------------------------------
   options(tmlenet.verbose = FALSE)
 
-  def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
-            def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
+  sW <- def_sW(netW2 = W2[[1:Kmax]]) +
+        def_sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
-  def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
-            def.sA(netA = A[[0:Kmax]])
+  sA <- def_sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
+        def_sA(netA = A[[0:Kmax]])
 
   # Test for non-existing predictors in hform.g0/hform.gstar:
   checkException(
@@ -41,7 +41,7 @@ test.tmleneterrrors <- function() {
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
+                    f_gstar1 = f.A_0, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
   # Test for non-existing predictors in hform.g0/hform.gstar:
   checkException(
@@ -52,7 +52,7 @@ test.tmleneterrrors <- function() {
 
                     Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
+                    f_gstar1 = f.A_0, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
   # Test for non-existing outcomes in hform.g0/hform.gstar:
   checkException(
@@ -63,7 +63,7 @@ test.tmleneterrrors <- function() {
 
                     Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
+                    f_gstar1 = f.A_0, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
   # Test for different outcomes in hform.g0/hform.gstar (non-existing for hform.gstar):
   checkException(
@@ -74,7 +74,7 @@ test.tmleneterrrors <- function() {
 
                     Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
+                    f_gstar1 = f.A_0, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
   # Test for existing but different outcomes in hform.g0/hform.gstar:
   checkException(
@@ -85,7 +85,7 @@ test.tmleneterrrors <- function() {
 
                     Anodes = "A", Ynode = "Y",
                     Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                    f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
+                    f_gstar1 = f.A_0, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
   # Throws exception since netW3_sum, sum_1mAW2_nets from Qform don't exist:
   checkException(
@@ -96,7 +96,7 @@ test.tmleneterrrors <- function() {
 
                   Anodes = "A", Ynode = "Y",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                  f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
+                  f_gstar1 = f.A_0, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1))
   )
   # Throws exception since Ynode arg is omitted, but blah from Qform LHS doesn't exist:
   checkException(
@@ -106,20 +106,20 @@ test.tmleneterrrors <- function() {
                   hform.gstar = "netA ~ sum.netW3",
                   Anodes = "A",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                  f_gstar1 = f.A_0, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
+                  f_gstar1 = f.A_0, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
 
   # Throws exception when f_gstar1 function doesn't have argument "data":
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
                   Anodes = "A", Ynode = "Y",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                  f_gstar1 = f.A_wrong, sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
+                  f_gstar1 = f.A_wrong, sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
   # Throws an exception when f_gstar1 is a vector of 1<length<n:
   checkException(
      res_K6_1 <- tmlenet(data = df_netKmax6,
                   Anodes = "A", Ynode = "Y",
                   Kmax = Kmax, IDnode = "IDs", NETIDnode = "Net_str",
-                  f_gstar1 = rep(1L,50), sW = def_sW, sA = def_sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
+                  f_gstar1 = rep(1L,50), sW = sW, sA = sA, optPars = list(runTMLE = "tmle.intercept", n_MCsims = 1)))
 }
 
 

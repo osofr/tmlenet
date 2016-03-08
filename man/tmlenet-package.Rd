@@ -24,7 +24,7 @@ The input data structure consists of rows of unit-specific observations, with ea
  baseline covariates and exposures of \code{i}'s friends (all \code{W.j},\code{A.j} such that \code{j} is in \code{i}'s friend set \code{F.i}).
 
 The summary measures (\code{sW.i},\code{sA.i}) are defined simultaneously for all \code{i} with functions
- \code{\link{def.sW}} and \code{\link{def.sA}}.
+ \code{\link{def_sW}} and \code{\link{def_sA}}.
  It is assumed that (\code{sW.i},\code{sA.i}) have the same dimensionality across \code{i}. The function \code{\link{eval.summaries}}
  can be used for evaluating these summary measures. All estimation is performed by calling the \code{\link{tmlenet}} function.
  The vector of friends \code{F.i} can be specified either as a single column \code{NETIDnode} in the input data (where each \code{F.i} is a string
@@ -37,16 +37,16 @@ The summary measures (\code{sW.i},\code{sA.i}) are defined simultaneously for al
 The following routines will be generally invoked, in the same order as presented below.
 \describe{
 
-\item{\code{\link{def.sW}}}{This is the first part of the two part specification of the structural equation model
+\item{\code{\link{def_sW}}}{This is the first part of the two part specification of the structural equation model
    for the outcome \code{Y}.
    Defines the (multivariate) baseline-covariate-based summary measure functions
    that will be later applied to the input data to derive the (multivariate) summary measures \code{sW}.
    Each component \code{sW[j]} of \code{sW} is defined by an R expression that takes as its input
    unit's baseline covariates and the baseline covariates of unit's friends.
-   Each argument passed to \code{def.sW} is considered a separate summary measure, with the \code{j}th argument
+   Each argument passed to \code{def_sW} is considered a separate summary measure, with the \code{j}th argument
    defining the \code{j}the summary measure \code{sW[j]} and the name of the \code{j}th argument defining the name
    of the summary measure \code{sW[j]}.
-   The arguments of \code{def.sW} can be either named, unnamed or a mixture of both. When the argument \code{j} is unnamed,
+   The arguments of \code{def_sW} can be either named, unnamed or a mixture of both. When the argument \code{j} is unnamed,
    the summary measure name for \code{sW[j]} is created automatically.
 
    Each summary measure is defined either by an evaluable R expressions or by a string containing an evaluable R
@@ -60,7 +60,7 @@ The following routines will be generally invoked, in the same order as presented
    determined by the ordering of friend IDs specified in the network input.
    In cases when the unit doesn't have any friends, its corresponding value of \code{Var[[1]]} will evaluate
    to \code{NA} by default. However, all such \code{NA}'s can be replaced by 0's by passing \code{replaceNAw0 = TRUE}
-   as an additional argument to \code{def.sW}.
+   as an additional argument to \code{def_sW}.
    One can also use vectors for indexing friend variable \code{Var} values in \code{Var[[index]]}.
    For example, \code{Var[[1:Kmax]]} will evaluate to a \code{Kmax}-dimensional summary measure, which will be a matrix
    with \code{nrow(data)} rows and \code{Kmax} columns,
@@ -68,17 +68,17 @@ The following routines will be generally invoked, in the same order as presented
    up to the last column evaluating to \code{Var[[Kmax]]}.
    Note that \code{Kmax} is a special reserved constant that can be used inside the network indexing operators.
    It is set to the highest number of friends among all units in the input \code{data} and it is specified by
-   the user input argument \code{Kmax}. See \code{def.sW} manual for various examples of
+   the user input argument \code{Kmax}. See \code{def_sW} manual for various examples of
    summary measures that use the network indexing operators.}
 
-\item{\code{\link{def.sA}}}{Defines treatment summary measures \code{sA} that can be functions of each unit's exposure & baseline covariates,
+\item{\code{\link{def_sA}}}{Defines treatment summary measures \code{sA} that can be functions of each unit's exposure & baseline covariates,
    as well the exposures and baseline covariates of unit's friends.
    This is the second part of the two part specification of the structural equation model for the outcome \code{Y}.
-   The syntax is identical to \code{def.sW} function, except that \code{def.sA} can consists of functions of baseline covariates
+   The syntax is identical to \code{def_sW} function, except that \code{def_sA} can consists of functions of baseline covariates
    as well as the exposure \code{Anode}.}
 
 \item{\code{\link{eval.summaries}}}{A convenience function that can be used for validating and evaluating the user-specified summary measures.
-   Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \code{def.sW} and \code{def.sA}.
+   Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \code{def_sW} and \code{def_sA}.
    Note that this function is called automatically by the \code{tmlenet} function and does not need to be called by the user prior to calling \code{tmlenet}.}
 
 \item{\code{\link{tmlenet}}}{Performs estimation of the causal effect of interest using the observed input \code{data},

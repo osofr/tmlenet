@@ -39,7 +39,7 @@ The input data are assumed to consist of rows of unit-specific observations, wit
 
 Each exposure `A.i` depends on (possibly multivariate) baseline summary measure(s) `sW.i`, where `sW.i` can be any user-specified function of `i`'s baseline covariates `W.i` and the baseline covariates of `i`'s friends in `F.i` (all `W.j` such that `j` is in `F.i`). Similarly, each outcome `Y.i` depends on `sW.i` and (possibly multivariate) summary measure(s) `sA.i`, where `sA.i` can be any user-specified function of `i`'s baseline covariates and exposure (`W.i`,`A.i`) and the baseline covariates and exposures of `i`'s friends (all `W.j`,`A.j` such that `j` is in `i`'s friend set `F.i`). 
 
-The summary measures (`sW.i`,`sA.i`) are defined simultaneously for all `i` with functions `def.sW` and `def.sA`. It is assumed that (`sW.i`,`sA.i`) have the same dimensionality across `i`. The function `eval.summaries` can be used for evaluating these summary measures.
+The summary measures (`sW.i`,`sA.i`) are defined simultaneously for all `i` with functions `def_sW` and `def_sA`. It is assumed that (`sW.i`,`sA.i`) have the same dimensionality across `i`. The function `eval.summaries` can be used for evaluating these summary measures.
 
 All estimation is performed by calling the `tmlenet` function. The vector of friends `F.i` can be specified either as a single column in the input data (where each `F.i` is a string of friend IDs or friend row numbers delimited by character `sep`) or as a separate input matrix of network IDs (where each row is a vector of friend IDs or friend row numbers). Specifying the network as a matrix generally results in significant improvements to run time. See `tmlenet` function help file for additional details on how to specify these and the rest of the input arguments.
 
@@ -56,7 +56,7 @@ Kmax <- ncol(NetInd_mat_Kmax6) # Max number of friends in this network:
 ```
 
 The estimation algorithm assumes that the outcomes in `Y.i` for units `i=1,...,N` are conditionally independent,
-given the summary measures defined in `def_sW` and the summary measures defined in `def_sA`.
+given the summary measures defined in `sW` and the summary measures defined in `sA`.
 
 When no additional assumptions about the conditional independence of outcomes `Y.i` can be made 
 (beyond the dependence on the network structure),
@@ -70,17 +70,17 @@ where `netVar` is a summary measure of dimension `Kmax+1` and includes `Var` val
 unit as well as `Var` values of all friends of each unit:
 
 ```R
-def_sW <- def.sW(netW1 = W1[[0:Kmax]], netW2 = W2[[0:Kmax]], netW3 = W3[[0:Kmax]])
-def_sA <- def.sA(netA = A[[0:Kmax]])
+sW <- def_sW(netW1 = W1[[0:Kmax]], netW2 = W2[[0:Kmax]], netW3 = W3[[0:Kmax]])
+sA <- def_sA(netA = A[[0:Kmax]])
 ```
 
 Note that the summary measure `nF` (number of friends for each unit) is always added automatically to 
-`def.sW` function calls (only once), but not to `def.sA`.
+`def_sW` function calls (only once), but not to `def_sA`.
 
 A helper function that can pre-evaluate the above summary measures based on the input data:
 
 ```R
-eval_res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+eval_res <- eval.summaries(sW = sW, sA = sA,  Kmax = 6, data = df_netKmax6,
                           NETIDmat = NetInd_mat_Kmax6)
 ```
 
@@ -102,7 +102,7 @@ summary measures object `DatNet.ObsP0` as input to `tmlenet`, avoiding the need 
 
 ```R
 res1 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax, 
-                sW = def_sW, sA = def_sA,
+                sW = sW, sA = sA,
                 Anodes = "A", Ynode = "Y",
                 f_gstar1 = 0L, optPars = list(n_MCsims = 1))
 res1$EY_gstar1$estimates
@@ -146,13 +146,13 @@ of `i`'s friends' interactions `(1-A)*(W2)` (while we assume `Y.i` still depends
 `i`'s exposure):
 
 ```R
-def_sW <- def.sW(W = c(W1,W2,W3)) +
-          def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
+sW <- def_sW(W = c(W1,W2,W3)) +
+      def_sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
-def_sA <- def.sA(A) +
-          def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
+sA <- def_sA(A) +
+      def_sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
 
-eval_res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = 6, data = df_netKmax6,
+eval_res <- eval.summaries(sW = sW, sA = sA, Kmax = 6, data = df_netKmax6,
                             NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 
 res3 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
@@ -172,7 +172,7 @@ from 1 to 100.
 ```R
 f.A_.2 <- function(data, ...) rbinom(n = nrow(data), size = 1, prob = 0.2)
 res4 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
-                sW = def_sW, sA = def_sA, 
+                sW = sW, sA = def_sA, 
                 Anodes = "A", Ynode = "Y", 
                 f_gstar1 = f.A_.2, optPars = list(n_MCsims = 100))
 res4$EY_gstar1$estimates
@@ -183,7 +183,7 @@ statically sets everyone's exposure to `A=1` and the intervention `f_gstar2` sta
 
 ```R
 res5 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
-                sW = def_sW, sA = def_sA, Anodes = "A", Ynode = "Y",
+                sW = sW, sA = def_sA, Anodes = "A", Ynode = "Y",
                 f_gstar1 = 1, optPars = list(f_gstar2 = 0, n_MCsims = 1))
 res5$ATE$estimates
 ```

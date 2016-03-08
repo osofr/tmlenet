@@ -4,12 +4,13 @@
 \alias{tmlenet}
 \title{Estimate Average Network Effects For Arbitrary (Stochastic) Interventions}
 \usage{
-tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, Anodes, Ynode, f_gstar1,
-  Qform = NULL, hform.g0 = NULL, hform.gstar = NULL, NETIDmat = NULL,
-  IDnode = NULL, NETIDnode = NULL, verbose = getOption("tmlenet.verbose"),
+tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, intervene1.sA, f_gstar1 = NULL,
+  intervene2.sA = NULL, f_gstar2 = NULL, Ynode, Qform = NULL,
+  hform.g0 = NULL, hform.gstar = NULL, NETIDmat = NULL, IDnode = NULL,
+  NETIDnode = NULL, verbose = getOption("tmlenet.verbose"),
   optPars = list(bootstrap.var = FALSE, n.bootstrap = 100, alpha = 0.05,
   lbound = 0.005, family = "binomial", runTMLE = c("tmle.intercept",
-  "tmle.covariate"), YnodeDET = NULL, f_gstar2 = NULL, sep = " ", f_g0 = NULL,
+  "tmle.covariate"), YnodeDET = NULL, sep = " ", f_g0 = NULL,
   h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
 }
 \arguments{
@@ -27,15 +28,12 @@ network is specified by a vector of strings of friend IDs, each string using \co
 \item{Kmax}{Integer constant specifying the maximal number of friends for any observation in the input \code{data} data.frame.}
 
 \item{sW}{Summary measures constructed from baseline covariates alone. This must be an object of class
-\code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.}
+\code{DefineSummariesClass} that is returned by calling the function \code{\link{def_sW}}.}
 
 \item{sA}{Summary measures constructed from exposures \code{Anodes} and baseline covariates. This must be an object of class
-\code{DefineSummariesClass} that is returned by calling the function \code{\link{def.sW}}.}
+\code{DefineSummariesClass} that is returned by calling the function \code{\link{def_sW}}.}
 
-\item{Anodes}{Exposure (treatment) variable name (column name in \code{data}); exposures can be either binary, categorical or continuous.}
-
-\item{Ynode}{Outcome variable name (column name in \code{data}), assumed normalized between 0 and 1. This can instead be specified
-on the left-side of the regression formula in argument \code{Qform}.}
+\item{intervene1.sA}{}
 
 \item{f_gstar1}{Either a function or a vector of counterfactual exposures. If a function, must return
 a vector of counterfactual exposures evaluated based on the summary measures matrix (\code{sW,sA}) passed as a named
@@ -43,6 +41,16 @@ argument \code{"data"}, therefore, the function in \code{f_gstar1} must have a n
 The interventions defined by \code{f_gstar1} can be static, dynamic or stochastic. If \code{f_gstar1} is specified as a
 vector, it must be of length \code{nrow(data)} or 1 (constant treatment assigned to all observations).
 See Details below and Examples in "EQUIVALENT WAYS OF SPECIFYING INTERVENTION \code{f_gstar1}" for demonstration.}
+
+\item{intervene2.sA}{}
+
+\item{f_gstar2}{Either a function or a vector of counterfactual exposure assignments.
+Used for estimating contrasts (average treatment effect) for two interventions, if omitted, only the average
+counterfactual outcome under intervention \code{f_gstar1} is estimated. The requirements for \code{f_gstar2}
+are identical to those for \code{f_gstar1}.}
+
+\item{Ynode}{Outcome variable name (column name in \code{data}), assumed normalized between 0 and 1. This can instead be specified
+on the left-side of the regression formula in argument \code{Qform}.}
 
 \item{Qform}{Regression formula for outcome in \code{Ynode}, when omitted (\code{Ynode}=\code{NULL}), the outcome variable is
 regressed on all variables defined in \code{sW} and \code{sA}. See Details.}
@@ -70,9 +78,11 @@ an empty \code{""} string). See Details.}
 Turn this on by default using \code{options(tmlenet.verbose=TRUE)}.}
 
 \item{optPars}{A named list of additional optional parameters to be passed to \code{tmlenet}, such as
- \code{bootstrap.var}, \code{n.bootstrap}, \code{alpha}, \code{lbound}, \code{family}, \code{runTMLE}, \code{YnodeDET}, \code{f_gstar2}, \code{sep},
+ \code{bootstrap.var}, \code{n.bootstrap}, \code{alpha}, \code{lbound}, \code{family}, \code{runTMLE}, \code{YnodeDET}, \code{sep},
  \code{f_g0}, \code{h_g0_SummariesModel} and
  \code{h_gstar_SummariesModel}. See Details below for the description of each parameter.}
+
+\item{Anodes}{Exposure (treatment) variable name (column name in \code{data}); exposures can be either binary, categorical or continuous.}
 }
 \value{
 A named list with 3 items containing the estimation results for:
@@ -128,14 +138,14 @@ A special non-negative-integer-valued variable \code{nF} is automatically calcul
  each observation and it is always added as an additional column to the matrix of the baseline-covariates-based
  summary measures \code{sWmat}. The variable \code{nF} can be used in the same ways as any of the column names in
  the input data frame \code{data}. In particular, the name \code{nF} can be used inside the summary measure
- expressions (calls to functions \code{def.sW} and \code{def.sA}) and inside any of the regression formulas
+ expressions (calls to functions \code{def_sW} and \code{def_sA}) and inside any of the regression formulas
  (\code{Qform}, \code{hform.g0}, \code{hform.gstar}).
 
 The regression formalas in \code{Qform}, \code{hform.g0} and \code{hform.gstar} can include any summary measures names defined in
  \code{sW} and \code{sA}, referenced by their individual variable names or by their aggregate summary measure names.
  For example, \code{hform.g0 = "netA ~ netW"} is equivalent to
  \code{hform.g0 = "A + A_netF1 + A_netF2 ~ W + W_netF1 + W_netF2"} for \code{sW,sA} summary measures defined by
- \code{def.sW(netW=W[[0:2]])} and \code{def.sA(netA=A[[0:2]])}.
+ \code{def_sW(netW=W[[0:2]])} and \code{def_sA(netA=A[[0:2]])}.
 }
 
 \section{Additional parameters}{
@@ -166,11 +176,6 @@ estimate of the tmle variance;
 \item \code{YnodeDET} - Optional column name for indicators of deterministic values of outcome \code{Ynode},
    coded as (\code{TRUE}/\code{FALSE}) or
    (\code{1}/\code{0}); observations with \code{YnodeDET}=\code{TRUE}/\code{1} are assumed to have constant value for their \code{Ynode}.
-
-\item \code{f_gstar2} - Either a function or a vector of counterfactual exposure assignments.
-   Used for estimating contrasts (average treatment effect) for two interventions, if omitted, only the average
-   counterfactual outcome under intervention \code{f_gstar1} is estimated. The requirements for \code{f_gstar2}
-   are identical to those for \code{f_gstar1}.
 
 \item \code{sep} - A character separating friend indices for the same observation in \code{NETIDnode}.
 
@@ -384,24 +389,24 @@ f.A_.2 <- make_f.gstar(x = 0.2)
 #***************************************************************************************
 # DEFINING SUMMARY MEASURES:
 #***************************************************************************************
-def_sW <- def.sW(netW2 = W2[[1:Kmax]]) +
-          def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
+sW <- def_sW(netW2 = W2[[1:Kmax]]) +
+      def_sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
-def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
-          def.sA(netA = A[[0:Kmax]])
+sA <- def_sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE) +
+      def_sA(netA = A[[0:Kmax]])
 
 #***************************************************************************************
 # EVALUATING SUMMARY MEASURES BASED ON INPUT DATA:
 #***************************************************************************************
 # A helper function that can pre-evaluate the summary measures on (O)bserved data, 
 # given one of two ways of specifying the network:
-res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+res <- eval.summaries(sW = sW, sA = sA,  Kmax = 6, data = df_netKmax6,
                       NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 
 #***************************************************************************************
 # Specifying the clever covariate regressions hform.g0 and hform.gstar:
-# Left side can consist of any summary names defined by def.sA (as linear terms)
-# Right side can consist of any summary names defined by def.sW (as linear terms) & 'nF'
+# Left side can consist of any summary names defined by def_sA (as linear terms)
+# Right side can consist of any summary names defined by def_sW (as linear terms) & 'nF'
 #***************************************************************************************
 hform.g01 <- "netA ~ netW2 + sum.netW3 + nF"
 hform.gstar1 <- "netA ~ sum.netW3"
@@ -413,7 +418,7 @@ hform.g03 <- "sum.netAW2 ~ netW2 + sum.netW3"
 #***************************************************************************************
 # Specifying the outcome regression Qform:
 # Left side is ignored (with a warning if not equal to Ynode)
-# Right side can by any summary names defined by def.sW, def.sA & 'nF'
+# Right side can by any summary names defined by def_sW, def_sA & 'nF'
 #***************************************************************************************
 Qform1 <- "Y ~ sum.netW3 + sum.netAW2"
 Qform2 <- "Y ~ netA + netW + nF"
@@ -425,7 +430,7 @@ Qform3 <- "blah ~ netA + netW + nF"
 #***************************************************************************************
 # Note that Ynode is optional when Qform is specified;
 options(tmlenet.verbose = FALSE) # set to TRUE to print status messages
-res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = sW, sA = sA,
                     Anodes = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
@@ -455,7 +460,7 @@ res_K6_1b$EY_gstar1$CIs
 #***************************************************************************************
 # Same as above but for covariate-based TMLE.
 #***************************************************************************************
-res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K6_2 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = sW, sA = sA,
                     Anodes = "A", f_gstar1 = 0L,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
@@ -483,7 +488,7 @@ print(head(NetInd_mat))
 print(head(nF))
 print(all.equal(df_netKmax6[,"nFriends"], nF))
 
-res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K6_net1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = sW, sA = sA,
                         Anodes = "A", f_gstar1 = f.A_0,
                         Qform = "Y ~ sum.netW3 + sum.netAW2",
                         hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
@@ -499,23 +504,23 @@ all.equal(res_K6_net1$EY_gstar1$CIs, res_K6_1$EY_gstar1$CIs)
 # EQUIVALENT WAYS OF SPECIFYING INTERVENTIONS f_gstar1/f_gstar2.
 # LOWERING THE DIMENSIONALITY OF THE SUMMARY MEASURES.
 #***************************************************************************************
-def_sW <- def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
-def_sA <- def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
+sW <- def_sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
+sA <- def_sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
 
 # can define intervention by function f.A_0 that sets everyone's A to constant 0:
-res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = sW, sA = sA,
                     Anodes = "A", Ynode = "Y", f_gstar1 = f.A_0,
                     NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # equivalent way to define intervention f.A_0 is to just set f_gstar1 to 0:
-res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = sW, sA = sA,
                     Anodes = "A", Ynode = "Y", f_gstar1 = 0L,
                     NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
 
 # or set f_gstar1 to a vector of 0's of length nrow(data):
-res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K6_1 <- tmlenet(data = df_netKmax6, Kmax = Kmax, sW = sW, sA = sA,
                     Anodes = "A", Ynode = "Y", f_gstar1 = rep_len(0L, nrow(df_netKmax6)),
                     NETIDmat = NetInd_mat)
 res_K6_1$EY_gstar1$estimates
@@ -527,8 +532,8 @@ data(df_netKmax2)
 head(df_netKmax2)
 Kmax <- 2
 # Define the summary measures:
-def_sW <- def.sW(W1[[0:Kmax]])
-def_sA <- def.sA(A[[0:Kmax]])
+sW <- def_sW(W1[[0:Kmax]])
+sA <- def_sA(A[[0:Kmax]])
 # Define the network matrix:
 net_ind_obj <- simcausal::NetIndClass$new(nobs = nrow(df_netKmax2), Kmax = Kmax)
 NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax2[, "Net_str"],
@@ -541,7 +546,7 @@ NetInd_mat <- net_ind_obj$makeNetInd.fromIDs(Net_str = df_netKmax2[, "Net_str"],
 # Setting optPars$n_MCsims=100 means that A will be sampled 1000 times (
 # for a total sample size of nrow(data)*n_MCsims under f_gstar1)
 options(tmlenet.verbose = TRUE)
-res_K2_1 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K2_1 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = sW, sA = sA,
                     Anodes = "A", Ynode = "Y", f_gstar1 = f.A_.2,
                     NETIDmat = NetInd_mat, optPars = list(n_MCsims = 100))
 res_K2_1$EY_gstar1$estimates
@@ -552,7 +557,7 @@ res_K2_1$EY_gstar1$CIs
 # Estimating the average treatment effect (ATE) for two static interventions:
 # f_gstar1 sets everyone A=1 vs f_gstar2 sets everyone A=0;
 #***************************************************************************************
-res_K2_2 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = def_sW, sA = def_sA,
+res_K2_2 <- tmlenet(data = df_netKmax2, Kmax = Kmax, sW = sW, sA = sA,
                     Anodes = "A", Ynode = "Y",
                     f_gstar1 = 1,
                     NETIDmat = NetInd_mat,
@@ -579,7 +584,7 @@ res_K2_2$ATE$CIs
 }
 \seealso{
 \code{\link{tmlenet-package}} for the general overview of the package,
- \code{\link{def.sW}} for defining the summary measures, \code{\link{eval.summaries}} for
+ \code{\link{def_sW}} for defining the summary measures, \code{\link{eval.summaries}} for
  evaluation and validation of the summary measures,
  and \code{\link{df_netKmax2}}/\code{\link{df_netKmax6}}/\code{\link{NetInd_mat_Kmax6}}
  for examples of network datasets.

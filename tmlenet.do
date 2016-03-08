@@ -94,7 +94,7 @@
 
 -+..DefineSummariesClass 28: +0 "R/sVar_evaluator.R"  * 15/07/01 13:26
   Allow adding character vector summary measures for sVar2, s.a., 
-  def.sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
+  def_sW(W2[[1:Kmax]]) + "netW3_sum = rowSums(W3[[1:Kmax]]"
   Accept sA & sW as character vectors / lists passed to tmlenet (in addition to current set-up)
   When sW / sA are just lists of character vectors need to capture the calling env and call DefineSummariesClass constructor:
     # user.env <- parent.frame()

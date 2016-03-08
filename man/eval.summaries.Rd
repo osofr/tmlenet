@@ -4,9 +4,8 @@
 \alias{eval.summaries}
 \title{Evaluate Summary Measures sA and sW}
 \usage{
-eval.summaries(data, Kmax, sW, sA, sA.gstar, IDnode = NULL,
-  NETIDnode = NULL, sep = " ", NETIDmat = NULL,
-  verbose = getOption("tmlenet.verbose"))
+eval.summaries(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL,
+  sep = " ", NETIDmat = NULL, verbose = getOption("tmlenet.verbose"))
 }
 \arguments{
 \item{data}{Same as \code{\link{tmlenet}} input argument.}
@@ -42,7 +41,7 @@ A named list that contains:
 }
 \description{
 Take input data, create a network matrix (when input network matrix not provided) and evaluate the summary measures
- previously defined with functions \code{\link{def.sW}} and \code{\link{def.sA}}.
+ previously defined with functions \code{\link{def_sW}} and \code{\link{def_sA}}.
  This function is called internally by \code{tmlenet} for the evaluation of the summary measures.
  The R6 class object named \code{DatNet.ObsP0} that is returned by this function can be supplied as an input to the
  \code{tmlenet} function.
@@ -53,17 +52,17 @@ Take input data, create a network matrix (when input network matrix not provided
 #***************************************************************************************
 # Define some summary measures for sW
 #***************************************************************************************
-def_sW <- def.sW(W1, W2, W3) +
-          def.sW(netW1 = W1[[1:Kmax]]) +
-          def.sW(netW2 = W2[[1:Kmax]]) +
-          def.sW(mean.netW2 = mean(W2[[1:Kmax]]), replaceNAw0 = TRUE) +
-          def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
+sW <- def_sW(W1, W2, W3) +
+      def_sW(netW1 = W1[[1:Kmax]]) +
+      def_sW(netW2 = W2[[1:Kmax]]) +
+      def_sW(mean.netW2 = mean(W2[[1:Kmax]]), replaceNAw0 = TRUE) +
+      def_sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
 
 #***************************************************************************************
 # Define some summary measures for sA
 #***************************************************************************************
-def_sA <- def.sA(netA = A[[0:Kmax]]) +
-          def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE)
+sA <- def_sA(netA = A[[0:Kmax]]) +
+      def_sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE)
 
 #***************************************************************************************
 # Evaluate the summary measures applied to the  (O)bserved data (data.frame) and network
@@ -72,7 +71,7 @@ def_sA <- def.sA(netA = A[[0:Kmax]]) +
 data(df_netKmax6)
 # load the network ID matrix:
 data(NetInd_mat_Kmax6)
-res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+res <- eval.summaries(sW = sW, sA = sA,  Kmax = 6, data = df_netKmax6,
   NETIDmat = NetInd_mat_Kmax6, verbose = TRUE)
 
 #***************************************************************************************
@@ -108,6 +107,6 @@ res_K6$EY_gstar1$CIs
 
 }
 \seealso{
-\code{\link{tmlenet}} for estimation of network effects and \code{\link{def.sW}} for defining the summary measures.
+\code{\link{tmlenet}} for estimation of network effects and \code{\link{def_sW}} for defining the summary measures.
 }
 

@@ -79,8 +79,8 @@ test.shallowdeep.copy <- function() {
   Dset <- make_netDAG(Kmax, trunc.const, shift.const)
   #------------------------------------------------------------------------------------------------------------
   f.gstar <- create_f.gstar(shift = shift.const, trunc.const = trunc.const)
-  def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
-  def_sA <- def.sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
+  sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+  sA <- def_sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
   seed <- 12345
   datO <- sim(Dset, n = 100, rndseed = seed)
   mean(datO$Y.gstar) # [1] 0.2136
@@ -95,7 +95,7 @@ test.shallowdeep.copy <- function() {
   print_tmlenet_opts()
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
+  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
@@ -160,8 +160,8 @@ test.usefitted.h <- function() {
   Dset <- make_netDAG(Kmax, trunc.const, shift.const)
   #------------------------------------------------------------------------------------------------------------
   f.gstar <- create_f.gstar(shift = shift.const, trunc.const = trunc.const)
-  def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
-  def_sA <- def.sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
+  sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+  sA <- def_sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
 
   seed <- 12345
   datO <- sim(Dset, n = 100, rndseed = seed)
@@ -178,7 +178,7 @@ test.usefitted.h <- function() {
   print_tmlenet_opts()
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
+  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
@@ -224,7 +224,7 @@ test.usefitted.h <- function() {
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
   
-  res2a <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y",
+  res2a <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y",
                   f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
@@ -242,7 +242,7 @@ test.usefitted.h <- function() {
   #------------------------------------------------------------------------------------------------------------
   # NULL'ed some fields in h_g0_SummariesModel -> will be NULL in the shallow copy => has to fail:
   checkException(
-  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y",
+  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y",
                   f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
@@ -253,7 +253,7 @@ test.usefitted.h <- function() {
                     h_gstar_SummariesModel = h_gstar_SummariesModel)))
 
   # However, the deep copy should be allright and return results equivalent to results from the first tmlenet call:
-  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = def_sW, sA = def_sA, Anodes = "sA", Ynode = "Y",
+  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y",
                   f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,

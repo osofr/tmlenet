@@ -174,15 +174,15 @@ get.testDat <- function(nsamp = 100000) {
 get.testDatNet <- function(datO) {
   Kmax <- 1
   nodes <- list(Anode = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
-  def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
-  def_sA <- def.sA(sA = "sA")
+  sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+  sA <- def_sA(sA = "sA")
   netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
   # Define datNetObs:
   OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-  datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sW)
-  datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sA)
+  datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+  datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
   datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
-  return(list(datNetObs = datNetObs, netind_cl = netind_cl, def_sA = def_sA, def_sW = def_sW, nodes = nodes))
+  return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
 }
 
 test.RegressionClass <- function() {
@@ -422,12 +422,12 @@ test.detect.int.sA <- function() {
     netind_cl$NetInd <- NetInd_k
     netind_cl$make.nF()
     nodes <- list(Anode = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
-    def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
-    def_sA <- def.sA(sA = "sA")
+    sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+    sA <- def_sA(sA = "sA")
     # Define datNetObs:
     OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sW)
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = def_sA)
+    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(datNetObs)
   }
@@ -575,21 +575,21 @@ test.DefineSummariesClass <- function() {
   netind_cl$nF
 
   # **** Example TESTING Kmax substitute ****
-  defsVar.expr0 <- def.sW(sA.1 = A[[Kmax]])
+  defsVar.expr0 <- def_sW(sA.1 = A[[Kmax]])
   evaled.sVar.expr0 <- defsVar.expr0$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(all(as.vector(evaled.sVar.expr0[,"A_netF2"]) %in% c(rep(3,4),NA)))
 
-  defsVar.expr0 <- def.sW(A)
+  defsVar.expr0 <- def_sW(A)
   evaled.sVar.expr0 <- defsVar.expr0$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
 
-  defsVar.expr0 <- def.sW(A[[0:Kmax]])
+  defsVar.expr0 <- def_sW(A[[0:Kmax]])
   evaled.sVar.expr0 <- defsVar.expr0$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(is.matrix(evaled.sVar.expr0))
 
   # Example 1.
-  defsVar.expr1a <- def.sW(sA.1 = rowSums(A[[0:Kmax]]))
+  defsVar.expr1a <- def_sW(sA.1 = rowSums(A[[0:Kmax]]))
   evaled.sVar.expr1a <- defsVar.expr1a$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
-  defsVar.expr1b <- def.sW(sA.1 = sum(A[[0:Kmax]]))
+  defsVar.expr1b <- def_sW(sA.1 = sum(A[[0:Kmax]]))
   evaled.sVar.expr1b <- defsVar.expr1b$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(all.equal(evaled.sVar.expr1a, evaled.sVar.expr1b))
   # w/ NA for missing vars:
@@ -602,30 +602,30 @@ test.DefineSummariesClass <- function() {
   # ************************************************************************************************************************
   testexpr_call <- quote(rowSums(A[[0:Kmax]]))
   # testexpr_call <- quote(A[[0]])
-  defsVar.expr2 <- def.sW(sA.1 = eval(testexpr_call)) # this works
-  # defsVar.expr2 <- def.sW(W = testexpr_call) # doesn't work
+  defsVar.expr2 <- def_sW(sA.1 = eval(testexpr_call)) # this works
+  # defsVar.expr2 <- def_sW(W = testexpr_call) # doesn't work
   defsVar.expr2$exprs_list
   evaled.sVar.expr2 <- defsVar.expr2$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   res1 <- as.integer(c(5, 6, 7, 8, NA))
   checkTrue(all.equal(as.vector(evaled.sVar.expr2[,1]), res1))
 
-  defsVar.expr1 <- def.sW(sA.1 = sum(A[[0:Kmax]]))
+  defsVar.expr1 <- def_sW(sA.1 = sum(A[[0:Kmax]]))
   evaled.sVar.expr1 <- defsVar.expr1$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(all.equal(evaled.sVar.expr1, evaled.sVar.expr2))
   checkTrue(all(res1 %in% as.vector(evaled.sVar.expr1)))
 
   # Example 3. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression.
-  defsVar.expr1 <- def.sW(W = W[[0:Kmax]])
+  defsVar.expr1 <- def_sW(W = W[[0:Kmax]])
   evaled.sVar.expr1 <- defsVar.expr1$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
 
   # k is not a known constant (Kmax is), will parse this as having two parents: W and k => will throw exception
-  defsVar.expr1 <- def.sW(W[[0:k]])
+  defsVar.expr1 <- def_sW(W[[0:k]])
   checkException(evaled.sVar.expr1 <- defsVar.expr1$eval.nodeforms(data.df = dftest, netind_cl = netind_cl))
   # correct way to do above (k is defined in this environment):
-  defsVar.expr1a <- def.sW(netW = W[[0:k]], replaceNAw0=TRUE)
+  defsVar.expr1a <- def_sW(netW = W[[0:k]], replaceNAw0=TRUE)
   evaled.sVar.expr1a <- defsVar.expr1a$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   # this will parse as having only one parent (Kmax is a known constant) => no exception
-  defsVar.expr1b <- def.sW(W[[0:Kmax]], replaceNAw0=TRUE)
+  defsVar.expr1b <- def_sW(W[[0:Kmax]], replaceNAw0=TRUE)
   evaled.sVar.expr1b <- defsVar.expr1b$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(!any((evaled.sVar.expr1a-evaled.sVar.expr1b)!=0))
 
@@ -633,40 +633,40 @@ test.DefineSummariesClass <- function() {
   checkTrue(all(evaled.sVar.expr1[,1] == dftest$W))
 
   # Example 4a. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression that is a combination of different Vars in Odata.
-  defsVar.expr <- def.sA(sA.1 = W[[0:Kmax]] + sum(A[[1:Kmax]]), replaceNAw0 = TRUE)
+  defsVar.expr <- def_sA(sA.1 = W[[0:Kmax]] + sum(A[[1:Kmax]]), replaceNAw0 = TRUE)
   evaled.sVar.expr <- defsVar.expr$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   class(evaled.sVar.expr)
   colnames(evaled.sVar.expr)
 
-  testres1_cl <- def.sA(netW = W[[0:Kmax]], replaceNAw0 = TRUE)
+  testres1_cl <- def_sA(netW = W[[0:Kmax]], replaceNAw0 = TRUE)
   evaled.testres1 <- testres1_cl$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
-  testres2_cl <- def.sA(sA.1 = rowSums(A[[1:Kmax]]), replaceNAw0 = TRUE)
+  testres2_cl <- def_sA(sA.1 = rowSums(A[[1:Kmax]]), replaceNAw0 = TRUE)
   evaled.testres2 <- testres2_cl$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(all((evaled.testres1 + as.vector(evaled.testres2)) == evaled.sVar.expr))
 
   # Example 4b. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression that is a combination of different Vars in Odata.
-  defsVar.expr <- def.sW(W = "W[[0:Kmax]] + rowSums(A[[1:Kmax]])", replaceNAw0 = TRUE)
+  defsVar.expr <- def_sW(W = "W[[0:Kmax]] + rowSums(A[[1:Kmax]])", replaceNAw0 = TRUE)
   class(defsVar.expr$sVar.exprs[["W"]])
   defsVar.expr$sVar.exprs[["W"]]
   evaled.sVar.expr2 <- defsVar.expr$eval.nodeforms(data.df = dftest,  netind_cl = netind_cl)
   checkTrue(all(evaled.sVar.expr2[,c(1,2,3)]==evaled.sVar.expr))
 
   # Example 5. sum of prod of netA and netW:
-  defsVar.expr <- def.sA(sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)
+  defsVar.expr <- def_sA(sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)
   evaled.sVar.expr <- defsVar.expr$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(all(as.integer(as.vector(evaled.sVar.expr)) == c(30,30,30,30,6)))
 
   # Example 6. More than one summary measure
-  defsVar.expr <- def.sA(A = A, sumAnets = sum(A[[1:Kmax]]), sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)
+  defsVar.expr <- def_sA(A = A, sumAnets = sum(A[[1:Kmax]]), sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)
   evaled.sVar.expr <- defsVar.expr$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
 
   # Example 7. No names
-  defsVar.expr <- def.sA(A, sumAnets = sum(A[[1:Kmax]]), sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]))
+  defsVar.expr <- def_sA(A, sumAnets = sum(A[[1:Kmax]]), sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]))
   evaled.sVar.expr <- defsVar.expr$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
 
-  defsVar.expr <- def.sA(A[[0:Kmax]], sumAnets = sum(A[[1:Kmax]])) + def.sA(sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]))
+  defsVar.expr <- def_sA(A[[0:Kmax]], sumAnets = sum(A[[1:Kmax]])) + def_sA(sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]))
   evaled.sVar.expr <- defsVar.expr$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
 
-  defsVar.expr <- def.sA(A, sumAnets = sum(A[[1:Kmax]])) + def.sA(sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)
+  defsVar.expr <- def_sA(A, sumAnets = sum(A[[1:Kmax]])) + def_sA(sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)
   checkException(evaled.sVar.expr <- defsVar.expr$eval.nodeforms(data.df = dftest, netind_cl = netind_cl))
 }

@@ -45,14 +45,18 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   #---------------------------------------------------------------------------------
   # PARAMETERS FOR LOGISTIC ESTIMATION OF h
   #---------------------------------------------------------------------------------
-  O.datnetW <- DatNet.ObsP0$datnetW
-  O.datnetA <- DatNet.ObsP0$datnetA
+  Odata <- DatNet.ObsP0$Odata # R6 object of class "OdataDT" that contains observed data.table in $OdataDT
+  O.datnetW <- DatNet.ObsP0$datnetW # R6 object of class "DatNet" that points to observed data.table (but doesn't store anything)
+  O.datnetA <- DatNet.ObsP0$datnetA # R6 object of class "DatNet" that points to observed data.table (but doesn't store anything)
+
   lbound <- est_params_list$lbound
   max_npwt <- est_params_list$max_npwt # NOT IMPLEMENTED
   ng.MCsims <- est_params_list$ng.MCsims  # replace with p adaptive to k: p <- 100*(2^k)
 
   sW <- est_params_list$sW
   sA <- est_params_list$sA
+  new.sA <- est_params_list$new.sA # intervention summaries
+
   h.g0.sVars <- est_params_list$h.g0.sVars
   h.gstar.sVars <- est_params_list$h.gstar.sVars
 
@@ -159,7 +163,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   p_h0 <- ifelse(is.null(f.g0), 1, ng.MCsims)
   if (!is.null(f.g0)) {
     if (gvars$verbose) message("generating DatNet.g0 under known g0")
-    DatNet.g0 <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
+    DatNet.g0 <- DatNet.sWsA$new(Odata = Odata, datnetW = O.datnetW, datnetA = O.datnetA)
     DatNet.g0$make.dat.sWsA(p = p_h0, f.g_fun = f.g0, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
     if (gvars$verbose) {
       print("new DatNet.g0$dat.sWsA from known g0: "); print(head(DatNet.g0$dat.sWsA))
@@ -176,7 +180,6 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   regclass.g0$S3class <- "generic"
   # using S3 method dispatch on regclass.g0:
   summeas.g0 <- newsummarymodel(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
-  
 
   # summeas.g0 <- SummariesModel$new(reg = regclass.g0, DatNet.sWsA.g0 = DatNet.g0)
   if (!is.null(h_g0_SummariesModel)) {
@@ -233,8 +236,9 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # Define Intervals Under g_star Based on Union of Summary Measures under g_star and g0:
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0, datnet.gstar = DatNet.gstar)
 
-  DatNet.gstar <- DatNet.sWsA$new(datnetW = O.datnetW, datnetA = O.datnetA)
-  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
+  DatNet.gstar <- DatNet.sWsA$new(Odata = Odata, datnetW = O.datnetW, datnetA = O.datnetA)
+  # f.g_fun to be replaced with new.sA:
+  DatNet.gstar$make.dat.sWsA(p = ng.MCsims, f.g_fun = f.gstar, new.sA.object = new.sA, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
 
   if (gvars$verbose) {
     print("Generated new summary measures by sampling A from f_gstar (DatNet.gstar): ")
@@ -255,10 +259,10 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # These now need to be restored to the original Anodes and sA under g0:
 
   # 1) back-up Anodes and sA generated under f.g.star so that we don't have to re-generate them again & then restore old Anodes and sA (under g.0)
-  DatNet.gstar$datnetA$Odata$swapAnodes()
+  DatNet.gstar$Odata$swapAnodes()
 
  # 2) verify sA's were also restored and if not, regenerate them
-  if (!DatNet.ObsP0$datnetA$Odata$restored.sA.Vars)
+  if (!DatNet.ObsP0$datnetA$Odata$restored_sA_Vars)
     DatNet.ObsP0$datnetA$make.sVar(sVar.object = sA)
 
   h_gstar <- summeas.gstar$predictAeqa(newdata = DatNet.ObsP0)

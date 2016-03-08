@@ -12,13 +12,13 @@
 # ---------------------------------------------------------------------------------------------------------
 
 `%+%` <- function(a, b) paste0(a, b)
-run.net.1sim.tmlenet <- function(datO, NetInd_mat, def_sW, def_sA, Kmax, Qform, f.gstar, psi0) {
+run.net.1sim.tmlenet <- function(datO, NetInd_mat, sW, sA, Kmax, Qform, f.gstar, psi0) {
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
   res <- tmlenet(data = datO_input, Anodes = "sA", Ynode = "Y",
                   Kmax = Kmax,
                   NETIDmat = NetInd_mat,
                   f_gstar1 = f.gstar,
-                  sW = def_sW, sA = def_sA,
+                  sW = sW, sA = sA,
                   Qform = Qform,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
                   hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
@@ -134,8 +134,8 @@ test.onesim.net.tmlefit <- function() {
 
   f.gstar <- create_f.gstar(shift = shift.const, trunc.const = trunc.const)
   # DEFINE SUMMARY MEASURES:
-  def_sW <- def.sW(W1 = "W1", W2 = "W2", W3 = "W3")
-  def_sA <- def.sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
+  sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+  sA <- def_sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
 
   seed <- 12345
   datO <- sim(Dset, n = 10000, rndseed = seed)
@@ -160,7 +160,7 @@ test.onesim.net.tmlefit <- function() {
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   timerun <- system.time(
     estres <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
-                                    def_sW = def_sW, def_sA = def_sA, Kmax = Kmax,
+                                    sW = sW, sA = sA, Kmax = Kmax,
                                     Qform = Qform.mis, f.gstar = f.gstar, psi0 = 0)
   )
   timerun
@@ -191,7 +191,7 @@ test.onesim.net.tmlefit <- function() {
   print_tmlenet_opts()
   timerun <- system.time(
     estres_eqlen <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
-                                    def_sW = def_sW, def_sA = def_sA, Kmax = Kmax,
+                                    sW = sW, sA = sA, Kmax = Kmax,
                                     Qform = Qform.mis, f.gstar = f.gstar, psi0 = 0)
   )
   timerun
@@ -214,7 +214,7 @@ test.onesim.net.tmlefit <- function() {
   tmlenet_options(maxNperBin = 1000, bin.method="equal.mass")
   Qform.corr <- "Y ~ W1 + W2 + W3 + sA + net.mean.sA"
   estres2 <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
-                                  def_sW = def_sW, def_sA = def_sA, Kmax = Kmax,
+                                  sW = sW, sA = sA, Kmax = Kmax,
                                   Qform = Qform.corr, f.gstar = f.gstar, psi0 = 0)
   estres2
   #      tmle    h_iptw     gcomp
@@ -245,7 +245,7 @@ test.onesim.net.tmlefit <- function() {
   # # tmlenet_options(poolContinVar = TRUE, useglm = FALSE) # to pool by contin outcome:
   # print_tmlenet_opts()
   # estres_par <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
-  #                                   def_sW = def_sW, def_sA = def_sA, Kmax = Kmax,
+  #                                   sW = sW, sA = sA, Kmax = Kmax,
   #                                   Qform = Qform.mis, f.gstar = f.gstar, psi0 = 0)
   # # test 1:
   # checkTrue(abs(estres_par$est["tmle"] - 0.2159311) < 10^-6)

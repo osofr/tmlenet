@@ -486,28 +486,40 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 		},
 
     sampleA = function(newdata, ...) {
-      stop("not implemented")
-
+      # stop("not implemented")
       assert_that(!missing(newdata))
       assert_that(is.DatNet.sWsA(newdata))
       n <- newdata$nobs
-      
-      cumprodAeqa <- rep.int(1, n)
 
       # loop over all regressions in PsAsW.models, sample CONDITIONALLY on observations that haven't been put in a specific bin yet
-
+      sampleA_mat <- matrix(0L, nrow = n, ncol = length(private$PsAsW.models))
+      
       for (k_i in seq_along(private$PsAsW.models)) {
-        cumprodAeqa <- cumprodAeqa * private$PsAsW.models[[k_i]]$sampleA(newdata = newdata, ...)
+        sampleA_newcat <- private$PsAsW.models[[k_i]]$sampleA(newdata = newdata, ...)
+        if (k_i == 1L) sampleA_mat[, k_i] <- sampleA_newcat
+        # carry forward all previously sampled 1's (degenerate ones a bin a chosen for the first time)
+        if (k_i > 1) {
+          # if you succeeded at the previous bin, your 1L is carried through till the end:
+          sampleA_mat[(sampleA_mat[, k_i - 1] == 1L), k_i] <- 1L
+          # if you haven't succeeded at the previous bin, you get a chance to succeed at this category:
+          sampleA_mat[(sampleA_mat[, k_i - 1] == 0L), k_i] <- sampleA_newcat[(sampleA_mat[, k_i - 1] == 0L)]
+        }
       }
 
-      probAeqa_list <- foreach::foreach(k_i = seq_along(private$PsAsW.models)) %do% {
-        private$PsAsW.models[[k_i]]$sampleA(newdata = newdata, ...)
-      }
-      probAeqa_mat <- do.call('cbind', probAeqa_list)
-      cumprodAeqa <- matrixStats::rowProds(probAeqa_mat)
+      # browser()
+      # print(head(sampleA_mat))
+      # nF.PA <- rowSums(1L - sampleA_mat) + 1L
+      # # print(table(as.vector(sampleA_mat)))
 
-      return(cumprodAeqa)
-    }    
+      if (length(private$PsAsW.models) > 1) {
+        sampleA_mat[, length(private$PsAsW.models)] <- 1L # make last category a reference category
+        sampleA_cat <- rowSums(1L - sampleA_mat) + 1L
+      } else {
+        sampleA_cat <- as.vector(sampleA_mat)
+      }
+
+      return(sampleA_cat)
+    }
 	),
 
 	active = list(
@@ -852,8 +864,12 @@ CategorSummaryModel <- R6Class(classname = "CategorSummaryModel",
       return(cumprodAeqa)
     },
 
-    sampleA = function() {
-      stop("not implemented")
+    sampleA = function(newdata) {
+      # stop("not implemented")
+      assert_that(is.DatNet.sWsA(newdata))
+      # bring the sampled variable back to its original scale / levels:
+      sampleA <- self$levels[super$sampleA(newdata = newdata)]
+      return(sampleA)
     }
   ),
   active = list(

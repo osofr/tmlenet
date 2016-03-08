@@ -529,7 +529,14 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     sampleA = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a`s)
       assert_that(self$is.fitted)
       assert_that(!missing(newdata))
-      self$bindat$newdata(newdata = newdata, getoutvar = TRUE) # populate bindat with new design matrix covars X_mat
+      
+      # browser()
+      # Don't want to subset by the outvar, since binarized mat for cat outcome is not re-created when just sampling
+      # But need to reset it back when done
+      temp_subset_expr <- self$bindat$subset_expr
+      self$bindat$subset_expr <- self$bindat$subset_expr[!self$bindat$subset_expr %in% self$bindat$outvar]
+      self$bindat$newdata(newdata = newdata, getoutvar = FALSE) # populate bindat with new design matrix covars X_mat
+
       assert_that(is.logical(self$getsubset))
       n <- newdata$nobs
       # obtain predictions (likelihood) for response on fitted data (from long pooled regression):
@@ -541,7 +548,6 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
         probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
         sampleA <- rep.int(0L, n)
         sampleA[self$getsubset] <- rbinom(n = n, size = 1, prob = probA1)
-
 
       #   indA <- newdata$get.outvar(self$getsubset, self$getoutvarnm) # Always a vector of 0/1
       #   assert_that(is.integerish(indA)) # check that obsdat.sA is always a vector of of integers
@@ -564,6 +570,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       # **********************************************************************
       # to save RAM space when doing many stacked regressions wipe out all internal data:
       self$wipe.alldat
+      self$bindat$subset_expr <- temp_subset_expr
       # private$probAeqa <- probAeqa # NOTE disabling internal saving of probAeqa
       # **********************************************************************
       return(sampleA)

@@ -133,7 +133,7 @@ baseline covariates and exposures of \texttt{i}'s friends (all \texttt{W.j},\tex
 
 
 The summary measures (\texttt{sW.i},\texttt{sA.i}) are defined simultaneously for all \texttt{i} with functions 
-\texttt{{def.sW}} and \texttt{{def.sA}}.
+\texttt{{def_sW}} and \texttt{{def_sA}}.
 It is assumed that (\texttt{sW.i},\texttt{sA.i}) have the same dimensionality across \texttt{i}. The function \texttt{{eval.summaries}} 
 can be used for evaluating these summary measures. All estimation is performed by calling the \texttt{{tmlenet}} function. 
 The vector of friends \texttt{F.i} can be specified either as a single column \texttt{NETIDnode} in the input data (where each \texttt{F.i} is a string
@@ -181,16 +181,16 @@ Note that by making additional untestable assumptions, one can interpret $\psi_{
  The following routines will be generally invoked, in the same order as presented below.
  
  \begin{description}
- \item [\emph{{def.sW}}] This is the first part of the two part specification 
+ \item [\emph{{def_sW}}] This is the first part of the two part specification 
   of the structural equation model for the outcome \texttt{Y}.
   Defines the (multivariate) baseline-covariate-based summary measure functions
   that will be later applied to the input data to derive the (multivariate) summary measures \texttt{sW}.
   Each component \texttt{sW[j]} of \texttt{sW} is defined by an R expression that takes as its input
   unit's baseline covariates and the baseline covariates of unit's friends.
-  Each argument passed to \texttt{def.sW} is considered a separate summary measure, with the \texttt{j}th argument
+  Each argument passed to \texttt{def_sW} is considered a separate summary measure, with the \texttt{j}th argument
   defining the \texttt{j}the summary measure \texttt{sW[j]} and the name of the \texttt{j}th argument defining the name
   of the summary measure \texttt{sW[j]}.
-  The arguments of \texttt{def.sW} can be either named, unnamed or a mixture of both. When the argument \texttt{j} is unnamed, 
+  The arguments of \texttt{def_sW} can be either named, unnamed or a mixture of both. When the argument \texttt{j} is unnamed, 
   the summary measure name for \texttt{sW[j]} is created automatically.
   Each summary measure is defined either by an evaluable R expressions or by a string containing an evaluable R
   expression.
@@ -203,7 +203,7 @@ Note that by making additional untestable assumptions, one can interpret $\psi_{
   determined by the ordering of friend IDs specified in the network input. 
   In cases when the unit doesn't have any friends, its corresponding value of \texttt{Var[[1]]} will evaluate
   to \texttt{NA} by default. However, all such \texttt{NA}'s can be replaced by 0's by passing \texttt{replaceNAw0 = TRUE}
-  as an additional argument to \texttt{def.sW}.
+  as an additional argument to \texttt{def_sW}.
   One can also use vectors for indexing friend variable \texttt{Var} values in \texttt{Var[[index]]}.
   For example, \texttt{Var[[1:Kmax]]} will evaluate to a \texttt{Kmax}-dimensional summary measure, which will be a matrix
   with \texttt{nrow(data)} rows and \texttt{Kmax} columns,
@@ -211,17 +211,17 @@ Note that by making additional untestable assumptions, one can interpret $\psi_{
   up to the last column evaluating to \texttt{Var[[Kmax]]}.
   Note that \texttt{Kmax} is a special reserved constant that can be used inside the network indexing operators.
   It is set to the highest number of friends among all units in the input \texttt{data} and it is specified by
-  the user input argument \texttt{Kmax}. See \texttt{def.sW} manual for various examples of 
+  the user input argument \texttt{Kmax}. See \texttt{def_sW} manual for various examples of 
   summary measures that use the network indexing operators.
-\item [\emph{{def.sA}}] Defines treatment summary measures \texttt{sA} that
+\item [\emph{{def_sA}}] Defines treatment summary measures \texttt{sA} that
   can be functions of each unit's exposure and baseline covariates, 
   as well the exposures and baseline covariates of unit's friends. 
   This is the second part of the two part specification of the structural equation model for the outcome \texttt{Y}. 
-  The syntax is identical to \texttt{def.sW} function, except that \texttt{def.sA} can consists of functions of baseline covariates
+  The syntax is identical to \texttt{def_sW} function, except that \texttt{def_sA} can consists of functions of baseline covariates
   as well as the exposure \texttt{Anodes}.
 \item [\emph{{eval.summaries}}] A convenience function that can be used for 
   validating and evaluating the user-specified summary measures. 
-  Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \texttt{def.sW} and \texttt{def.sA}.
+  Takes the input dataset and evaluates the summary measures based on objects previously defined with function calls \texttt{def_sW} and \texttt{def_sA}.
   Note that this function is called automatically by the \texttt{tmlenet} function and does not need to be called by the user prior to calling \texttt{tmlenet}.
 \item [\emph{{tmlenet}}] Performs estimation of the causal effect of interest 
   using the observed input \texttt{data}, 
@@ -235,7 +235,7 @@ The input data are assumed to consist of rows of unit-specific observations, wit
 
 Each exposure `A.i` depends on (possibly multivariate) baseline summary measure(s) `sW.i`, where `sW.i` can be any user-specified function of `i`'s baseline covariates `W.i` and the baseline covariates of `i`'s friends in `F.i` (all `W.j` such that `j` is in `F.i`). Similarly, each outcome `Y.i` depends on `sW.i` and (possibly multivariate) summary measure(s) `sA.i`, where `sA.i` can be any user-specified function of `i`'s baseline covariates and exposure (`W.i`,`A.i`) and the baseline covariates and exposures of `i`'s friends (all `W.j`,`A.j` such that `j` is in `i`'s friend set `F.i`). 
 
-The summary measures (`sW.i`,`sA.i`) are defined simultaneously for all `i` with functions `def.sW` and `def.sA`. It is assumed that (`sW.i`,`sA.i`) have the same dimensionality across `i`. The function `eval.summaries` can be used for evaluating these summary measures.
+The summary measures (`sW.i`,`sA.i`) are defined simultaneously for all `i` with functions `def_sW` and `def_sA`. It is assumed that (`sW.i`,`sA.i`) have the same dimensionality across `i`. The function `eval.summaries` can be used for evaluating these summary measures.
 
 All estimation is performed by calling the `tmlenet` function. The vector of friends `F.i` can be specified either as a single column in the input data (where each `F.i` is a string of friend IDs or friend row numbers delimited by character `sep`) or as a separate input matrix of network IDs (where each row is a vector of friend IDs or friend row numbers). Specifying the network as a matrix generally results in significant improvements to run time. See `tmlenet` function help file for additional details on how to specify these and the rest of the input arguments.
 
@@ -407,7 +407,7 @@ head(NetInd_mat_Kmax6,2)
 ## Estimation
 
 The estimation algorithm assumes that the outcomes in `Y.i` for units `i=1,...,N` are conditionally independent,
-given the summary measures defined in `def_sW` and the summary measures defined in `def_sA`.
+given the summary measures defined in `sW` and the summary measures defined in `sA`.
 
 When no additional assumptions about the conditional independence of outcomes `Y.i` can be made 
 (beyond the dependence on the network structure),
@@ -422,17 +422,17 @@ unit as well as `Var` values of all friends of each unit:
 
 ```{r, message=FALSE}
 Kmax <- ncol(NetInd_mat_Kmax6)
-def_sW <- def.sW(netW1 = W1[[0:Kmax]], netW2 = W2[[0:Kmax]], netW3 = W3[[0:Kmax]])
-def_sA <- def.sA(netA = A[[0:Kmax]])
+sW <- def_sW(netW1 = W1[[0:Kmax]], netW2 = W2[[0:Kmax]], netW3 = W3[[0:Kmax]])
+sA <- def_sA(netA = A[[0:Kmax]])
 ```
 
 Note that the summary measure `nF` (number of friends for each unit) is always added automatically to 
-`def.sW` function calls (only once), but not to `def.sA`.
+`def_sW` function calls (only once), but not to `def_sA`.
 
 A helper function that can pre-evaluate the above summary measures based on the input data:
 
 ```{r, message=FALSE}
-eval_res <- eval.summaries(sW = def_sW, sA = def_sA,  Kmax = 6, data = df_netKmax6,
+eval_res <- eval.summaries(sW = sW, sA = sA,  Kmax = 6, data = df_netKmax6,
                           NETIDmat = NetInd_mat_Kmax6)
 ```
 
@@ -458,7 +458,7 @@ In the example below, we estimate mean population outcome under deterministic in
 
 ```{r, message=FALSE}
 res1 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax, 
-                sW = def_sW, sA = def_sA,
+                sW = sW, sA = sA,
                 Anodes = "A", Ynode = "Y",
                 f_gstar1 = 0L, optPars = list(n_MCsims = 1))
 res1$EY_gstar1$estimates
@@ -504,13 +504,13 @@ of `i`'s friends' interactions `(1-A)*(W2)` (while we assume `Y.i` still depends
 `i`'s exposure):
 
 ```{r, message=FALSE}
-def_sW <- def.sW(W = c(W1,W2,W3)) +
-          def.sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
+sW <- def_sW(W = c(W1,W2,W3)) +
+          def_sW(sum.netW3 = sum(W3[[1:Kmax]]), replaceNAw0=TRUE)
 
-def_sA <- def.sA(A) +
-          def.sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
+sA <- def_sA(A) +
+          def_sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0=TRUE)
 
-eval_res <- eval.summaries(sW = def_sW, sA = def_sA, Kmax = 6, data = df_netKmax6,
+eval_res <- eval.summaries(sW = sW, sA = sA, Kmax = 6, data = df_netKmax6,
                             NETIDmat = NetInd_mat_Kmax6, verbose = FALSE)
 
 res3 <- tmlenet(DatNet.ObsP0 = eval_res$DatNet.ObsP0,
@@ -530,7 +530,7 @@ from 1 to 100.
 ```{r, message=FALSE}
 f.A_.2 <- function(data, ...) rbinom(n = nrow(data), size = 1, prob = 0.2)
 res4 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
-                sW = def_sW, sA = def_sA, 
+                sW = sW, sA = sA, 
                 Anodes = "A", Ynode = "Y", 
                 f_gstar1 = f.A_.2, optPars = list(n_MCsims = 100))
 res4$EY_gstar1$estimates
@@ -541,7 +541,7 @@ statically sets everyone's exposure to `A=1` and the intervention `f_gstar2` sta
 
 ```{r, message=FALSE}
 res5 <- tmlenet(data = df_netKmax6, NETIDmat = NetInd_mat_Kmax6, Kmax = Kmax,
-                sW = def_sW, sA = def_sA, Anodes = "A", Ynode = "Y",
+                sW = sW, sA = sA, Anodes = "A", Ynode = "Y",
                 f_gstar1 = 1, optPars = list(f_gstar2 = 0, n_MCsims = 1))
 res5$ATE$estimates
 ```
@@ -687,17 +687,17 @@ create_f.gstar <- function(shift, trunc) {
 }
 ```
 
-Next, we define the (network) summary measures $W^s$ and $A^s$ for the `tmlenet` function input using a syntax that is identical to the syntax described in the `simcausal` package vignette "Simulations with Networks-Based Dependent-Data Structural Equation Models" [@R-simcausal]. The function `def.sW` is used to specify the baseline-only summary measures $W^s:=w_i(\mathbf{W})$ and the function `def.sA` is used to specify the exposure and baseline summary measures $A^s:=a_i(\mathbf{A},\mathbf{W})$. This summary measures form the basis of the `exposure model`, i.e., $P(A^s|W^s)$, where the latter probability model is defined under the true exposure mechanism $\mathbf{g}_0(\mathbf{A}|\mathbf{W})$ and the user-specified stochastic intervention $\mathbf{g}^*(\mathbf{A}^*|\mathbf{W})$, where the stochastic intervention of interest is defined with the argument `f_gstar1` of the `tmlenet` function.
+Next, we define the (network) summary measures $W^s$ and $A^s$ for the `tmlenet` function input using a syntax that is identical to the syntax described in the `simcausal` package vignette "Simulations with Networks-Based Dependent-Data Structural Equation Models" [@R-simcausal]. The function `def_sW` is used to specify the baseline-only summary measures $W^s:=w_i(\mathbf{W})$ and the function `def_sA` is used to specify the exposure and baseline summary measures $A^s:=a_i(\mathbf{A},\mathbf{W})$. This summary measures form the basis of the `exposure model`, i.e., $P(A^s|W^s)$, where the latter probability model is defined under the true exposure mechanism $\mathbf{g}_0(\mathbf{A}|\mathbf{W})$ and the user-specified stochastic intervention $\mathbf{g}^*(\mathbf{A}^*|\mathbf{W})$, where the stochastic intervention of interest is defined with the argument `f_gstar1` of the `tmlenet` function.
 
 
 ```{r, results='hide', message=FALSE}
-def_sA <- def.sA(sA,
-                net.mean.sA = ifelse(nF > 0, rowSums(sA[[1:Kmax]])/nF, 0),
-                replaceNAw0 = TRUE)
+sA <- def_sA(sA,
+        net.mean.sA = ifelse(nF > 0, rowSums(sA[[1:Kmax]])/nF, 0),
+        replaceNAw0 = TRUE)
 
-def_sW <- def.sW(W1, W2, W3) +
-          def.sW(net.mean.W1 = ifelse(nF > 0, rowSums(W1[[1:Kmax]])/nF, 0),
-                replaceNAw0 = TRUE)
+sW <- def_sW(W1, W2, W3) +
+      def_sW(net.mean.W1 = ifelse(nF > 0, rowSums(W1[[1:Kmax]])/nF, 0),
+             replaceNAw0 = TRUE)
 ```
 
 
@@ -708,7 +708,7 @@ Kmax <- 10
 trunc.const <- 4
 shift.const <- 1
 
-res <- eval.summaries(sW = def_sW, sA = def_sA, 
+res <- eval.summaries(sW = sW, sA = sA, 
                       Kmax = Kmax, data = datO,
                       NETIDmat = NetInd_mat, verbose = FALSE)
 names(res)
@@ -726,7 +726,7 @@ res1 <- tmlenet(data = datO, Anodes = "sA", Ynode = "Y",
                 Kmax = Kmax,
                 NETIDmat = NetInd_mat,
                 f_gstar1 = f.gstar,
-                sW = def_sW, sA = def_sA,
+                sW = sW, sA = sA,
                 optPars = list(n_MCsims = 1))
 
 ```
@@ -788,7 +788,7 @@ hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3 + net.mean.W1"
 
 ```{r, message=FALSE}
 res2 <- tmlenet(data = datO, Kmax = Kmax, NETIDmat = NetInd_mat,
-                sW = def_sW, sA = def_sA,
+                sW = sW, sA = sA,
                 Anodes = "sA", Ynode = "Y",
                 f_gstar1 = f.gstar,
                 Qform = Qform.corr, hform.g0 = hform.g0, hform.gstar = hform.gstar,
@@ -802,7 +802,7 @@ We now run the TMLE estimation for networks by calling the `tmlenet` function an
 
 ```{r, message=FALSE}
 res3 <- tmlenet(data = datO, Kmax = Kmax, NETIDmat = NetInd_mat, 
-                sW = def_sW, sA = def_sA, 
+                sW = sW, sA = sA, 
                 Anodes = "sA", Ynode = "Y",
                 f_gstar1 = f.gstar,
                 Qform = Qform.mis, hform.g0 = hform.g0, hform.gstar = hform.gstar,

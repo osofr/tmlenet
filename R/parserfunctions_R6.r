@@ -248,8 +248,9 @@ nodeform_parsers = function(node_form_call, data.env, user.env)  {
           # as.call(lapply(x[[2]], modify_call, where = where))  # continue parsing recursively, turning result back into call          
         
         # OS 09/22/15: Adding new global option that prevents any modifications of node formulas, with a warning
+        # OS 03/08/16: Removing the warning and just silently accepting the function
         } else if (opts$NoChangeFunCalls) {
-          message("Warning: function '" %+% deparse(x[[1]]) %+% "' will be called as is, even though it is not on the recognized vectorized functions list; use at your own risk!")
+          # message("Warning: function '" %+% deparse(x[[1]]) %+% "' will be called as is, even though it is not on the recognized vectorized functions list; use at your own risk!")
           as.call(lapply(x, modify_call, where = where))
 
         } else {
@@ -420,238 +421,173 @@ eval.nodeform.out <- function(expr.idx, self, data.df) {
   }
 }
 
-## ---------------------------------------------------------------------
-#' R6 class for parsing and evaluating node R expressions.
-#'
-#' This \pkg{R6} class will parse and evaluate (in the environment of the input data) the node formulas defined by function
-#'  \code{\link[simcausal]{node}}.
-#'  The node formula expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
-#'
-#' @docType class
-#' @format An \code{\link{R6Class}} generator object
-#' @keywords R6 class
-#' @details
-#' \itemize{
-#' \item{\code{exprs_list}} - Deparsed list of node formula expressions (as strings).
-#' \item{\code{user.env}} - Captured user-environment from calls to \code{node} that will be used as enclosing environment during evaluation.
-#' \item{\code{cur.node}} - Current evaluation node (set by \code{self$eval.nodeforms()})
-#' \item{\code{asis.flags}} - List of flags, \code{TRUE} for "as is" node expression evaluation
-#' \item{\code{ReplMisVal0}} - A logical vector that captures args \code{replaceNAw0=TRUE/FALSE} in \code{node} function call.
-#'  If \code{TRUE} for a particular node formula in \code{exprs_list} then all missing network \code{VarNode} 
-#'  values (when \code{nF[i] < Kmax}) will get replaced with with corresponding value in code{sVar.misXreplace} (default is 0).
-#' \item{\code{sVar.misXreplace}} - Replacement values for missing sVar, vector of \code{length(exprs_list)}.
-#' \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
-#' \item{\code{Kmax}} - Maximum number of friends for any observation.
-#' \item{\code{Nsamp}} - Sample size (nrows) of the simulation dataset.
-#' \item{\code{node_fun}} - List that contains special subsetting functions \code{'['} and \code{'[['}, where \code{'['} 
-#'  is used for subsetting time-varyng nodes and \code{'[['} is used for subsetting network covariate values.
-#' }
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(netind_cl}}{Instantiates new object of class \code{Define_sVar}. 
-#'    \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
-#'   \item{\code{set.new.exprs(exprs_list)}}{Sets the internal node formula expressions to the list provided in \code{exprs_list}.}
-#'   \item{\code{eval.nodeforms(cur.node, data.df)}}{Evaluate the expressions one by one, returning a list with evaluated expressions. 
-#'    \code{cur.node} is the current node object defined with function \code{node} and \code{data.df} is the input data.frame.}
-#'   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special variable 
-#'   (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
-#' }
-#' @importFrom assertthat assert_that
-#' @export
-Define_sVar <- R6Class("Define_sVar",
-  class = TRUE,
-  portable = TRUE,
-  public = list(
-    exprs_list = list(),          # expressions converted to strings in a list where attribute "names" is set to the user-supplied vector of expression argument names
-    user.env = NULL,              # user environment to be used as enclos arg to eval(sVar)
-    cur.node = list(),            # current evaluation node (set by self$eval.nodeforms())
-    asis.flags = list(),          # list of flags, TRUE for "as is" node expression evaluation
-    ReplMisVal0 = FALSE,          # vector of indicators, for each TRUE sVar.expr[[idx]] will replace all NAs with gvars$misXreplace (0)
-    sVar.misXreplace = NULL,      # replacement values for missing sVar, vector of length(exprs_list)
-    netind_cl = NULL,
-    Kmax = NULL,
-    Nsamp = NULL,				          # sample size (nrows) of the simulation dataset
 
-    node_fun = list(
-      vecapply = function(X, idx, func) { # custom wrapper for apply that turns a vector X into one column matrix
-        if (is.vector(X)) dim(X) <- c(length(X), 1) # returns TRUE only if the object is a vector with no attributes apart from names
-        # if (is.atomic(x) || is.list(x)) dim(X) <- c(length(X), 1) # alternative way to test for vectors
-          x <- parse(text = deparse(func))[[1]]
-          nargs <- length(x[[2]])
-          if (nargs>1) {
-            funline <- deparse(func)[1]
-            stop(funline%+%
-            ". Node formulas cannot call non-vectorized functions with more than one named argument. If this is a vectorized function, pass its name to set.DAG(, vecfun=).")
-          }
-        apply(X, idx, func)
-      },
+# ## ---------------------------------------------------------------------
+# #' R6 class for parsing and evaluating node R expressions.
+# #'
+# #' This \pkg{R6} class will parse and evaluate (in the environment of the input data) the node formulas defined by function
+# #'  \code{\link[simcausal]{node}}.
+# #'  The node formula expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
+# #'
+# #' @docType class
+# #' @format An \code{\link{R6Class}} generator object
+# #' @keywords R6 class
+# #' @details
+# #' \itemize{
+# #' \item{\code{exprs_list}} - Deparsed list of node formula expressions (as strings).
+# #' \item{\code{user.env}} - Captured user-environment from calls to \code{node} that will be used as enclosing environment during evaluation.
+# #' \item{\code{cur.node}} - Current evaluation node (set by \code{self$eval.nodeforms()})
+# #' \item{\code{asis.flags}} - List of flags, \code{TRUE} for "as is" node expression evaluation
+# #' \item{\code{ReplMisVal0}} - A logical vector that captures args \code{replaceNAw0=TRUE/FALSE} in \code{node} function call.
+# #'  If \code{TRUE} for a particular node formula in \code{exprs_list} then all missing network \code{VarNode} 
+# #'  values (when \code{nF[i] < Kmax}) will get replaced with with corresponding value in code{sVar.misXreplace} (default is 0).
+# #' \item{\code{sVar.misXreplace}} - Replacement values for missing sVar, vector of \code{length(exprs_list)}.
+# #' \item{\code{netind_cl}} - Pointer to a network instance of class \code{simcausal::NetIndClass}.
+# #' \item{\code{Kmax}} - Maximum number of friends for any observation.
+# #' \item{\code{Nsamp}} - Sample size (nrows) of the simulation dataset.
+# #' \item{\code{node_fun}} - List that contains special subsetting functions \code{'['} and \code{'[['}, where \code{'['} 
+# #'  is used for subsetting time-varyng nodes and \code{'[['} is used for subsetting network covariate values.
+# #' }
+# #' @section Methods:
+# #' \describe{
+# #'   \item{\code{new(netind_cl}}{Instantiates new object of class \code{Define_sVar}. 
+# #'    \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
+# #'   \item{\code{set.new.exprs(exprs_list)}}{Sets the internal node formula expressions to the list provided in \code{exprs_list}.}
+# #'   \item{\code{eval.nodeforms(cur.node, data.df)}}{Evaluate the expressions one by one, returning a list with evaluated expressions. 
+# #'    \code{cur.node} is the current node object defined with function \code{node} and \code{data.df} is the input data.frame.}
+# #'   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special variable 
+# #'   (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
+# #' }
+# #' @importFrom assertthat assert_that
+# #' @export
+# Define_sVar <- R6Class("Define_sVar",
+#   class = TRUE,
+#   portable = TRUE,
+#   public = list(
 
-      cbind_mod = function(...) { # cbind wrapper for c(,) calls in node formulas, turns one row matrix into repeat Nsamp row matrix
-        env <- parent.frame()
-        cbind_res <- do.call("cbind", eval(substitute(alist(...)), envir = env) , envir = env)
-        if (nrow(cbind_res)==1) {
-          # Nsamp <- get("Nsamp", envir = env)
-          Nsamp <- env$self$Nsamp
-          dprint("env$self$Nsamp:"); dprint(env$self$Nsamp)
-          assert_that(!is.null(Nsamp))
+#     node_fun = list(
+#       vecapply = function(X, idx, func) { # custom wrapper for apply that turns a vector X into one column matrix
+#         if (is.vector(X)) dim(X) <- c(length(X), 1) # returns TRUE only if the object is a vector with no attributes apart from names
+#         # if (is.atomic(x) || is.list(x)) dim(X) <- c(length(X), 1) # alternative way to test for vectors
+#           x <- parse(text = deparse(func))[[1]]
+#           nargs <- length(x[[2]])
+#           if (nargs>1) {
+#             funline <- deparse(func)[1]
+#             stop(funline%+%
+#             ". Node formulas cannot call non-vectorized functions with more than one named argument. If this is a vectorized function, pass its name to set.DAG(, vecfun=).")
+#           }
+#         apply(X, idx, func)
+#       },
 
-          cbind_res <- matrix(cbind_res, nrow = Nsamp, ncol = ncol(cbind_res), byrow = TRUE)
-        }
-        dprint("cbind_res"); dprint(cbind_res)
-        cbind_res
-      },
+#       cbind_mod = function(...) { # cbind wrapper for c(,) calls in node formulas, turns one row matrix into repeat Nsamp row matrix
+#         env <- parent.frame()
+#         cbind_res <- do.call("cbind", eval(substitute(alist(...)), envir = env) , envir = env)
+#         if (nrow(cbind_res)==1) {
+#           # Nsamp <- get("Nsamp", envir = env)
+#           Nsamp <- env$self$Nsamp
+#           dprint("env$self$Nsamp:"); dprint(env$self$Nsamp)
+#           assert_that(!is.null(Nsamp))
 
-      # custom function for vector look up '['
-      # function takes the name of the TD var and index vector => creates a vector of time-varying column names in df
-      # returns matrix TD_var[indx]
-      # ***NOTE: current '[' cannot evalute subsetting that is based on values of other covariates such as A1C[ifelse(BMI<5, 1, 2)]
-      `[` = function(var, indx, ...) {
-        env <- parent.frame()
-        t <- env$t # t <- get("t", envir = env)
-        var <- substitute(var)
-        var.chr <- as.character(var)
+#           cbind_res <- matrix(cbind_res, nrow = Nsamp, ncol = ncol(cbind_res), byrow = TRUE)
+#         }
+#         dprint("cbind_res"); dprint(cbind_res)
+#         cbind_res
+#       },
 
-        if (missing(indx)) stop("missing tindex when using Var[tindex] inside the node formula")
-        if (identical(class(indx),"logical")) indx <- which(indx)
-        if (is.null(t)) stop("references, s.a. Var[t] are not allowed when t is undefined")
-        if (max(indx)>t) stop(paste0(var, "[", max(indx),"] cannot be referenced in node formulas at t = ", t))  # check indx<= t
+#       # custom function for vector look up '['
+#       # function takes the name of the TD var and index vector => creates a vector of time-varying column names in df
+#       # returns matrix TD_var[indx]
+#       # ***NOTE: current '[' cannot evalute subsetting that is based on values of other covariates such as A1C[ifelse(BMI<5, 1, 2)]
+#       `[` = function(var, indx, ...) {
+#         env <- parent.frame()
+#         t <- env$t # t <- get("t", envir = env)
+#         var <- substitute(var)
+#         var.chr <- as.character(var)
 
-        # ******* NOTE *******
-        # Don't like the current implementation that defines TDvars as characters and then returns a matrix by cbinding 
-        # the existing columins in existing data.frame. This is possibly wasteful. Could we instead subset the existing data.frame?
-        TDvars <- var.chr%+%"_"%+%indx
-        # Checking the variables paste0(var, "_", indx) exist in simulated data.frame environment:
-        dprint("ANCHOR_ALLVARNMS_VECTOR_0:"); dprint(env[["ANCHOR_ALLVARNMS_VECTOR_0"]])
+#         if (missing(indx)) stop("missing tindex when using Var[tindex] inside the node formula")
+#         if (identical(class(indx),"logical")) indx <- which(indx)
+#         if (is.null(t)) stop("references, s.a. Var[t] are not allowed when t is undefined")
+#         if (max(indx)>t) stop(paste0(var, "[", max(indx),"] cannot be referenced in node formulas at t = ", t))  # check indx<= t
 
-        # TO DO: **** 
-        # EXTEND TO CHECKING FOR TDvar IN ENCLOSING ENVIRONMENT (user.env) AS WELL IF TDvar_t doesn't exist in the data
-        # IF TDvar exists check that its a vector of appropriate length, index it accordinly (using which(t%in%tvec))
-        # will need to first eval such vector the variable as in: 
-        # var.val <- eval(var, envir = env)
-        existsTDVar <- function(TDvar_t) TDvar_t %in% env[["ANCHOR_ALLVARNMS_VECTOR_0"]]
-        check_exist <- sapply(TDvars, existsTDVar)
-        if (!all(check_exist)) stop("undefined time-dependent variable(s): "%+%TDvars[which(!check_exist)])
-        # THIS STEP COULD BE MORE MEMORY EFFICIENT IF WAS SUBSETTING INSTEAD (BY COLS) ON EXISTING data MATRIX:
-        TDvars_eval <- eval(parse(text=paste0("cbind(",paste0(TDvars, collapse=","),")")), envir = env)
-        return(TDvars_eval)
-      },
+#         # ******* NOTE *******
+#         # Don't like the current implementation that defines TDvars as characters and then returns a matrix by cbinding 
+#         # the existing columins in existing data.frame. This is possibly wasteful. Could we instead subset the existing data.frame?
+#         TDvars <- var.chr%+%"_"%+%indx
+#         # Checking the variables paste0(var, "_", indx) exist in simulated data.frame environment:
+#         dprint("ANCHOR_ALLVARNMS_VECTOR_0:"); dprint(env[["ANCHOR_ALLVARNMS_VECTOR_0"]])
 
-      # Builds netVar matrix by using matrix env$NetIndobj$NetInd_k, cbind on result
-      # For W[[0]] to work without if else below need to do this:
-      # NetInd_k <- cbind(c(1:n), NetInd_k) and then netidx <- netidx + 1
-      `[[` = function(var, netidx, ...) {
-        # browser()
+#         # TO DO: **** 
+#         # EXTEND TO CHECKING FOR TDvar IN ENCLOSING ENVIRONMENT (user.env) AS WELL IF TDvar_t doesn't exist in the data
+#         # IF TDvar exists check that its a vector of appropriate length, index it accordinly (using which(t%in%tvec))
+#         # will need to first eval such vector the variable as in: 
+#         # var.val <- eval(var, envir = env)
+#         existsTDVar <- function(TDvar_t) TDvar_t %in% env[["ANCHOR_ALLVARNMS_VECTOR_0"]]
+#         check_exist <- sapply(TDvars, existsTDVar)
+#         if (!all(check_exist)) stop("undefined time-dependent variable(s): "%+%TDvars[which(!check_exist)])
+#         # THIS STEP COULD BE MORE MEMORY EFFICIENT IF WAS SUBSETTING INSTEAD (BY COLS) ON EXISTING data MATRIX:
+#         TDvars_eval <- eval(parse(text=paste0("cbind(",paste0(TDvars, collapse=","),")")), envir = env)
+#         return(TDvars_eval)
+#       },
 
-        env <- parent.frame()
-        t <- env$t # t <- get("t", envir = env)
-        if (!is.null(t)) stop("simultaneous time varying node references Var[t] and network references Var[[netidx]] are currently not supported")
-        if (missing(netidx)) stop("network index (netidx) must be specified when using Var[[netidx]]")
-        netind_cl <- env$netind_cl
-        if (is.null(netind_cl)) stop("Network must be defined when using Var[[netidx]] syntax")
-        Kmax <- netind_cl$Kmax
+#       # Builds netVar matrix by using matrix env$NetIndobj$NetInd_k, cbind on result
+#       # For W[[0]] to work without if else below need to do this:
+#       # NetInd_k <- cbind(c(1:n), NetInd_k) and then netidx <- netidx + 1
+#       `[[` = function(var, netidx, ...) {
+#         # browser()
 
-        var <- substitute(var)
-        var.chr <- as.character(var)
-        if (! (var.chr %in% env[["ANCHOR_ALLVARNMS_VECTOR_0"]])) stop("variable " %+% var.chr %+% " doesn't exist")
-        var.val <- eval(var, envir = env)
-        n <- length(var.val)
-        if (identical(class(netidx),"logical")) netidx <- which(netidx)
-        netVars_eval <- matrix(0L, nrow = n, ncol = length(netidx))
-        colnames(netVars_eval) <- netvar(var.chr, netidx)
+#         env <- parent.frame()
+#         t <- env$t # t <- get("t", envir = env)
+#         if (!is.null(t)) stop("simultaneous time varying node references Var[t] and network references Var[[netidx]] are currently not supported")
+#         if (missing(netidx)) stop("network index (netidx) must be specified when using Var[[netidx]]")
+#         netind_cl <- env$netind_cl
+#         if (is.null(netind_cl)) stop("Network must be defined when using Var[[netidx]] syntax")
+#         Kmax <- netind_cl$Kmax
 
-        # make_net_mat_time <- system.time(
-        for (neti in seq_along(netidx)) {
-          if (netidx[neti] %in% 0L) {
-            netVars_eval[, neti] <- var.val
-          } else {
-            netVars_eval[, neti] <- var.val[netind_cl$NetInd_k[, netidx[neti]]]
-            # opting for replace on entire netVars_eval, will need to do benchmarks later to compare:
-            # netVars_eval[is.na(netVars_eval[, neti]), neti] <- env$misXreplace
-          }
-        }
-        # )
-        # print("make_net_mat_time: "); print(make_net_mat_time)
+#         var <- substitute(var)
+#         var.chr <- as.character(var)
+#         if (! (var.chr %in% env[["ANCHOR_ALLVARNMS_VECTOR_0"]])) stop("variable " %+% var.chr %+% " doesn't exist")
+#         var.val <- eval(var, envir = env)
+#         n <- length(var.val)
+#         if (identical(class(netidx),"logical")) netidx <- which(netidx)
+#         netVars_eval <- matrix(0L, nrow = n, ncol = length(netidx))
+#         colnames(netVars_eval) <- netvar(var.chr, netidx)
 
-        # Don't need to do this if env$misXreplace==gvars$misval (i.e., when want to leave NAs as is)
-        # replaceNA_time <- system.time(
-          netVars_eval[is.na(netVars_eval)] <- env$misXreplace
-          # )
-        # print("replaceNA_time"); print(replaceNA_time)
+#         # make_net_mat_time <- system.time(
+#         for (neti in seq_along(netidx)) {
+#           if (netidx[neti] %in% 0L) {
+#             netVars_eval[, neti] <- var.val
+#           } else {
+#             netVars_eval[, neti] <- var.val[netind_cl$NetInd_k[, netidx[neti]]]
+#             # opting for replace on entire netVars_eval, will need to do benchmarks later to compare:
+#             # netVars_eval[is.na(netVars_eval[, neti]), neti] <- env$misXreplace
+#           }
+#         }
+#         # )
+#         # print("make_net_mat_time: "); print(make_net_mat_time)
+
+#         # Don't need to do this if env$misXreplace==gvars$misval (i.e., when want to leave NAs as is)
+#         # replaceNA_time <- system.time(
+#           netVars_eval[is.na(netVars_eval)] <- env$misXreplace
+#           # )
+#         # print("replaceNA_time"); print(replaceNA_time)
         
-        return(netVars_eval)
-      }
-    ),
+#         return(netVars_eval)
+#       }
+#     ),
 
-    initialize = function(netind_cl) {
-      self$netind_cl <- netind_cl
-      self$Kmax <- self$netind_cl$Kmax
-      invisible(self)
-    },
+#     initialize = function(netind_cl) {
+#       self$netind_cl <- netind_cl
+#       self$Kmax <- self$netind_cl$Kmax
+#       invisible(self)
+#     }
+#   ),
 
-    set.new.exprs = function(exprs_list) {
-      self$exprs_list <- exprs_list
-      self$asis.flags <- attributes(exprs_list)[["asis.flags"]]
-      # check for special argument replaceNAw0, if exists, remove it from the list of expressions:
-      if (any(names(self$exprs_list) %in% "replaceNAw0")) {
-        ReplMisVal0.idx <- which(names(self$exprs_list) %in% "replaceNAw0")
-        self$ReplMisVal0 <- as.logical(self$exprs_list[[ReplMisVal0.idx]])
-        self$exprs_list <- self$exprs_list[-ReplMisVal0.idx]
-        if (gvars$verbose) {
-          print("Detected replaceNAw0 flag with value: " %+% self$ReplMisVal0);
-        }
-      }
-      # if doesn't already exist, init setting for the names attribute of self$exprs_list:
-      if (is.null(names(self$exprs_list))) names(self$exprs_list) <- rep_len("", length(self$exprs_list))
-      # OS 09/22/15: Disabling the error for un-named expressions (name(self$exprs_list[[i]])=="");
-      # (1) Want to allow un-named expressions in tmlenet::def.sW & tmlenet::def.sA;
-      # (2) This condition is already pre-checked inside simcausal::node;
-      # if (length(self$exprs_list) != 0 && (is.null(self$sVar.expr.names) || any(self$sVar.expr.names==""))) {
-      #   stop("must provide a name for each node expression")
-      # }
+#   active = list(
+#     placeholder = function() {}
+#   ),
 
-      if (is.null(self$asis.flags)) { 
-        self$asis.flags <- as.list(rep.int(FALSE, length(self$exprs_list)))
-        names(self$asis.flags) <- names(self$exprs_list)
-      }
-      self$ReplMisVal0 <- rep_len(self$ReplMisVal0, length(self$exprs_list))
-      self$sVar.misXreplace <- ifelse(self$ReplMisVal0, gvars$misXreplace, gvars$misval)
-      # self$sVar.noname <- rep_len(self$sVar.noname, length(self$exprs_list))
-      if (gvars$verbose) {
-        print("Final node expression(s) list: "); print(self$exprs_list)
-      }
-      invisible(self)
-    },
-
-    eval.nodeforms = function(cur.node, data.df) {
-      assert_that(is.environment(self$user.env))
-      self$cur.node <- cur.node
-      self$ReplMisVal0 <- FALSE
-      # Parse the node formulas (parameters), set self$exprs_list, set new self$sVar.misXreplace and self$sVar.noname if found:
-      self$set.new.exprs(exprs_list = cur.node$dist_params)
-      self$Nsamp <- nrow(data.df)
-      sVar.res_l <- lapply(seq_along(self$exprs_list), eval.nodeform.out, self = self, data.df = data.df)
-      names(sVar.res_l) <- names(self$exprs_list)
-      return(sVar.res_l)
-    },
-
-    df.names = function(data.df) { # list of variable names from data.df with special var name (ANCHOR_ALLVARNMS_VECTOR_0)
-      return(list(ANCHOR_ALLVARNMS_VECTOR_0 = colnames(data.df)))
-    },
-
-    # This user.env is used for eval'ing each sVar exprs (enclos = user.env)
-    set.user.env = function(user.env) {
-      assert_that(!is.null(user.env))
-      assert_that(is.environment(user.env))
-      self$user.env <- user.env
-    }
-  ),
-
-  active = list(
-    placeholder = function() {}
-  ),
-
-  private = list(
-    privplaceholder = function() {}
-  )
-)
+#   private = list(
+#     privplaceholder = function() {}
+#   )
+# )
 # nocov end

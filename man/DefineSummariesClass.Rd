@@ -10,15 +10,15 @@ DefineSummariesClass
 }
 \description{
 This \pkg{R6} class that inherits from \code{Define_sVar} and can parse and evaluate (given the input data frame) the summary measures defined by functions
- \code{\link{def.sW}} and \code{\link{def.sA}}.
- The object of this class is generally instantiated by calling functions \code{def.sA} or \code{def.sW}.
+ \code{\link{def_sW}} and \code{\link{def_sA}}.
+ The object of this class is generally instantiated by calling functions \code{def_sA} or \code{def_sW}.
  The summary expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
  Note that the evaluation results of the summary measures are never stored inside this class,
  data can be stored only inside \code{\link{DatNet}} and \code{\link{DatNet.sWsA}} \pkg{R6} classes.
 }
 \details{
 \itemize{
-\item{\code{type}} - Type of the summary measure, \code{sW} or \code{sA}, determined by the calling functions \code{\link{def.sW}} or \code{\link{def.sA}}.
+\item{\code{type}} - Type of the summary measure, \code{sW} or \code{sA}, determined by the calling functions \code{\link{def_sW}} or \code{\link{def_sA}}.
 \item{\code{exprs_list}} - Deparsed list of summary expressions (as strings).
 \item{\code{new_expr_names}} - The summary measure names, if none were provided by the user these will be
  evaluated on the basis of variable names used in the summary expression itself.
@@ -33,9 +33,9 @@ This \pkg{R6} class that inherits from \code{Define_sVar} and can parse and eval
   \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}.}
   \item{\code{add.new.exprs(NewSummaries)}}{Adds new internal summary measure expressions to the existing ones, \code{NewSummaries}
    must be an object of class \code{DefineSummariesClass} (to enable \code{Object1 + Object2} syntax).}
-  item{\code{remove.expr(SummaryName)}}{Remove expression by name (for removing duplicate 'nF' expressions for repeated calls with def.sW()+def.sW()).}
+  item{\code{remove.expr(SummaryName)}}{Remove expression by name (for removing duplicate 'nF' expressions for repeated calls with def_sW()+def_sW()).}
   \item{\code{eval.nodeforms(data.df, netind_cl)}}{Evaluate the expressions one by one, standardize all names according to one naming
-   convention (described in \code{\link{def.sW}}), \code{cbind}ing results together into one output matrix. \code{data.df} is the input
+   convention (described in \code{\link{def_sW}}), \code{cbind}ing results together into one output matrix. \code{data.df} is the input
    data.frame and \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special
    variable (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
