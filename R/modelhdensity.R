@@ -160,6 +160,9 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
     message("================================================================")
   }
 
+  # Make sure the observed Anodes are always backed-up prior to messing with Odata:
+  Odata$backupAnodes(Anodes = Odata$nodes$Anodes, sA = sA)
+
   p_h0 <- ifelse(is.null(f.g0), 1, ng.MCsims)
   if (!is.null(f.g0)) {
     if (gvars$verbose) message("generating DatNet.g0 under known g0")
@@ -190,7 +193,6 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   } else {
     summeas.g0$fit(data = DatNet.g0)
   }
-
 
   # *********
   # NEED TO PASS obsdat.sW.sA (observed data sWsA) to predict() funs.
@@ -286,7 +288,6 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   h_gstar_h_gN <- h_gstar / h_gN
   h_gstar_h_gN[is.nan(h_gstar_h_gN)] <- 0     # 0/0 detection
   h_gstar_h_gN <- bound(h_gstar_h_gN, c(0, 1/lbound))
-
 
   ###########################################
   # 3B) Directly evaluating IPTW for static interventions (doesn't need DatNet.gstar)

@@ -162,7 +162,7 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       DatNet.ObsP0 <- self$DatNet.ObsP0
       DatNet.gstar <- self$DatNet.gstar
 
-      if (DatNet.gstar$datnetA$Odata$curr_data_A_g0) {
+      if (DatNet.gstar$Odata$curr_data_A_g0) {
         stop("gcomp predictions must be under Anodes from f.gstar, while current data Anodes in DatNet.gstar are set to the observed data")
       }
 

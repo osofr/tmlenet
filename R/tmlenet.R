@@ -223,6 +223,13 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   # m.Q.init$getsubset             # valid subset (!det.Y)
   # m.Q.init$reg                   # regression class (Qreg)
 
+  if (!DatNet.ObsP0$Odata$curr_data_A_g0) {
+    if (is.null(DatNet.ObsP0$Odata$A_g0_DT))
+      stop("Can't recover the initial observed A (exposures), as those were over-written and not backed-up")
+    DatNet.ObsP0$Odata$swapAnodes()
+    if (!DatNet.ObsP0$Odata$restored_sA_Vars) DatNet.ObsP0$datnetA$make.sVar(sVar.object = sA)
+  }
+
   nodes <- DatNet.ObsP0$nodes
   Y <- DatNet.ObsP0$noNA.Ynodevals # actual observed Y`s
   determ.Q <- DatNet.ObsP0$det.Y
@@ -266,7 +273,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
     if (!DatNet.gstar$datnetA$Odata$restored_sA_Vars)
       DatNet.gstar$datnetA$make.sVar(sVar.object = sA) # just recreate the summaries sA based on current Anode values in the data
   }
-
   # generate new A's under f.gstar, then re-create new summaries sA:
   # DatNet.gstar$make.dat.sWsA(p = 1, f.g_fun = est_params_list$f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
   # DatNet.gstar$datnetA$Odata$OdataDT
@@ -1175,7 +1181,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
                         )
                       )
 
-  if (!is.null(f_gstar2)) {
+  if (!is.null(intervene2.sA) || !is.null(f_gstar2)) {
     est_obj_g2 <- append(est_obj,
                       list(
                         f.gstar = f_gstar2,
@@ -1188,28 +1194,47 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
   # Running MC evaluation for substitution TMLE ests
   #----------------------------------------------------------------------------------
   tmle_g1_out <- get_all_ests(estnames = estnames.internal, DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_obj_g1)
-  if (!is.null(f_gstar2)) {
+
+  if (!is.null(intervene2.sA) || !is.null(f_gstar2)) {
     tmle_g2_out <- get_all_ests(estnames = estnames.internal, DatNet.ObsP0 = DatNet.ObsP0, est_params_list = est_obj_g2)
   } else {
     tmle_g2_out <- NULL
+  }
+
+  if (bootstrap.var) {
+    # ------------------------------------------------------------------------------------------
+    # IID BOOSTRAP FOR THE TMLE:
+    # ------------------------------------------------------------------------------------------
+    # var_tmleB_boot <- bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat)
+    # ------------------------------------------------------------------------------------------
+    # PARAMETRIC BOOSTRAP TMLE variance estimate:
+    # ------------------------------------------------------------------------------------------
+    var_tmleB_boot <- par_bootstrap_tmle(n.boot = n.bootstrap, estnames = estnames.internal, DatNet.ObsP0 =  DatNet.ObsP0, 
+                                         tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
+  } else {
+    var_tmleB_boot <- list(EY_gstar1 = NA, EY_gstar2 = NA, ATE = NA)
   }
 
   #----------------------------------------------------------------------------------
   # Create output list (estimates, as. variances, CIs)
   #----------------------------------------------------------------------------------
   EY_gstar1 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, 
-                            boot.var = bootstrap.var, n.boot = n.bootstrap,
-                            DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out)
-  EY_gstar2 <- NULL
-  ATE <- NULL
-  if (!is.null(f_gstar2)) {
+                            # boot.var = bootstrap.var, n.boot = n.bootstrap,
+                            DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out,
+                            var_tmleB_boot = var_tmleB_boot$EY_gstar1)
+
+  EY_gstar2 <- NULL; ATE <- NULL
+
+  if (!is.null(intervene2.sA) || !is.null(f_gstar2)) {
     EY_gstar2 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha,
-                              boot.var = bootstrap.var, n.boot = n.bootstrap,
-                              DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out=tmle_g2_out)
+                              # boot.var = bootstrap.var, n.boot = n.bootstrap, 
+                              DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out=tmle_g2_out, 
+                              var_tmleB_boot = var_tmleB_boot$EY_gstar2)
 
     ATE <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha, 
-                        boot.var = bootstrap.var, n.boot = n.bootstrap,
-                        DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
+                        # boot.var = bootstrap.var, n.boot = n.bootstrap,
+                        DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out, 
+                        var_tmleB_boot = var_tmleB_boot$ATE)
 	}
 
 	tmlenet.res <- list(EY_gstar1 = EY_gstar1, EY_gstar2 = EY_gstar2, ATE = ATE)
