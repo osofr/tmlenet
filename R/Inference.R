@@ -490,6 +490,8 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   fWi_mat <- tmle_g_out$fWi_mat
   wts_mat <- tmle_g_out$wts_mat
 
+  boot.as.var_tmleB <- var_tmleB_boot * nobs # parametric bootstrap-based asymptotic variance (est. outside this function)
+
   if (!is.null(tmle_g2_out)) {
     ests_mat <- tmle_g_out$ests_mat - tmle_g2_out$ests_mat
     fWi_mat <- tmle_g_out$fWi_mat - tmle_g2_out$fWi_mat
@@ -510,22 +512,11 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
     print("time to estimate Vars: "); print(getVar_time)  
   }
 
-  # if (boot.var) {
-  # # ------------------------------------------------------------------------------------------
-  # # BOOSTRAP FOR THE TMLE:
-  # # ------------------------------------------------------------------------------------------
-  #   # var_tmleB_boot <- bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat)
-  # # ------------------------------------------------------------------------------------------
-  # # PARAMETRIC BOOSTRAP variance estimate:
-  # # ------------------------------------------------------------------------------------------
-  #   var_tmleB_boot <- par_bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out)
-  # } else {
-  #   var_tmleB_boot <- NA
-  # }
-
-  as.var_tmleB_boot <- matrix(var_tmleB_boot * nobs, nrow = 1, ncol = 1)
-  rownames(as.var_tmleB_boot) <- rownames(as.vars_obj$as.var_mat)[1]
-  colnames(as.var_tmleB_boot) <- colnames(as.vars_obj$as.var_mat)
+  # parametric bootstrap-based asymptotic variance estimates matrix:
+  boot.as.var_mat <- matrix(nrow = nrow(as.vars_obj$as.var_mat), ncol = 1)
+  boot.as.var_mat[1,1] <- boot.as.var_tmleB
+  rownames(boot.as.var_mat) <- rownames(as.vars_obj$as.var_mat)
+  colnames(boot.as.var_mat) <- colnames(as.vars_obj$as.var_mat)
 
   get_CI <- function(xrow, n) {
     f_est_CI <- function(n, psi, sigma2_N) { # get CI
@@ -542,7 +533,7 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
 
   # CIs based on bootstrapped variance:
-  boot.CIs_mat <- t(apply(cbind(ests_mat["TMLE",,drop=FALSE], as.var_tmleB_boot), 1, get_CI, n = nobs))
+  boot.CIs_mat <- t(apply(cbind(ests_mat, boot.as.var_mat), 1, get_CI, n = nobs))
   colnames(boot.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
   
   # CIs based on IID variance:
@@ -553,20 +544,15 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   # RENAME ESTIMATORS FOR THE FINAL OUTPUT:
   # ------------------------------------------------------------------------------------------
   rownames(ests_mat) <- estoutnames
-  rownames(as.vars_obj$as.var_mat) <- estoutnames
-  rownames(as.var_tmleB_boot) <- estoutnames[1]
-  rownames(as.vars_obj$iid.vars_mat) <- estoutnames
-  
-  rownames(CIs_mat) <- estoutnames
-  rownames(boot.CIs_mat) <- estoutnames[1]
-  rownames(iid.CIs_mat) <- estoutnames
+  rownames(as.vars_obj$as.var_mat) <- rownames(boot.as.var_mat) <- rownames(as.vars_obj$iid.vars_mat) <- estoutnames
+  rownames(CIs_mat) <- rownames(boot.CIs_mat) <- rownames(iid.CIs_mat) <- estoutnames
 
   EY_g.star <- list(estimates = ests_mat,
-                    vars = (as.vars_obj$as.var_mat / nobs),
-                    var_tmleB_boot = (as.var_tmleB_boot / nobs),
+                    boot.vars = (boot.as.var_mat / nobs),
+                    IC.vars = (as.vars_obj$as.var_mat / nobs),
                     iid.vars = (as.vars_obj$iid.vars_mat / nobs),
-                    CIs = CIs_mat,
                     boot.CIs = boot.CIs_mat,
+                    IC.CIs = CIs_mat,
                     iid.CIs = iid.CIs_mat,
                     h_g0_SummariesModel = NULL,
                     h_gstar_SummariesModel = NULL)
