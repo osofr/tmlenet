@@ -455,24 +455,26 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
   #    user  system elapsed
   # 708.094 134.648 844.491
 
-  gcomp_g1_boot_col <- rbind(tmle_g1_out$ests_mat["MLE",],                                  mean(boot_gcomp_g1), var(boot_gcomp_g1))
-  gcomp_g2_boot_col <- rbind(tmle_g2_out$ests_mat["MLE",],                                  mean(boot_gcomp_g2), var(boot_gcomp_g2))
-  gcomp_ATE_boot_col <- rbind(tmle_g1_out$ests_mat["MLE",]-tmle_g2_out$ests_mat["MLE",],    mean(boot_gcomp_ATE), var(boot_gcomp_ATE))
-  tmle_B_g1_boot_col <- rbind(tmle_g1_out$ests_mat["TMLE",],                                mean(boot_tmle_B_g1), var(boot_tmle_B_g1))
-  tmle_B_g2_boot_col <- rbind(tmle_g2_out$ests_mat["TMLE",],                                mean(boot_tmle_B_g2), var(boot_tmle_B_g2))
-  tmle_B_ATE_boot_col <- rbind(tmle_g1_out$ests_mat["TMLE",]-tmle_g2_out$ests_mat["TMLE",], mean(boot_tmle_B_ATE), var(boot_tmle_B_ATE))
-  
-  res_mat <- cbind(gcomp_g1 = gcomp_g1_boot_col, gcomp_g2 = gcomp_g2_boot_col, gcomp_ATE = gcomp_ATE_boot_col,
-                   tmle_B_g1 = tmle_B_g1_boot_col, tmle_B_g2 = tmle_B_g2_boot_col, tmle_B_ATE = tmle_B_ATE_boot_col)
+  if (!is.null(tmle_g2_out)) {
+    gcomp_g1_boot_col <- rbind(tmle_g1_out$ests_mat["MLE",],                                  mean(boot_gcomp_g1), var(boot_gcomp_g1))
+    gcomp_g2_boot_col <- rbind(tmle_g2_out$ests_mat["MLE",],                                  mean(boot_gcomp_g2), var(boot_gcomp_g2))
+    gcomp_ATE_boot_col <- rbind(tmle_g1_out$ests_mat["MLE",]-tmle_g2_out$ests_mat["MLE",],    mean(boot_gcomp_ATE), var(boot_gcomp_ATE))
+    tmle_B_g1_boot_col <- rbind(tmle_g1_out$ests_mat["TMLE",],                                mean(boot_tmle_B_g1), var(boot_tmle_B_g1))
+    tmle_B_g2_boot_col <- rbind(tmle_g2_out$ests_mat["TMLE",],                                mean(boot_tmle_B_g2), var(boot_tmle_B_g2))
+    tmle_B_ATE_boot_col <- rbind(tmle_g1_out$ests_mat["TMLE",]-tmle_g2_out$ests_mat["TMLE",], mean(boot_tmle_B_ATE), var(boot_tmle_B_ATE))
+    
+    res_mat <- cbind(gcomp_g1 = gcomp_g1_boot_col, gcomp_g2 = gcomp_g2_boot_col, gcomp_ATE = gcomp_ATE_boot_col,
+                     tmle_B_g1 = tmle_B_g1_boot_col, tmle_B_g2 = tmle_B_g2_boot_col, tmle_B_ATE = tmle_B_ATE_boot_col)
 
-  rownames(res_mat) <- c("Mean.Est", "Boot.Mean.Est", "Boot.Var")
-  colnames(res_mat) <- c("gcomp_g1","gcomp_g2","gcomp_ATE","tmle_B_g1","tmle_B_g2","tmle_B_ATE")
+    rownames(res_mat) <- c("Mean.Est", "Boot.Mean.Est", "Boot.Var")
+    colnames(res_mat) <- c("gcomp_g1","gcomp_g2","gcomp_ATE","tmle_B_g1","tmle_B_g2","tmle_B_ATE")
+    print("Parametric Bootstrap Inference: "); print(res_mat)    
 
-  print("Parametric Bootstrap Inference: "); print(res_mat)
+    est_mat <- cbind(tmle_g1_out$ests_mat, tmle_g2_out$ests_mat, tmle_g1_out$ests_mat-tmle_g2_out$ests_mat)
+    colnames(est_mat) <- c("g1", "g2", "ATE")
+    print("est_mat"); print(est_mat)
+  }
 
-  est_mat <- cbind(tmle_g1_out$ests_mat, tmle_g2_out$ests_mat, tmle_g1_out$ests_mat-tmle_g2_out$ests_mat)
-  colnames(est_mat) <- c("g1", "g2", "ATE")
-  print("est_mat"); print(est_mat)
 
   out_var_tmleB_boot <- list(EY_gstar1 = var_tmleB_boot_g1, EY_gstar2 = var_tmleB_boot_g2, ATE = var_tmleB_boot_ATE)
   return(out_var_tmleB_boot)
