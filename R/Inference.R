@@ -152,7 +152,6 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   # TMLE inference based on the iid IC:
   IC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO)
-  # print("var_tmle: " %+% as.numeric(var_tmle/n))
 
   # ------------------------------------------------------------------------------------------------------------
   # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC: 
@@ -160,10 +159,10 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   IC_Q_tmle <- h_wts * (obsYvals - QY.init)
   IC_W_tmle <- (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
   var_IC_Q_tmle <- (1/n) * sum(IC_Q_tmle^2)
-  var_IC_W_tmle <- est.sigma_sparse(IC_W_tmle, connectmtx_1stO)
-  var_tmle_2 <- var_IC_Q_tmle + var_IC_W_tmle
-  print("var_IC_Q_tmle: " %+% as.numeric(var_IC_Q_tmle/n))
-  print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
+
+  # var_IC_W_tmle <- est.sigma_sparse(IC_W_tmle, connectmtx_1stO)
+  # var_tmle_2 <- var_IC_Q_tmle + var_IC_W_tmle
+  # print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
 
   # print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
   # print("total n of non-zero entries in connectmtx_1stO / N^2: "); print(sum(connectmtx_1stO)/(n^2))
@@ -174,7 +173,10 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   # Simple estimator of the iid asymptotic IC-based variance (no adjustment made when two observations i!=j are dependent):
   # ------------------------------------------------------------------------------------------------------------
   iid_var_tmle <- (1/n) * sum(IC_tmle^2)
-  # print("iid_var_tmle: " %+% as.numeric(iid_var_tmle/n))
+
+  IC_vars <- rbind(var_tmle/n, var_IC_Q_tmle/n, iid_var_tmle/n)
+  rownames(IC_vars) <- c("var_IC_tmle", "var_IC_Q_tmle", "iid_var_tmle")
+  print(IC_vars)
 
 # # ------------------------------------------------------------------------------------------------------------
 #   # Alternative estimate, removes everyone who has >25 friends from the connectivity matrix:
@@ -279,7 +281,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
 }
 
 # bootstrap tmle by resampling (sW,sA,Y) with replacement (as if iid)
-bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat) {
+iid_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat) {
   QY.init <- QY_mat[, "QY.init"] 
   off <- qlogis(QY.init)  # offset
   DatNet.gstar <- tmle_g_out$DatNet.gstar
@@ -349,11 +351,10 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
   if (!DatNet.ObsP0$Odata$curr_data_A_g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
 
   # Save the original input data.table OdataDT, otherwise it will be over-written:
-  OdataDT <- DatNet.ObsP0$Odata$OdataDT
-  noNA.Ynodevals <- DatNet.ObsP0$noNA.Ynodevals
-  det.Y <- DatNet.ObsP0$det.Y
+  OdataDT.P0 <- DatNet.ObsP0$Odata$OdataDT
+  noNA.Ynodevals.P0 <- DatNet.ObsP0$noNA.Ynodevals
+  det.Y.P0 <- DatNet.ObsP0$det.Y
 
-  DatNet.g0.boot <- DatNet.ObsP0
   DatNet.gstar <- tmle_g1_out$DatNet.gstar
 
   # loop over n.boot
@@ -361,29 +362,29 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
     # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar; Re-shuffle pre-saved values of Y and det.Y:
     boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
 
-    DatNet.g0.boot$Odata$OdataDT <- OdataDT[boot_idx, ]
-    DatNet.g0.boot$datnetW$make.sVar(sVar.object = tmle_g1_out$sW)
-    DatNet.g0.boot$datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
-    DatNet.g0.boot$det.Y <- det.Y[boot_idx]
-    DatNet.g0.boot$noNA.Ynodevals <- noNA.Ynodevals[boot_idx]
+    DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0[boot_idx, ]
+    DatNet.ObsP0$datnetW$make.sVar(sVar.object = tmle_g1_out$sW)
+    DatNet.ObsP0$datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
+    DatNet.ObsP0$det.Y <- det.Y.P0[boot_idx]
+    DatNet.ObsP0$noNA.Ynodevals <- noNA.Ynodevals.P0[boot_idx]
 
     # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0) & Re-create the summary measures (sW,sA) based on new DatNet.ObsP0:
     if (is.null(f.g0)) {
       for (Anode in DatNet.ObsP0$Odata$nodes$Anodes) {
         model.sVar.gN <- findRegSummaryObj(tmle_g1_out$m.h.fit$summeas.g0, outvar = Anode)
         if (is.list(model.sVar.gN)) model.sVar.gN <- model.sVar.gN[[1]]
-        A.sample.gN <- model.sVar.gN$sampleA(newdata = DatNet.g0.boot)
-        DatNet.g0.boot$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
+        A.sample.gN <- model.sVar.gN$sampleA(newdata = DatNet.ObsP0)
+        DatNet.ObsP0$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
       }
     } else if (!is.null(f.g0)) {
-      DatNet.g0.boot$make.dat.sWsA(p = 1, f.g_fun = f.g0, sA.object = tmle_g1_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
+      DatNet.ObsP0$make.dat.sWsA(p = 1, f.g_fun = f.g0, sA.object = tmle_g1_out$sA, DatNet.ObsP0 = DatNet.ObsP0)
     }
-    DatNet.g0.boot$Odata$curr_data_A_g0 <- TRUE
+    DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
 
     # 4. Predict P(Y_i=1|sW,sA) using m.Q.init (the initial fit \bar{Q}_N) based on newly resampled (sW,sA):
     detY.boot <- DatNet.ObsP0$det.Y
     QY.init.boot <- DatNet.ObsP0$noNA.Ynodevals
-    QY.init.boot[!detY.boot] <- tmle_g1_out$m.Q.init$predict(newdata = DatNet.g0.boot)$getprobA1[!detY.boot] # getting predictions P(Y=1) for non-DET Y
+    QY.init.boot[!detY.boot] <- tmle_g1_out$m.Q.init$predict(newdata = DatNet.ObsP0)$getprobA1[!detY.boot] # getting predictions P(Y=1) for non-DET Y
     off.boot <- qlogis(QY.init.boot)  # offset
 
     # 5. Sample a vector of new (Y_i, i=1,...,N):
@@ -392,17 +393,18 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
 
     # 6. Predict new weights h_wts = P_{\bar{g}^*_N}(sA | sW)/P_{\bar{g}_0}(sA | sW) :
     # using previously fitted m.h.fit$summeas.g0 and m.h.fit$summeas.gstar and the newly resampled (sW,sA) under Q.W.N, m.g.N
-    h_wts_g1.boot <- predict.hbars(newdatnet = DatNet.g0.boot, m.h.fit = tmle_g1_out$m.h.fit)
+    h_wts_g1.boot <- predict.hbars(newdatnet = DatNet.ObsP0, m.h.fit = tmle_g1_out$m.h.fit)
 
     # 7. Fit a TMLE update epsilon on this new bootstapped dataset.
     boot.tmle_g1.obj <- tmle.update(estnames = estnames,
                                  Y = Y.boot, off = off.boot, h_wts = h_wts_g1.boot,
                                  determ.Q = detY.boot, predictQ = FALSE)
+
     boot_eps_g1[i] <- boot.tmle_g1.obj$m.Q.star.coef
-    
-    # If tmle_g2_out is present, do the same, before DatNet.g0.boot is overwritten
+
+    # If tmle_g2_out is present, do the same, before DatNet.ObsP0 is overwritten
     if (!is.null(tmle_g2_out)) {
-      h_wts_g2.boot <- predict.hbars(newdatnet = DatNet.g0.boot, m.h.fit = tmle_g2_out$m.h.fit)
+      h_wts_g2.boot <- predict.hbars(newdatnet = DatNet.ObsP0, m.h.fit = tmle_g2_out$m.h.fit)
       boot.tmle_g2.obj <- tmle.update(estnames = estnames,
                                       Y = Y.boot, off = off.boot, h_wts = h_wts_g2.boot,
                                       determ.Q = detY.boot, predictQ = FALSE)
@@ -411,8 +413,8 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
 
     # 8. Re-create DatNet.gstar with boostrapped summaires sW and sA generated under f.gstar:
     # f.g_fun = tmle_g1_out$f.gstar,
-    DatNet.gstar$make.dat.sWsA(p = 1, new.sA.object = tmle_g1_out$new.sA, sA.object = tmle_g1_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
-    
+    DatNet.gstar$make.dat.sWsA(p = 1, new.sA.object = tmle_g1_out$new.sA, sA.object = tmle_g1_out$sA, DatNet.ObsP0 = DatNet.ObsP0)
+
     # 9. Evaluate the substitution estimator and the components of the EIC D_Y and D_W:
     fWi.boot_g1 <- psi.evaluator$get.gcomp(m.Q.init = tmle_g1_out$m.Q.init)
     boot_gcomp_g1[i] <- mean(fWi.boot_g1)
@@ -428,7 +430,7 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
       # 2) We could also evaluate the ATE as a plug-in estimator from two separate TMLE updates
     # -----------------------------------------------------------------------------------------------------------------------------
     if (!is.null(tmle_g2_out)) {
-      DatNet.gstar$make.dat.sWsA(p = 1, new.sA.object = tmle_g2_out$new.sA, sA.object = tmle_g2_out$sA, DatNet.ObsP0 = DatNet.g0.boot)
+      DatNet.gstar$make.dat.sWsA(p = 1, new.sA.object = tmle_g2_out$new.sA, sA.object = tmle_g2_out$sA, DatNet.ObsP0 = DatNet.ObsP0)
       
       fWi.boot_g2 <- psi.evaluator$get.gcomp(m.Q.init = tmle_g2_out$m.Q.init)
       boot_gcomp_g2[i] <- mean(fWi.boot_g2)
@@ -475,11 +477,15 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
     print("est_mat"); print(est_mat)
   }
 
+  # Restore the original data.table OdataDT, Y values and indicator of deterministic Y values
+  # Otherwise it messes up the IC-based inference, since it uses the observed Yvals to est. the IC
+  DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0
+  DatNet.ObsP0$noNA.Ynodevals <- noNA.Ynodevals.P0
+  DatNet.ObsP0$det.Y <- det.Y.P0
 
   out_var_tmleB_boot <- list(EY_gstar1 = var_tmleB_boot_g1, EY_gstar2 = var_tmleB_boot_g2, ATE = var_tmleB_boot_ATE)
   return(out_var_tmleB_boot)
 }
-
 
 # create output object with param ests of EY_gstar, vars and CIs for given gstar (or ATE if two tmle obj are passed)
 # boot.var, n.boot, 

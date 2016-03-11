@@ -6,7 +6,6 @@
 # unified estimator naming used throughout the package:
 # c("TMLE", "h_IPTW", "MLE")
 #---------------------------------------------------------------------------------
-
 get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
   estnames <- MC_fit_params$estnames
   m.Q.init <- MC_fit_params$m.Q.init
@@ -161,16 +160,13 @@ mcEvalPsi <- R6Class(classname = "mcEvalPsi",
       self$m.Q.init <- m.Q.init
       DatNet.ObsP0 <- self$DatNet.ObsP0
       DatNet.gstar <- self$DatNet.gstar
-
       if (DatNet.gstar$Odata$curr_data_A_g0) {
         stop("gcomp predictions must be under Anodes from f.gstar, while current data Anodes in DatNet.gstar are set to the observed data")
       }
-
       # print("getting predictions for gcomp...")
       QY.init <- m.Q.init$predict(newdata = DatNet.gstar)$getprobA1
       QY.init[DatNet.ObsP0$det.Y] <- DatNet.ObsP0$noNA.Ynodevals[DatNet.ObsP0$det.Y]
       self$QY.init <- QY.init
-
       invisible(QY.init)
     },
 

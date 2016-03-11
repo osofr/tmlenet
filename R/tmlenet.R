@@ -1205,7 +1205,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
     # ------------------------------------------------------------------------------------------
     # IID BOOSTRAP FOR THE TMLE:
     # ------------------------------------------------------------------------------------------
-    # var_tmleB_boot <- bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat)
+    # var_tmleB_boot <- iid_bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat)
     # ------------------------------------------------------------------------------------------
     # PARAMETRIC BOOSTRAP TMLE variance estimate:
     # ------------------------------------------------------------------------------------------
