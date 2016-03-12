@@ -155,19 +155,17 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
 
   # ------------------------------------------------------------------------------------------------------------
   # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC: 
+  # var_IC_Q_tmle gives inference CONDITIONAL all W. 
   # ------------------------------------------------------------------------------------------------------------
   IC_Q_tmle <- h_wts * (obsYvals - QY.init)
-  IC_W_tmle <- (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
   var_IC_Q_tmle <- (1/n) * sum(IC_Q_tmle^2)
 
+  # IC_W_tmle <- (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
   # var_IC_W_tmle <- est.sigma_sparse(IC_W_tmle, connectmtx_1stO)
   # var_tmle_2 <- var_IC_Q_tmle + var_IC_W_tmle
   # print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
-
   # print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
   # print("total n of non-zero entries in connectmtx_1stO / N^2: "); print(sum(connectmtx_1stO)/(n^2))
-  # setting var est. for the data-adaptive target param (conditional on W)
-  # var_tmle <- var_IC_Q_tmle
 
   # ------------------------------------------------------------------------------------------------------------
   # Simple estimator of the iid asymptotic IC-based variance (no adjustment made when two observations i!=j are dependent):
@@ -178,20 +176,20 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   rownames(IC_vars) <- c("var_IC_tmle", "var_IC_Q_tmle", "iid_var_tmle")
   print(IC_vars)
 
-# # ------------------------------------------------------------------------------------------------------------
-#   # Alternative estimate, removes everyone who has >25 friends from the connectivity matrix:
-#   NetInd_k_2 <- NetInd_k
-#   NetInd_k_2[nF >= 20,] <- NA
-#   # Ind_Mat <- !is.na(NetInd_k_2)
-#   nF_2 <- rowSums(!is.na(NetInd_k_2))
-#   sparse_mat_2 <- NetInd.to.sparseAdjMat(NetInd_k_2, nF = nF_2, add_diag = TRUE)
-#   connectmtx_1stO_2 <- Matrix::crossprod(sparse_mat_2) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
-#   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO_2)
-#   print("total n of non-zero entries in connectmtx_1stO_2 / N^2: "); print(sum(connectmtx_1stO_2)/(n^2))
-#   print("var est that excludes all nF >=20"); print(var_tmle/n)
-#   # var_tmle_alt <- est.sigma_sparse(IC_tmle, sparse_mat)
-#   # var_tmle_alt_2 <- est.sigma_sparse(IC_tmle, sparse_mat_2)
-# # ------------------------------------------------------------------------------------------------------------
+  # # ------------------------------------------------------------------------------------------------------------
+  #   # Alternative estimate, removes everyone who has >25 friends from the connectivity matrix:
+  #   NetInd_k_2 <- NetInd_k
+  #   NetInd_k_2[nF >= 20,] <- NA
+  #   # Ind_Mat <- !is.na(NetInd_k_2)
+  #   nF_2 <- rowSums(!is.na(NetInd_k_2))
+  #   sparse_mat_2 <- NetInd.to.sparseAdjMat(NetInd_k_2, nF = nF_2, add_diag = TRUE)
+  #   connectmtx_1stO_2 <- Matrix::crossprod(sparse_mat_2) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
+  #   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO_2)
+  #   print("total n of non-zero entries in connectmtx_1stO_2 / N^2: "); print(sum(connectmtx_1stO_2)/(n^2))
+  #   print("var est that excludes all nF >=20"); print(var_tmle/n)
+  #   # var_tmle_alt <- est.sigma_sparse(IC_tmle, sparse_mat)
+  #   # var_tmle_alt_2 <- est.sigma_sparse(IC_tmle, sparse_mat_2)
+  # # ------------------------------------------------------------------------------------------------------------
 
   # IPTW h (based on the mixture density clever covariate (h)):
   IC_iptw_h <- h_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"h_IPTW",])
@@ -203,13 +201,22 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   as.var_mat[,1] <- var.ests
   rownames(as.var_mat) <- estnames; colnames(as.var_mat) <- "Var"
 
-  iid.var.ests = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
-                   iid_var_iptw_h = abs(iid_var_iptw_h), # no adjustment for correlations i,j for iptw
-                   iid_var_gcomp = NA) 
+  # Inference conditional on all W
+  condW.vars.ests <- c(condW_var_tmle = abs(var_IC_Q_tmle), 
+                      condW_var_iptw_h = NA,
+                      condW_var_gcomp = NA)
 
-  iid.vars_mat <- matrix(0, nrow = length(iid.var.ests), ncol = 1)
-  iid.vars_mat[,1] <- iid.var.ests
-  rownames(iid.vars_mat) <- names(iid.var.ests); colnames(iid.vars_mat) <- "Var"
+  condW.vars_mat <- matrix(0, nrow = length(condW.vars.ests), ncol = 1)
+  condW.vars_mat[,1] <- condW.vars.ests
+  rownames(condW.vars_mat) <- names(condW.vars.ests); colnames(condW.vars_mat) <- "Var"
+
+  # IID inference (ignores all dependence)
+  iid.vars.ests = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
+                    iid_var_iptw_h = abs(iid_var_iptw_h), # no adjustment for correlations i,j for iptw
+                    iid_var_gcomp = NA) 
+  iid.vars_mat <- matrix(0, nrow = length(iid.vars.ests), ncol = 1)
+  iid.vars_mat[,1] <- iid.vars.ests
+  rownames(iid.vars_mat) <- names(iid.vars.ests); colnames(iid.vars_mat) <- "Var"
 
   # QY.star <- QY_mat[, "QY.star"]
   # g_wts <- wts_mat[,"g_wts"]  
@@ -277,7 +284,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   #               )
 
   # return(list(as.var_mat = as.var_mat))
-  return(list(as.var_mat = as.var_mat, iid.vars_mat = iid.vars_mat))
+  return(list(as.var_mat = as.var_mat, condW.vars_mat = condW.vars_mat, iid.vars_mat = iid.vars_mat))
 }
 
 # bootstrap tmle by resampling (sW,sA,Y) with replacement (as if iid)
@@ -307,10 +314,10 @@ iid_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_ma
       boot_tmle_B[i] <- mean(psi.evaluator$get.boot.tmleB(m.Q.starB = boot_eps[i], boot_idx = boot_idx))
   }
   var_tmleB_boot <- var(boot_tmle_B)
-  print("mean(boot_eps): "); print(mean(boot_eps))
-  print("mean(boot_tmle_B): "); print(mean(boot_tmle_B))
-  print("var(boot_tmle_B): "); print(var(boot_tmle_B))
 
+  # print("mean(boot_eps): "); print(mean(boot_eps))
+  # print("mean(boot_tmle_B): "); print(mean(boot_tmle_B))
+  # print("var(boot_tmle_B): "); print(var(boot_tmle_B))
   return(var_tmleB_boot)
 }
 
@@ -520,7 +527,9 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
     print("time to estimate Vars: "); print(getVar_time)  
   }
 
+  # ------------------------------------------------------------------------------------------
   # parametric bootstrap-based asymptotic variance estimates matrix:
+  # ------------------------------------------------------------------------------------------
   boot.as.var_mat <- matrix(nrow = nrow(as.vars_obj$as.var_mat), ncol = 1)
   boot.as.var_mat[1,1] <- boot.as.var_tmleB
   rownames(boot.as.var_mat) <- rownames(as.vars_obj$as.var_mat)
@@ -537,31 +546,42 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
     return(f_est_CI(n = n, psi = psi, sigma2_N = sigma2_N))
   }
 
-  CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$as.var_mat), 1, get_CI, n = nobs))
-  colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
-
   # CIs based on bootstrapped variance:
   boot.CIs_mat <- t(apply(cbind(ests_mat, boot.as.var_mat), 1, get_CI, n = nobs))
   colnames(boot.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
-  
+
+  # CIs based on the IC for dependent data:
+  CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$as.var_mat), 1, get_CI, n = nobs))
+  colnames(CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
+
+  # CIs based on conditional on W variance:
+  condW.CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$condW.vars_mat), 1, get_CI, n = nobs))
+  colnames(condW.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
+
   # CIs based on IID variance:
   iid.CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$iid.vars_mat), 1, get_CI, n = nobs))
   colnames(iid.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
+
 
   # ------------------------------------------------------------------------------------------
   # RENAME ESTIMATORS FOR THE FINAL OUTPUT:
   # ------------------------------------------------------------------------------------------
   rownames(ests_mat) <- estoutnames
-  rownames(as.vars_obj$as.var_mat) <- rownames(boot.as.var_mat) <- rownames(as.vars_obj$iid.vars_mat) <- estoutnames
-  rownames(CIs_mat) <- rownames(boot.CIs_mat) <- rownames(iid.CIs_mat) <- estoutnames
+  rownames(as.vars_obj$as.var_mat) <- rownames(boot.as.var_mat) <- rownames(as.vars_obj$condW.vars_mat) <- rownames(as.vars_obj$iid.vars_mat) <- estoutnames
+  rownames(CIs_mat) <- rownames(boot.CIs_mat) <- rownames(condW.CIs_mat) <- rownames(iid.CIs_mat) <- estoutnames
 
   EY_g.star <- list(estimates = ests_mat,
-                    boot.vars = (boot.as.var_mat / nobs),
-                    IC.vars = (as.vars_obj$as.var_mat / nobs),
-                    iid.vars = (as.vars_obj$iid.vars_mat / nobs),
-                    boot.CIs = boot.CIs_mat,
+
+                    boot.vars = (boot.as.var_mat / nobs), # parametric bootstrap variance
+                    IC.vars = (as.vars_obj$as.var_mat / nobs), # IC-based variance (dependent)
+                    condW.IC.vars = (as.vars_obj$condW.vars_mat / nobs), # IC-based variance conditional on W
+                    iid.vars = (as.vars_obj$iid.vars_mat / nobs), # iid Variance
+
+                    boot.CIs = boot.CIs_mat, 
                     IC.CIs = CIs_mat,
+                    condW.CIs = condW.CIs_mat,
                     iid.CIs = iid.CIs_mat,
+
                     h_g0_SummariesModel = NULL,
                     h_gstar_SummariesModel = NULL)
 
