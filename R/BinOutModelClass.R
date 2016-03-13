@@ -15,7 +15,8 @@ logisfit.glmS3 <- function(datsum_obj) {
   } else {
     # ctrl <- glm.control(trace=FALSE, maxit=1000)
     # SuppressGivenWarnings({
-              m.fit <- stats::glm.fit(x = Xmat, y = Y_vals, family = binomial(), control = ctrl)
+    # , control = ctrl
+              m.fit <- stats::glm.fit(x = Xmat, y = Y_vals, family = binomial())
               # }, GetWarningsToSuppress())
   }
   fit <- list(coef = m.fit$coef, linkfun = "logit_linkinv", fitfunname = "glm")
