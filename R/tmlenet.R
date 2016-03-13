@@ -339,10 +339,10 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   if (gvars$verbose)  {
     print("time spent fitting new fit.hbars.res:"); print(fit.hbars_t)
     if ("TMLE_A" %in% estnames) {
-      parsubmodel_fits <- rbind(m.Q.star.coef)
+      parsubmodel_fits <- rbind(tmle.obj$m.Q.star.coef)
       rownames(parsubmodel_fits) <- c("epsilon (clever covariate coefficient)")
     } else if ("TMLE_B" %in% estnames) {
-      parsubmodel_fits <- rbind(m.Q.star.coef)
+      parsubmodel_fits <- rbind(tmle.obj$m.Q.star.coef)
       rownames(parsubmodel_fits) <- c("alpha (intercept)")
     }
     print("new parsubmodel_fits: "); print(parsubmodel_fits)
