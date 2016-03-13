@@ -249,13 +249,14 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
 
   # summary(h_wts)
   # h_wts[h_wts>20]
+  # mean(h_wts)
   # DatNet.ObsP0$Odata$OdataDT[which(h_wts>20),]
   # DatNet.ObsP0$Odata$OdataDT[["sum.net.A"]]
   # mean(DatNet.ObsP0$Odata$OdataDT[["A"]])
   # table(DatNet.ObsP0$Odata$OdataDT[["sum.net.A"]])
   # DatNet.ObsP0$Odata$A_g0_DT[which(h_wts>20),]
   # DatNet.ObsP0$Odata$sA_g0_DT[which(h_wts>20),]
-  # m.h.fit$summeas.gstar$
+
   # for (model in m.h.fit$summeas.g0$getPsAsW.models()[[1]]$getPsAsW.models()[[2]]$getPsAsW.models()) {
   #   print(model$outvar)
   #   print(model$getfit)
@@ -263,7 +264,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   # m.h.fit$summeas.g0$getPsAsW.models()[[1]]$getPsAsW.models()[[2]]$getPsAsW.models()[[1]]$getfit
   # m.h.fit$summeas.g0$getPsAsW.models()[[1]]$getcumprodAeqa()[25]
   # cbind(m.h.fit$summeas.gstar$getcumprodAeqa(), m.h.fit$summeas.g0$getcumprodAeqa(), m.h.fit$summeas.gstar$getcumprodAeqa()/m.h.fit$summeas.g0$getcumprodAeqa())
-  # 1/0.005
+  # # 1/0.005
 
   #************************************************
   # IPTW_h estimator:
@@ -272,7 +273,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   h_IPTW[!determ.Q] <- Y[!determ.Q] * h_wts[!determ.Q]
   h_IPTW <- mean(h_IPTW)
 
-  # message("h_IPTW: "); message(h_IPTW)
+  message("h_IPTW: "); message(h_IPTW)
   # if (h_IPTW > 0.5) browser()
 
   #************************************************
@@ -1043,12 +1044,12 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
   }
 
   if (missing(DatNet.ObsP0)) {
-    time_evalsumm <- system.time(
+    # time_evalsumm <- system.time(
       eval.summ.res <- eval.summaries(data = data, Kmax = Kmax, sW = sW, sA = sA, 
                                       IDnode = IDnode, NETIDnode = NETIDnode, 
                                       sep = sep, NETIDmat = NETIDmat, verbose = FALSE)
-      )
-    print("time eval.summaries(...): "); print(time_evalsumm)
+      # )
+    # print("time eval.summaries(...): "); print(time_evalsumm)
     DatNet.ObsP0 <- eval.summ.res$DatNet.ObsP0
     data <- DatNet.ObsP0$datnetW$Odata
     sW <- data$sW
