@@ -346,7 +346,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
       rownames(parsubmodel_fits) <- c("alpha (intercept)")
     }
     print("new parsubmodel_fits: "); print(parsubmodel_fits)
-    print("time to run Monte Carlo target param evaluation: "); print(syst1);
     print(
           c(
           fWi_init = mean(fWi_mat[,"fWi_Qinit"] - ests["TMLE"])
