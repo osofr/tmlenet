@@ -13,11 +13,11 @@ logisfit.glmS3 <- function(datsum_obj) {
   if (nrow(Xmat) == 0L) {
     m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
   } else {
-    # ctrl <- glm.control(trace=FALSE, maxit=1000)
-    # SuppressGivenWarnings({
-    # , control = ctrl
-              m.fit <- stats::glm.fit(x = Xmat, y = Y_vals, family = binomial())
-              # }, GetWarningsToSuppress())
+    ctrl <- glm.control(trace = FALSE)
+    # ctrl <- glm.control(trace = FALSE, maxit = 1000)
+    SuppressGivenWarnings({
+      m.fit <- stats::glm.fit(x = Xmat, y = Y_vals, family = binomial() , control = ctrl)
+    }, GetWarningsToSuppress())
   }
   fit <- list(coef = m.fit$coef, linkfun = "logit_linkinv", fitfunname = "glm")
   if (gvars$verbose) print(fit$coef)
@@ -34,8 +34,8 @@ logisfit.speedglmS3 <- function(datsum_obj) {
   if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA`s and avoid throwing exception
     m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
   } else {
-    # , trace=FALSE, maxit=1000
-    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial()), silent = TRUE)
+    # , maxit=1000
+    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), trace = FALSE), silent = TRUE)
     if (inherits(m.fit, "try-error")) { # if failed, fall back on stats::glm
       message("speedglm::speedglm.wfit failed, falling back on stats:glm.fit; ", m.fit)
       return(logisfit.glmS3(datsum_obj))
