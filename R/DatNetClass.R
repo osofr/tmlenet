@@ -784,8 +784,12 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
           warning("repeating column names in the final data set; please check for duplicate summary measure / node names")
         }
 
-        # columns to select from main design matrix:
-        sel.sWsA <- unique(colnames(self$dat.sWsA)[(colnames(self$dat.sWsA) %in% covars)])
+        # columns to select from main design matrix (in the same order as listed in covars):
+        sel.sWsA <- intersect(covars, colnames(self$dat.sWsA))
+
+        # old version (returned names by column order in self$dat.sWsA):
+        # sel.sWsA <- unique(colnames(self$dat.sWsA)[(colnames(self$dat.sWsA) %in% covars)])
+
         if (is.matrix(self$dat.sWsA)) {
           dfsel <- self$dat.sWsA[rowsubset, sel.sWsA, drop = FALSE] # data stored as matrix
         } else if (is.data.table(self$dat.sWsA)) {
@@ -796,7 +800,8 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
 
         # columns to select from binned continuous/cat var matrix (if it was previously constructed):
         if (!is.null(self$dat.bin.sVar)) {
-          sel.binsA <- colnames(self$dat.bin.sVar)[(colnames(self$dat.bin.sVar) %in% covars)]
+          # sel.binsA <- colnames(self$dat.bin.sVar)[(colnames(self$dat.bin.sVar) %in% covars)]
+          sel.binsA <- intersect(covars, colnames(self$dat.bin.sVar))
         } else {
           sel.binsA <- NULL
         }
