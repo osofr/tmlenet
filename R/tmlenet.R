@@ -674,6 +674,17 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #' \item \code{n.bootstrap} - Number of bootstrap samples, default is 100; Set to higher values, such as, 500+ to obtain a more precise 
 #' estimate of the tmle variance;
 #' 
+#' \item \code{boot.nodes} - Which nodes should be re-sampled from their corresonding parametric model fits? Note that Y (outcome) is always
+#' resampled from the model fit specified by \code{Qform}. Each of the nodes in \code{boot.nodes} must be conditionally independent, given 
+#' some set of covariates of summary measures (for example, it might be the exposure variable). 
+#' Any node name specified in \code{boot.nodes} must be fitted with a sepearate model, 
+#' specified either as part of \code{hform} (name in boot.nodes matches a variable on the left-side of the formula in \code{hform}) 
+#' or as a seperate regression formula in \code{boot.regs} argument. These
+#' model fits are then used for re-sampling each of the nodes specified in \code{boot.nodes}.
+#' 
+#' \item \code{boot.regs} - Specify the regression formulas specifically for parametric bootstrap, which were previously specified on 
+#' the left-side of the regression formulas in \code{hform}.
+#' 
 #' \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs); 
 #'
 #' \item \code{lbound} - One value for symmetrical bounds on P(sW | sW).
@@ -916,6 +927,8 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
                     optPars = list(
                       bootstrap.var = FALSE,
                       n.bootstrap = 100,
+                      boot.nodes = NULL,
+                      boot.regs = NULL,
                       alpha = 0.05,
                       lbound = 0.005,
                       family = "binomial", # NOT YET IMPLEMENTED
@@ -945,6 +958,8 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
   h_logit_sep_k <- FALSE # NOT USED YET
   bootstrap.var <- ifelse(is.null(optPars$bootstrap.var), FALSE, optPars$bootstrap.var)
   n.bootstrap <- ifelse(is.null(optPars$n.bootstrap), 100, optPars$n.bootstrap)
+  boot.nodes <- if(is.null(optPars$boot.nodes)) {NULL} else {optPars$boot.nodes}
+  boot.regs <- if(is.null(optPars$boot.regs)) {NULL} else {optPars$boot.regs}
   alpha <- ifelse(is.null(optPars$alpha), 0.05, optPars$alpha)
   lbound <- ifelse(is.null(optPars$lbound), 0.005, optPars$lbound)
   family <- ifelse(is.null(optPars$family), "binomial", optPars$family)
@@ -1211,7 +1226,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
     # ------------------------------------------------------------------------------------------
     # PARAMETRIC BOOSTRAP TMLE variance estimate:
     # ------------------------------------------------------------------------------------------
-    var_tmleB_boot <- par_bootstrap_tmle(n.boot = n.bootstrap, estnames = estnames.internal, DatNet.ObsP0 =  DatNet.ObsP0, 
+    var_tmleB_boot <- par_bootstrap_tmle(n.boot = n.bootstrap, boot.nodes = boot.nodes, estnames = estnames.internal, DatNet.ObsP0 =  DatNet.ObsP0,
                                          tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
   } else {
     var_tmleB_boot <- list(EY_gstar1 = NA, EY_gstar2 = NA, ATE = NA)

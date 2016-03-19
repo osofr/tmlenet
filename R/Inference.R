@@ -330,8 +330,14 @@ findRegSummaryObj <- function(fit.obj, outvar) {
   }
 }
 
-# Parametric bootstrap, sampling W as iid, A from m.g.N and Y from m.Q.init.N
-par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
+# Parametric bootstrap: sampling W as iid, boot.nodes from m.h.fit or special fit obj and Y from m.Q.init.N;
+# Parametric bootstrap: need to explicitly spec. fitted nodes which are cond independent and then resample from those fits. 
+# Could be very different from Anodes or part of Anodes. If no reg form was specified, finds it among hforms by default;
+# However, Y's are always re-sampled from m.Q.init
+# TO DO: Need to allow boot.nodes to be different from Anodes with their own regression formulas
+# TO DO: Add another arg "boot.regs", which can specify regression forms for conditionally independent nodes to be resampled from such fits
+par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
+  # boot.nodes <- NULL
   # n.boot <- 50
   # ******** REPLACED this with the actual f.g0 or model fit g.N *********
   # f.g0 <- function(data) {
@@ -353,7 +359,6 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
   boot_IC_tmle <- vector(mode = "numeric", length = n.boot)
 
   psi.evaluator <- tmle_g1_out$psi.evaluator
-
   # Always start with the observed Anodes
   if (!DatNet.ObsP0$Odata$curr_data_A_g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
 
@@ -361,7 +366,6 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
   OdataDT.P0 <- DatNet.ObsP0$Odata$OdataDT
   noNA.Ynodevals.P0 <- DatNet.ObsP0$noNA.Ynodevals
   det.Y.P0 <- DatNet.ObsP0$det.Y
-
   DatNet.gstar <- tmle_g1_out$DatNet.gstar
 
   # loop over n.boot
@@ -377,8 +381,10 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
 
     # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0) & Re-create the summary measures (sW,sA) based on new DatNet.ObsP0:
     if (is.null(f.g0)) {
-      for (Anode in DatNet.ObsP0$Odata$nodes$Anodes) {
+      for (Anode in boot.nodes) {
         model.sVar.gN <- findRegSummaryObj(tmle_g1_out$m.h.fit$summeas.g0, outvar = Anode)
+        # TO DO: ADD a way of fitting a new model for Anode if it is specified in boot.regs
+        # ....
         if (is.list(model.sVar.gN)) model.sVar.gN <- model.sVar.gN[[1]]
         A.sample.gN <- model.sVar.gN$sampleA(newdata = DatNet.ObsP0)
         DatNet.ObsP0$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
@@ -406,7 +412,6 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
     boot.tmle_g1.obj <- tmle.update(estnames = estnames,
                                  Y = Y.boot, off = off.boot, h_wts = h_wts_g1.boot,
                                  determ.Q = detY.boot, predictQ = FALSE)
-
     boot_eps_g1[i] <- boot.tmle_g1.obj$m.Q.star.coef
 
     # If tmle_g2_out is present, do the same, before DatNet.ObsP0 is overwritten
@@ -471,7 +476,7 @@ par_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g1_out, tmle
     tmle_B_g1_boot_col <- rbind(tmle_g1_out$ests_mat["TMLE",],                                mean(boot_tmle_B_g1), var(boot_tmle_B_g1))
     tmle_B_g2_boot_col <- rbind(tmle_g2_out$ests_mat["TMLE",],                                mean(boot_tmle_B_g2), var(boot_tmle_B_g2))
     tmle_B_ATE_boot_col <- rbind(tmle_g1_out$ests_mat["TMLE",]-tmle_g2_out$ests_mat["TMLE",], mean(boot_tmle_B_ATE), var(boot_tmle_B_ATE))
-    
+
     res_mat <- cbind(gcomp_g1 = gcomp_g1_boot_col, gcomp_g2 = gcomp_g2_boot_col, gcomp_ATE = gcomp_ATE_boot_col,
                      tmle_B_g1 = tmle_B_g1_boot_col, tmle_B_g2 = tmle_B_g2_boot_col, tmle_B_ATE = tmle_B_ATE_boot_col)
 
@@ -561,7 +566,6 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   # CIs based on IID variance:
   iid.CIs_mat <- t(apply(cbind(ests_mat, as.vars_obj$iid.vars_mat), 1, get_CI, n = nobs))
   colnames(iid.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
-
 
   # ------------------------------------------------------------------------------------------
   # RENAME ESTIMATORS FOR THE FINAL OUTPUT:

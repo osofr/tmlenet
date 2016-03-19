@@ -8,10 +8,10 @@ tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, intervene1.sA, f_gstar1 = NULL,
   intervene2.sA = NULL, f_gstar2 = NULL, Ynode, Qform = NULL,
   hform.g0 = NULL, hform.gstar = NULL, NETIDmat = NULL, IDnode = NULL,
   NETIDnode = NULL, verbose = getOption("tmlenet.verbose"),
-  optPars = list(bootstrap.var = FALSE, n.bootstrap = 100, alpha = 0.05,
-  lbound = 0.005, family = "binomial", runTMLE = c("tmle.intercept",
-  "tmle.covariate"), YnodeDET = NULL, sep = " ", f_g0 = NULL,
-  h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
+  optPars = list(bootstrap.var = FALSE, n.bootstrap = 100, boot.nodes = NULL,
+  boot.regs = NULL, alpha = 0.05, lbound = 0.005, family = "binomial", runTMLE =
+  c("tmle.intercept", "tmle.covariate"), YnodeDET = NULL, sep = " ", f_g0 =
+  NULL, h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
 }
 \arguments{
 \item{DatNet.ObsP0}{Instance of class \code{\link{DatNet.sWsA}} returned under the same name by the \code{\link{eval.summaries}} function.
@@ -161,6 +161,17 @@ to obtain an alternative estimate the TMLE variance (note that this will signifi
 
 \item \code{n.bootstrap} - Number of bootstrap samples, default is 100; Set to higher values, such as, 500+ to obtain a more precise
 estimate of the tmle variance;
+
+\item \code{boot.nodes} - Which nodes should be re-sampled from their corresonding parametric model fits? Note that Y (outcome) is always
+resampled from the model fit specified by \code{Qform}. Each of the nodes in \code{boot.nodes} must be conditionally independent, given
+some set of covariates of summary measures (for example, it might be the exposure variable).
+Any node name specified in \code{boot.nodes} must be fitted with a sepearate model,
+specified either as part of \code{hform} (name in boot.nodes matches a variable on the left-side of the formula in \code{hform})
+or as a seperate regression formula in \code{boot.regs} argument. These
+model fits are then used for re-sampling each of the nodes specified in \code{boot.nodes}.
+
+\item \code{boot.regs} - Specify the regression formulas specifically for parametric bootstrap, which were previously specified on
+the left-side of the regression formulas in \code{hform}.
 
 \item \code{alpha} - alpha-level for CI calculation (0.05 for 95% CIs);
 
