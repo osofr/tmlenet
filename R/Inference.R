@@ -358,6 +358,8 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
 
   boot_IC_tmle <- vector(mode = "numeric", length = n.boot)
 
+  # nF.PA.tab_mat <- matrix(0L, nrow = n.boot, ncol = 15)
+
   psi.evaluator <- tmle_g1_out$psi.evaluator
   # Always start with the observed Anodes
   if (!DatNet.ObsP0$Odata$curr_data_A_g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
@@ -370,7 +372,7 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
 
   # loop over n.boot
   for (i in (1:n.boot)) {
-    # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar; Re-shuffle pre-saved values of Y and det.Y:
+    # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar; Re-evaluate baseline summaries sW; Re-shuffle pre-saved values of Y and det.Y;
     boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
 
     DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0[boot_idx, ]
@@ -379,7 +381,7 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
     DatNet.ObsP0$det.Y <- det.Y.P0[boot_idx]
     DatNet.ObsP0$noNA.Ynodevals <- noNA.Ynodevals.P0[boot_idx]
 
-    # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0) & Re-create the summary measures (sW,sA) based on new DatNet.ObsP0:
+    # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0); Re-evaluate exposure summaries (sA) based on new DatNet.ObsP0:
     if (is.null(f.g0)) {
       for (Anode in boot.nodes) {
         model.sVar.gN <- findRegSummaryObj(tmle_g1_out$m.h.fit$summeas.g0, outvar = Anode)
@@ -392,7 +394,13 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
     } else if (!is.null(f.g0)) {
       DatNet.ObsP0$make.dat.sWsA(p = 1, f.g_fun = f.g0, sA.object = tmle_g1_out$sA, DatNet.ObsP0 = DatNet.ObsP0)
     }
+
+    DatNet.ObsP0$datnetA$make.sVar(sVar.object = tmle_g1_out$sA) # re-evaluate exposure summaries based on bootstraped W and re-sampled A's
+
     DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
+
+    nF.PA.tab <- table(DatNet.ObsP0$Odata$OdataDT[["nF.PA"]]) / nrow(DatNet.ObsP0$Odata$OdataDT)
+    # nF.PA.tab_mat[i, ] <- c(nF.PA.tab, rep(0L, ncol(nF.PA.tab_mat)-length(nF.PA.tab)))
 
     # 4. Predict P(Y_i=1|sW,sA) using m.Q.init (the initial fit \bar{Q}_N) based on newly resampled (sW,sA):
     detY.boot <- DatNet.ObsP0$det.Y
@@ -461,6 +469,9 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
   var_tmleB_boot_g2 <- var(boot_tmle_B_g2)
   var_tmleB_boot_ATE <- var(boot_tmle_B_ATE)
 
+  # browser()
+  # boxplot(nF.PA.tab_mat[,c(1:5)], main = "bootstrap distr of nF.PA over 500 reps")
+  # boxplot(nF.PA.tab_mat[,c(1:10)], main = "bootstrap distr of nF.PA over 500 reps")
   # plot(density(boot_gcomp_g1))
   # plot(density(boot_tmle_B_g1))
 
