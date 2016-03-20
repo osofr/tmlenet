@@ -330,13 +330,35 @@ findRegSummaryObj <- function(fit.obj, outvar) {
   }
 }
 
+fit_reg.forms <- function(boot.regs, DatNet.ObsP0, sW, sA) {
+  boot.regs.sVars <- process_regforms(boot.regs, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+  pred_nms <- boot.regs.sVars$predvars
+  boot_outvar_nms <- boot.regs.sVars$outvars
+  check.pred.exist <- unlist(lapply(unlist(pred_nms), function(sWname) sWname %in% c(DatNet.ObsP0$datnetW$names.sVar,DatNet.ObsP0$datnetA$names.sVar)))
+  if (!all(check.pred.exist)) stop("the following predictors from boot.regs regression could not be located in sW/sA summary measures: " %+%
+                                    paste0(pred_nms[!check.pred.exist], collapse = ","))
+  check.outvar.exist <- unlist(lapply(boot_outvar_nms, function(sAname) sAname %in% c(DatNet.ObsP0$datnetW$names.sVar,DatNet.ObsP0$datnetA$names.sVar)))
+  if (!all(check.outvar.exist)) stop("the following outcomes from boot.regs regression could not be located in sW/sA summary measures: " %+%
+                                    paste0(boot_outvar_nms[!check.outvar.exist], collapse = ","))
+  outvar_class <- lapply(boot_outvar_nms, function(sA_nms) DatNet.ObsP0$datnetA$type.sVar[sA_nms])
+  subsets_expr <- lapply(boot_outvar_nms, function(var) lapply(var, function(var) {var}))
+  regclass.boot <- RegressionClass$new(sep_predvars_sets = TRUE,
+                                     outvar.class = outvar_class,
+                                     outvar = boot_outvar_nms,
+                                     predvars = pred_nms,
+                                     subset = subsets_expr)
+  regclass.boot$S3class <- "generic"
+  summeas_boot <- newsummarymodel(reg = regclass.boot, DatNet.sWsA.g0 = DatNet.ObsP0)$fit(data = DatNet.ObsP0)
+  return(list(boot_outvar_nms = boot_outvar_nms, summeas_boot = summeas_boot))
+}
+
 # Parametric bootstrap: sampling W as iid, boot.nodes from m.h.fit or special fit obj and Y from m.Q.init.N;
 # Parametric bootstrap: need to explicitly spec. fitted nodes which are cond independent and then resample from those fits. 
 # Could be very different from Anodes or part of Anodes. If no reg form was specified, finds it among hforms by default;
 # However, Y's are always re-sampled from m.Q.init
-# TO DO: Need to allow boot.nodes to be different from Anodes with their own regression formulas
-# TO DO: Add another arg "boot.regs", which can specify regression forms for conditionally independent nodes to be resampled from such fits
-par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
+# Allows boot.nodes to be different from Anodes with their own regression formulas
+# These regressions are specified with "boot.regs" arg: specifies regression forms for conditionally independent nodes to be resampled from such fits
+par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
   # boot.nodes <- NULL
   # n.boot <- 50
   # ******** REPLACED this with the actual f.g0 or model fit g.N *********
@@ -358,19 +380,32 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
 
   boot_IC_tmle <- vector(mode = "numeric", length = n.boot)
 
-  # nF.PA.tab_mat <- matrix(0L, nrow = n.boot, ncol = 15)
-
   psi.evaluator <- tmle_g1_out$psi.evaluator
   # Always start with the observed Anodes
   if (!DatNet.ObsP0$Odata$curr_data_A_g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
 
+  # -----------------------------------------------------------------------------------------------
   # Save the original input data.table OdataDT, otherwise it will be over-written:
+  # -----------------------------------------------------------------------------------------------
   OdataDT.P0 <- DatNet.ObsP0$Odata$OdataDT
   noNA.Ynodevals.P0 <- DatNet.ObsP0$noNA.Ynodevals
   det.Y.P0 <- DatNet.ObsP0$det.Y
   DatNet.gstar <- tmle_g1_out$DatNet.gstar
 
+  # -----------------------------------------------------------------------------------------------
+  # fit any regressions specified in boot.regs:
+  # -----------------------------------------------------------------------------------------------
+  if (!is.null(boot.regs)) {
+    boot.regs_fit <- fit_reg.forms(boot.regs, DatNet.ObsP0, tmle_g1_out$sW, tmle_g1_out$sA)
+    summeas_boot <- boot.regs_fit$summeas_boot
+    boot_outvar_nms <- unlist(boot.regs_fit$boot_outvar_nms)
+  } else {
+    boot_outvar_nms <- NULL
+  }
+
+  # -----------------------------------------------------------------------------------------------
   # loop over n.boot
+  # -----------------------------------------------------------------------------------------------
   for (i in (1:n.boot)) {
     # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar; Re-evaluate baseline summaries sW; Re-shuffle pre-saved values of Y and det.Y;
     boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
@@ -384,9 +419,12 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
     # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0); Re-evaluate exposure summaries (sA) based on new DatNet.ObsP0:
     if (is.null(f.g0)) {
       for (Anode in boot.nodes) {
-        model.sVar.gN <- findRegSummaryObj(tmle_g1_out$m.h.fit$summeas.g0, outvar = Anode)
-        # TO DO: ADD a way of fitting a new model for Anode if it is specified in boot.regs
-        # ....
+        # If Anode was referenced in boot.regs, then sample Anode from this new fit, otherwise sample from hforms fit
+        if (Anode %in% boot_outvar_nms) {
+          model.sVar.gN <- findRegSummaryObj(summeas_boot, outvar = Anode)
+        } else {
+          model.sVar.gN <- findRegSummaryObj(tmle_g1_out$m.h.fit$summeas.g0, outvar = Anode)  
+        }
         if (is.list(model.sVar.gN)) model.sVar.gN <- model.sVar.gN[[1]]
         A.sample.gN <- model.sVar.gN$sampleA(newdata = DatNet.ObsP0)
         DatNet.ObsP0$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
@@ -396,9 +434,7 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
     }
 
     DatNet.ObsP0$datnetA$make.sVar(sVar.object = tmle_g1_out$sA) # re-evaluate exposure summaries based on bootstraped W and re-sampled A's
-
     DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
-
     nF.PA.tab <- table(DatNet.ObsP0$Odata$OdataDT[["nF.PA"]]) / nrow(DatNet.ObsP0$Odata$OdataDT)
     # nF.PA.tab_mat[i, ] <- c(nF.PA.tab, rep(0L, ncol(nF.PA.tab_mat)-length(nF.PA.tab)))
 
@@ -495,7 +531,7 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, estnames, DatNet.ObsP0, tmle_
     colnames(res_mat) <- c("gcomp_g1","gcomp_g2","gcomp_ATE","tmle_B_g1","tmle_B_g2","tmle_B_ATE")
     print("Parametric Bootstrap Inference: "); print(res_mat)    
 
-    est_mat <- cbind(tmle_g1_out$ests_mat, tmle_g2_out$ests_mat, tmle_g1_out$ests_mat-tmle_g2_out$ests_mat)
+    est_mat <- cbind(tmle_g1_out$ests_mat, tmle_g2_out$ests_mat, tmle_g1_out$ests_mat - tmle_g2_out$ests_mat)
     colnames(est_mat) <- c("g1", "g2", "ATE")
     print("est_mat"); print(est_mat)
   }

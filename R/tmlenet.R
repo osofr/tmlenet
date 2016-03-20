@@ -1060,7 +1060,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
     intervene2.sA <- update.intervention.sA(new.sA = intervene2.sA, sA = sA)
     data$intervene2.sA <- intervene2.sA
     # making sure exactly the same Anodes are used for both interventions:
-    if (intervene1.sA$Anodes != intervene2.sA$Anodes) 
+    if (any(intervene1.sA$Anodes != intervene2.sA$Anodes))
       stop("intervention node names have to be identical for intervene1.sA and intervene2.sA")
   }
 
@@ -1218,6 +1218,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
     tmle_g2_out <- NULL
   }
 
+
   if (bootstrap.var) {
     # ------------------------------------------------------------------------------------------
     # IID BOOSTRAP FOR THE TMLE:
@@ -1226,7 +1227,8 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
     # ------------------------------------------------------------------------------------------
     # PARAMETRIC BOOSTRAP TMLE variance estimate:
     # ------------------------------------------------------------------------------------------
-    var_tmleB_boot <- par_bootstrap_tmle(n.boot = n.bootstrap, boot.nodes = boot.nodes, estnames = estnames.internal, DatNet.ObsP0 =  DatNet.ObsP0,
+    var_tmleB_boot <- par_bootstrap_tmle(n.boot = n.bootstrap, boot.nodes = boot.nodes, boot.regs = boot.regs, 
+                                         estnames = estnames.internal, DatNet.ObsP0 =  DatNet.ObsP0,
                                          tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
   } else {
     var_tmleB_boot <- list(EY_gstar1 = NA, EY_gstar2 = NA, ATE = NA)
