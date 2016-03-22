@@ -151,12 +151,16 @@ def_new_sA <- function(...) {
   assert_that(is.DefineSummariesClass(sVar1))
   assert_that(is.DefineSummariesClass(sVar2))
   assert_that(all.equal(sVar1$type, sVar2$type))
+
+  # Copy the content of both objects into a new instance, so as not to ruin the objects sVar1 & sVar2 by reference
+  # node_evaluator <- DefineSummariesClass$new(type = sVar1$type)
+  sVar1.clone <- sVar1$clone()
   # remove duplicate nF node from sVar1 (keep the one in sVar2)
-  if (sVar1$type %in% "sW") {
-    sVar1 <- sVar1$remove.expr(SummaryName = "nF")
+  if (sVar1.clone$type %in% "sW") {
+    sVar1.clone <- sVar1.clone$remove.expr(SummaryName = "nF")
   }
-  sVar1$add.new.exprs(NewSummaries = sVar2)
-  return(sVar1)
+  sVar1.clone$add.new.exprs(NewSummaries = sVar2)
+  return(sVar1.clone)
 }
 
 # ------------------------------------------------------------------------------------------
