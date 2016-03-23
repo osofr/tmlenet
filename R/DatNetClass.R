@@ -337,6 +337,7 @@ OdataDT <- R6Class(classname = "OdataDT",
       invisible(self)
     },
 
+    # Save Anodes and summaries sA from main data.table into separate fields
     backupAnodes = function(Anodes, sA) {
       if (missing(Anodes)) Anodes <- self$nodes$Anodes
       self$A_g0_DT <- self$OdataDT[, Anodes, with = FALSE]
@@ -351,8 +352,11 @@ OdataDT <- R6Class(classname = "OdataDT",
       invisible(self)
     },
 
+    # Put saved Anodes and summaries sA back into main data.table
     restoreAnodes = function(Anodes) {
       if (missing(Anodes)) Anodes <- self$nodes$Anodes
+      if (is.null(self$A_g0_DT)) stop("Anodes in OdataDT cannot be restored, self$A_g0_DT is null!")
+
       self$OdataDT[, (Anodes) := self$A_g0_DT, with=FALSE]
 
       if (!is.null(self$sA_g0_DT) && !is.null(self$save_sA_Vars)) {
@@ -364,6 +368,7 @@ OdataDT <- R6Class(classname = "OdataDT",
       invisible(self)
     },
 
+    # Swap re-saved Anodes and summaries sA with those in main data.table
     swapAnodes = function(Anodes) {
       if (missing(Anodes)) Anodes <- self$nodes$Anodes
       
@@ -501,7 +506,7 @@ DatNet <- R6Class(classname = "DatNet",
     },
 
     # **********************
-    # Define and evalute summary measure (sVar) data
+    # Define and evalute summary measure (sVar) data; Save it (and over-write prev. values) as self$dat.sVar
     # **********************
     make.sVar = function(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE) {
       # assert_that(is.data.frame(Odata))

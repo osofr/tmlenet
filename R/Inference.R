@@ -382,10 +382,13 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
 
   psi.evaluator <- tmle_g1_out$psi.evaluator
   # Always start with the observed Anodes
-  if (!DatNet.ObsP0$Odata$curr_data_A_g0) DatNet.ObsP0$datnetW$Odata$restoreAnodes()
+  if (!DatNet.ObsP0$Odata$curr_data_A_g0) {
+    DatNet.ObsP0$Odata$restoreAnodes()
+  }
 
   # -----------------------------------------------------------------------------------------------
   # Save the original input data.table OdataDT, otherwise it will be over-written:
+  # Note we are not saving the original saved Anodes and sA -> these fields NULLed during bootstrap
   # -----------------------------------------------------------------------------------------------
   OdataDT.P0 <- DatNet.ObsP0$Odata$OdataDT
   noNA.Ynodevals.P0 <- DatNet.ObsP0$noNA.Ynodevals
@@ -409,8 +412,13 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
   for (i in (1:n.boot)) {
     # 1. Resample W (with replacement) by re-purposing the instance of DatNet.gstar; Re-evaluate baseline summaries sW; Re-shuffle pre-saved values of Y and det.Y;
     boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
-
     DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0[boot_idx, ]
+
+    # Need to NULL previously backed-up values of A and sA, since they no longer correspond with bootstrapped sample
+    DatNet.ObsP0$Odata$A_g0_DT <- NULL
+    DatNet.ObsP0$Odata$sA_g0_DT <- NULL
+    DatNet.ObsP0$Odata$save_sA_Vars <- NULL
+
     DatNet.ObsP0$datnetW$make.sVar(sVar.object = tmle_g1_out$sW)
     DatNet.ObsP0$datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
     DatNet.ObsP0$det.Y <- det.Y.P0[boot_idx]
@@ -435,7 +443,8 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
 
     DatNet.ObsP0$datnetA$make.sVar(sVar.object = tmle_g1_out$sA) # re-evaluate exposure summaries based on bootstraped W and re-sampled A's
     DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
-    nF.PA.tab <- table(DatNet.ObsP0$Odata$OdataDT[["nF.PA"]]) / nrow(DatNet.ObsP0$Odata$OdataDT)
+
+    # nF.PA.tab <- table(DatNet.ObsP0$Odata$OdataDT[["nF.PA"]]) / nrow(DatNet.ObsP0$Odata$OdataDT)
     # nF.PA.tab_mat[i, ] <- c(nF.PA.tab, rep(0L, ncol(nF.PA.tab_mat)-length(nF.PA.tab)))
 
     # 4. Predict P(Y_i=1|sW,sA) using m.Q.init (the initial fit \bar{Q}_N) based on newly resampled (sW,sA):
@@ -468,7 +477,9 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
     }
 
     # 8. Re-create DatNet.gstar with boostrapped summaires sW and sA generated under f.gstar:
-    # f.g_fun = tmle_g1_out$f.gstar,
+    # However, first need to save (Anodes,sA) from the observed bootstrapped sample, otherwise they are forever lost
+    DatNet.ObsP0$Odata$backupAnodes(sA = tmle_g1_out$sA)
+    # Will over-write Anodes/sA in DatNet.ObsP0$Odata:
     DatNet.gstar$make.dat.sWsA(p = 1, new.sA.object = tmle_g1_out$new.sA, sA.object = tmle_g1_out$sA, DatNet.ObsP0 = DatNet.ObsP0)
 
     # 9. Evaluate the substitution estimator and the components of the EIC D_Y and D_W:
@@ -479,15 +490,22 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
     obsYvals.boot = DatNet.ObsP0$noNA.Ynodevals
     boot_IC_tmle[i] <- mean(h_wts_g1.boot * (obsYvals.boot - QY.init.boot) + (fWi.boot_g1 - boot_tmle_B_g1[i]))
 
-    # 10. if (!is.null(tmle_g2_out)), the above steps 8 & 9 are repeated for tmle_g2_out and the ATE
+    # 10. If (!is.null(tmle_g2_out)) then the above steps 8 & 9 are repeated for tmle_g2_out and the ATE. 
+    # First restore (Anodes,sA) that were generated in the observed bootstrapped sample!
+    # In this case the intervention summaries, s.a, "def_new_sA(A = A)" will correctly use the observed bootstrapped values of A
     # -----------------------------------------------------------------------------------------------------------------------------
     # Q: How do we get the bootsrap var for the ATE? 
       # 1) We can generate a new TMLE update that directly corresponds to the EIC for ATE (need to figure out EIC)
-      # 2) We could also evaluate the ATE as a plug-in estimator from two separate TMLE updates
+      # 2) We could also evaluate the ATE as a plug-in estimator from two separate TMLE updates - using this approach. 
+    # Both approaches should be equivalent, except for situations with 2 "incompatible" target parameters
     # -----------------------------------------------------------------------------------------------------------------------------
     if (!is.null(tmle_g2_out)) {
+      # * restore the observed boostrapped Anodes and sA
+      DatNet.ObsP0$Odata$restoreAnodes()
+      # * verify sA's were also restored and if not, regenerate them
+      if (!DatNet.ObsP0$Odata$restored_sA_Vars) DatNet.ObsP0$datnetA$make.sVar(sVar.object = tmle_g2_out$sA)
       DatNet.gstar$make.dat.sWsA(p = 1, new.sA.object = tmle_g2_out$new.sA, sA.object = tmle_g2_out$sA, DatNet.ObsP0 = DatNet.ObsP0)
-      
+
       fWi.boot_g2 <- psi.evaluator$get.gcomp(m.Q.init = tmle_g2_out$m.Q.init)
       boot_gcomp_g2[i] <- mean(fWi.boot_g2)
       boot_gcomp_ATE[i] <- boot_gcomp_g1[i] - boot_gcomp_g2[i]
