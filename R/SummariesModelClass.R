@@ -1,38 +1,23 @@
 #----------------------------------------------------------------------------------
 # Classes that control modelling of the multivariate joint probability model P(sA|sW).
 #----------------------------------------------------------------------------------
-
 #' @importFrom assertthat assert_that
 
-# Generic S3 constructor for the summary model classes:
+# S3 generic constructor for the summary model classes:
 newsummarymodel <- function(reg, DatNet.sWsA.g0, ...) { UseMethod("newsummarymodel") }
+# Summary model constructor for generic regression with multivariate outcome, but one set of predictors
+newsummarymodel.generic <- function(reg, DatNet.sWsA.g0, ...) SummariesModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 # Summary model constructor for binary outcome sA[j]:
-newsummarymodel.binary <- function(reg, ...) {
-  # if (gvars$verbose) print("Calling BinOutModel constructor for binary outcome: " %+% reg$outvar)
-  BinOutModel$new(reg = reg, ...)
-}
+newsummarymodel.binary <- function(reg, ...) BinOutModel$new(reg = reg, ...)
 # Summary model constructor for continuous outcome sA[j]:
-newsummarymodel.contin <- function(reg, DatNet.sWsA.g0, ...) {
-  # if (gvars$verbose) print("Calling ContinSummaryModel constructor for continuous outcome:" %+% reg$outvar)
-  ContinSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
-}
-
+newsummarymodel.contin <- function(reg, DatNet.sWsA.g0, ...) ContinSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 # Summary model constructor for categorical outcome sA[j]:
-newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) {
-  # if (gvars$verbose) print("Calling CategorSummaryModel constructor for categorical outcome: " %+% reg$outvar)
-  CategorSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
-}
-
-# Summary model constructor for generic regression with multivariate outcome, but only one set of predictors
-newsummarymodel.generic <- function(reg, DatNet.sWsA.g0, ...) {
-  # if (gvars$verbose) print("Calling CategorSummaryModel constructor for categorical outcome: " %+% reg$outvar)
-  SummariesModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
-}
+newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) CategorSummaryModel$new(reg = reg, DatNet.sWsA.g0 = DatNet.sWsA.g0, ...)
 
 ## ---------------------------------------------------------------------
 #' R6 class that defines regression models evaluating P(sA|sW), for summary measures (sW,sA)
 #'
-#' This R6 class defines fields and methods that controls all the parameters for non-parametric 
+#' This R6 class defines fields and methods that controls all the parameters for non-parametric
 #'  modeling and estimation of multivariate joint conditional probability model \code{P(sA|sW)} for summary measures \code{(sA,sW)}.
 #'  Note that \code{sA} can be multivariate and any component of \code{sA[j]} can be either binary, categorical or continuous.
 #'  The joint probability for \code{P(sA|sA)} = \code{P(sA[1],...,sA[k]|sA)} is first factorized as
@@ -40,13 +25,13 @@ newsummarymodel.generic <- function(reg, DatNet.sWsA.g0, ...) {
 #'  where each of these conditional probability models is defined by a new instance of a \code{\link{SummariesModel}} class
 #'  (and a corresponding instance of the \code{RegressionClass} class).
 #'  If \code{sA[j]} is binary, the conditional probability \code{P(sA[j]|sW,sA[1],...,sA[j-1])} is evaluated via logistic regression model.
-#'  When \code{sA[j]} is continuous (or categorical), its estimation will be controlled by a new instance of 
-#'  the \code{\link{ContinSummaryModel}} class (or the \code{\link{CategorSummaryModel}} class), as well as the accompanying new instance of the 
+#'  When \code{sA[j]} is continuous (or categorical), its estimation will be controlled by a new instance of
+#'  the \code{\link{ContinSummaryModel}} class (or the \code{\link{CategorSummaryModel}} class), as well as the accompanying new instance of the
 #'  \code{RegressionClass} class. The range of continuous \code{sA[j]} will be fist partitioned into \code{K} bins and the corresponding \code{K}
 #'  bin indicators (\code{B_1,...,B_K}), with \code{K} new instances of \code{\link{SummariesModel}} class, each instance defining a
 #'  single logistic regression model for one binary bin indicator outcome \code{B_j} and predictors (\code{sW, sA[1],...,sA[k-1]}).
-#'  Thus, the first instance of \code{RegressionClass} and \code{SummariesModel} classes will automatically 
-#'  spawn recursive calls to new instances of these classes until the entire tree of binary logistic regressions that defines 
+#'  Thus, the first instance of \code{RegressionClass} and \code{SummariesModel} classes will automatically
+#'  spawn recursive calls to new instances of these classes until the entire tree of binary logistic regressions that defines
 #'  the joint probability \code{P(sA|sW)} is build.
 #'
 #' @docType class
@@ -54,8 +39,8 @@ newsummarymodel.generic <- function(reg, DatNet.sWsA.g0, ...) {
 #' @keywords R6 class
 #' @details
 #' \itemize{
-#' \item{\code{sep_predvars_sets}} - Logical indicating the type of regression to run, 
-#'    if \code{TRUE} fit the joint P(\code{outvar}|\code{predvars}) (default), 
+#' \item{\code{sep_predvars_sets}} - Logical indicating the type of regression to run,
+#'    if \code{TRUE} fit the joint P(\code{outvar}|\code{predvars}) (default),
 # '   if \code{FALSE}, fit P(\code{outvar[1]}|\code{predvars[[1]]})*...*P(\code{outvar[K]}|\code{predvars[[K]}].
 #'    More specifically, if \code{FALSE} (default), use the same predictors in \code{predvars} (vector of names) for all nodes in \code{outvar};
 #'    when \code{TRUE} uses separate sets in \code{predvars} (must be a named list of character vectors) for fitting each node in \code{outvar}.
@@ -64,30 +49,30 @@ newsummarymodel.generic <- function(reg, DatNet.sWsA.g0, ...) {
 #' \item{\code{predvars}} - Either a pooled character vector of all predictors (\code{sW}) or a vector of regression-specific predictor names.
 #'      When \code{sep_predvars_sets=TRUE}, this must be a named list of predictor names, the list names corresponding to each node name in \code{outvar},
 #'      and each list item being a vector specifying the regression predictors for a specific outcome in \code{outvar}.
-#' \item{{reg_hazard}} - Logical, if TRUE, the joint probability model P(outvar | predvars) is factorized as 
+#' \item{{reg_hazard}} - Logical, if TRUE, the joint probability model P(outvar | predvars) is factorized as
 #'    \\prod_{j}{P(outvar[j] | predvars)} for each j outvar (for fitting hazard).
 #' \item{\code{subset}} - Subset expression (later evaluated to logical vector in the envir of the data).
 #' \item{\code{ReplMisVal0}} - Logical, if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0).
-#' \item{\code{nbins}} - Integer number of bins used for a continuous outvar, the intervals are defined inside 
+#' \item{\code{nbins}} - Integer number of bins used for a continuous outvar, the intervals are defined inside
 #'  \code{ContinSummaryModel$new()} and then saved in this field.
 #' \item{\code{bin_nms}} - Character vector of column names for bin indicators.
 #' \item{\code{useglm}} - Logical, if TRUE then fit the logistic regression model using \code{\link{glm.fit}},
 #'    if FALSE use \code{\link{speedglm.wfit}}..
-#' \item{\code{parfit}} - Logical, if TRUE then use parallel \code{foreach::foreach} loop to fit and predict binary logistic 
+#' \item{\code{parfit}} - Logical, if TRUE then use parallel \code{foreach::foreach} loop to fit and predict binary logistic
 #'    regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
 #' \item{\code{bin_bymass}} - Logical, for continuous outvar, create bin cutoffs based on equal mass distribution.
-#' \item{\code{bin_bydhist}} - Logical, if TRUE, use dhist approach for bin definitions.  See Denby and Mallows "Variations on the 
+#' \item{\code{bin_bydhist}} - Logical, if TRUE, use dhist approach for bin definitions.  See Denby and Mallows "Variations on the
 #'    Histogram" (2009)) for more..
 #' \item{\code{max_nperbin}} - Integer, maximum number of observations allowed per one bin.
-#' \item{\code{pool_cont}} - Logical, pool binned continuous outvar observations across bins and only fit only regression model 
+#' \item{\code{pool_cont}} - Logical, pool binned continuous outvar observations across bins and only fit only regression model
 #'    across all bins (adding bin_ID as an extra covaraite)..
 #' \item{\code{outvars_to_pool}} - Character vector of names of the binned continuous outvars, should match \code{bin_nms}.
-#' \item{\code{intrvls.width}} - Named numeric vector of bin-widths (\code{bw_j : j=1,...,M}) for each each bin in \code{self$intrvls}. 
-#'    When \code{sA} is not continuous, \code{intrvls.width} IS SET TO 1. When sA is continuous and this variable \code{intrvls.width} 
-#'    is not here, the intervals are determined inside \code{ContinSummaryModel$new()} and are assigned to this variable as a list, 
+#' \item{\code{intrvls.width}} - Named numeric vector of bin-widths (\code{bw_j : j=1,...,M}) for each each bin in \code{self$intrvls}.
+#'    When \code{sA} is not continuous, \code{intrvls.width} IS SET TO 1. When sA is continuous and this variable \code{intrvls.width}
+#'    is not here, the intervals are determined inside \code{ContinSummaryModel$new()} and are assigned to this variable as a list,
 #'    with \code{names(intrvls.width) <- reg$bin_nms}. Can be queried by \code{BinOutModel$predictAeqa()} as: \code{intrvls.width[outvar]}.
 #' \item{\code{intrvls}} - Numeric vector of cutoffs defining the bins or a named list of numeric intervals for \code{length(self$outvar) > 1}.
-#' \item{\code{cat.levels}} - Numeric vector of all unique values in categorical outcome variable. 
+#' \item{\code{cat.levels}} - Numeric vector of all unique values in categorical outcome variable.
 #'    Set by \code{\link{CategorSummaryModel}} constructor.
 #' }
 #' @section Methods:
@@ -292,7 +277,7 @@ RegressionClass <- R6Class("RegressionClass",
         if (length(class(self)) > 2) stop("S3 dispatch class on RegressionClass has already been set")
 
         if (length(newclass) > 1) stop("cannot set S3 class on RegressionClass with more than one outvar variable")
-        
+
         class(self) <- c(class(self), newclass)
       } else {
         return(class(self))
@@ -311,21 +296,21 @@ RegressionClass <- R6Class("RegressionClass",
 ## ---------------------------------------------------------------------
 #' R6 class for fitting and predicting model P(sA|sW) under g.star or g.0
 #'
-#' This R6 class Class for defining, fitting and predicting the probability model 
-#'  \code{P(sA|sW)} under \code{g_star} or under \code{g_0} for summary measures 
+#' This R6 class Class for defining, fitting and predicting the probability model
+#'  \code{P(sA|sW)} under \code{g_star} or under \code{g_0} for summary measures
 #'  (\code{sW,sA}). Defines and manages the factorization of the multivariate conditional
-#'  probability model \code{P(sA=sa|...)} into univariate regression models 
+#'  probability model \code{P(sA=sa|...)} into univariate regression models
 #'  \code{sA[j] ~ sA[j-1] + ... + sA[1] + sW}. The class \code{self$new} method automatically
 #'  figures out the correct joint probability factorization into univariate conditional
 #'  probabilities based on name ordering provided by (\code{sA_nms}, \code{sW_nms}).
-#'  When the outcome variable \code{sA[j]} is binary, this class will automatically call 
+#'  When the outcome variable \code{sA[j]} is binary, this class will automatically call
 #'  a new instance of \code{\link{BinOutModel}} class.
-#'  Provide \code{self$fit()} function argument \code{data} as a \code{\link{DatNet.sWsA}} class object. 
+#'  Provide \code{self$fit()} function argument \code{data} as a \code{\link{DatNet.sWsA}} class object.
 #'  This data will be used for fitting the model \code{P(sA|sW)}.
 #'  Provide \code{self$fit()} function argument \code{newdata} (also as \code{DatNet.sWsA} class) for predictions of the type
-#'  \code{P(sA=1|sW=sw)}, where \code{sw} values are coming from \code{newdata} object. 
-#'  Finally, provide \code{self$predictAeqa} function \code{newdata} argument 
-#'  (also \code{DatNet.sWsA} class object) for getting the likelihood predictions \code{P(sA=sa|sW=sw)}, where 
+#'  \code{P(sA=1|sW=sw)}, where \code{sw} values are coming from \code{newdata} object.
+#'  Finally, provide \code{self$predictAeqa} function \code{newdata} argument
+#'  (also \code{DatNet.sWsA} class object) for getting the likelihood predictions \code{P(sA=sa|sW=sw)}, where
 #'  both, \code{sa} and \code{sw} values are coming from \code{newdata} object.
 #'
 #' @docType class
@@ -353,13 +338,13 @@ RegressionClass <- R6Class("RegressionClass",
 #' }
 #' @export
 SummariesModel <- R6Class(classname = "SummariesModel",
-	portable = TRUE,
-	class = TRUE,
-	public = list(
+  portable = TRUE,
+  class = TRUE,
+  public = list(
     reg = NULL,
     outvar = character(),   # outcome name(s)
     predvars = character(), # names of predictor vars
-		n_regs = integer(),        # total no. of reg. models (logistic regressions)
+    n_regs = integer(),        # total no. of reg. models (logistic regressions)
     parfit_allowed = FALSE,    # allow parallel fit of multivar outvar when 1) reg$parfit = TRUE & 2) all.outvar.bin = TRUE
     initialize = function(reg, no_set_outvar = FALSE, ...) {
       self$reg <- reg
@@ -391,20 +376,20 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       }
 
       # factorize the joint into univariate regressions, by dimensionality of the outcome variable (sA_nms):
-			for (k_i in 1:self$n_regs) {
+      for (k_i in 1:self$n_regs) {
         reg_i <- reg$clone()
         reg_i$ChangeManyToOneRegresssion(k_i, reg)
         # Calling the constructor for the summary model P(sA[j]|\bar{sA}[j-1], sW}), dispatching on reg_i class
         PsAsW.model <- newsummarymodel(reg = reg_i, ...)
-				private$PsAsW.models <- append(private$PsAsW.models, list(PsAsW.model))
-				names(private$PsAsW.models)[k_i] <- "P(sA|sW)."%+%k_i
-			}
-			invisible(self)
-		},
+        private$PsAsW.models <- append(private$PsAsW.models, list(PsAsW.model))
+        names(private$PsAsW.models)[k_i] <- "P(sA|sW)."%+%k_i
+      }
+      invisible(self)
+    },
 
-		length = function(){ base::length(private$PsAsW.models) },
-		getPsAsW.models = function() { private$PsAsW.models },  # get all summary model objects (one model object per outcome var sA[j])
-		getcumprodAeqa = function() { private$cumprodAeqa },  # get joint prob as a vector of the cumulative prod over j for P(sA[j]=a[j]|sW)
+    length = function(){ base::length(private$PsAsW.models) },
+    getPsAsW.models = function() { private$PsAsW.models },  # get all summary model objects (one model object per outcome var sA[j])
+    getcumprodAeqa = function() { private$cumprodAeqa },  # get joint prob as a vector of the cumulative prod over j for P(sA[j]=a[j]|sW)
 
     fit = function(data) {
       assert_that(is.DatNet.sWsA(data))
@@ -427,20 +412,20 @@ SummariesModel <- R6Class(classname = "SummariesModel",
           private$PsAsW.models[[k_i]]$copy.fit(fitRes[[k_i]])
         }
       }
-		  invisible(self)
-		},
+      invisible(self)
+    },
 
     # P(A^s=1|W^s=w^s): uses private$m.fit to generate predictions
-		predict = function(newdata) {
-		  if (missing(newdata)) {
+    predict = function(newdata) {
+      if (missing(newdata)) {
         stop("must provide newdata")
-		  }
+      }
       assert_that(is.DatNet.sWsA(newdata))
       # serial loop over all regressions in PsAsW.models:
       if (!self$parfit_allowed) {
-		    for (k_i in seq_along(private$PsAsW.models)) {
-		      private$PsAsW.models[[k_i]]$predict(newdata = newdata)
-		    }
+        for (k_i in seq_along(private$PsAsW.models)) {
+          private$PsAsW.models[[k_i]]$predict(newdata = newdata)
+        }
       # parallel loop over all regressions in PsAsW.models:
       } else if (self$parfit_allowed) {
         val <- checkpkgs(pkgs=c("foreach", "doParallel", "matrixStats"))
@@ -455,17 +440,17 @@ SummariesModel <- R6Class(classname = "SummariesModel",
           private$PsAsW.models[[k_i]]$copy.predict(predRes[[k_i]])
         }
       }
-		  invisible(self)
-		},
+      invisible(self)
+    },
 
-		# WARNING: This method cannot be chained together with other methods (s.a, class$predictAeqa()$fun())
-		# Uses daughter objects (stored from prev call to fit()) to get predictions for P(sA=obsdat.sA|sW=sw)
-		# Invisibly returns the joint probability P(sA=sa|sW=sw), also saves it as a private field "cumprodAeqa"
+    # WARNING: This method cannot be chained together with other methods (s.a, class$predictAeqa()$fun())
+    # Uses daughter objects (stored from prev call to fit()) to get predictions for P(sA=obsdat.sA|sW=sw)
+    # Invisibly returns the joint probability P(sA=sa|sW=sw), also saves it as a private field "cumprodAeqa"
     # P(A^s=a^s|W^s=w^s) - calculating the likelihood for obsdat.sA[i] (n vector of a's):
     predictAeqa = function(newdata, ...) {
-			assert_that(!missing(newdata))
+      assert_that(!missing(newdata))
       assert_that(is.DatNet.sWsA(newdata))
-			n <- newdata$nobs
+      n <- newdata$nobs
       if (!self$parfit_allowed) {
         cumprodAeqa <- rep.int(1, n)
         # loop over all regressions in PsAsW.models:
@@ -482,8 +467,8 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         cumprodAeqa <- matrixStats::rowProds(probAeqa_mat)
       }
       private$cumprodAeqa <- cumprodAeqa
-			return(cumprodAeqa)
-		},
+      return(cumprodAeqa)
+    },
 
     sampleA = function(newdata, ...) {
       # stop("not implemented")
@@ -493,7 +478,7 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 
       # loop over all regressions in PsAsW.models, sample CONDITIONALLY on observations that haven't been put in a specific bin yet
       sampleA_mat <- matrix(0L, nrow = n, ncol = length(private$PsAsW.models))
-      
+
       for (k_i in seq_along(private$PsAsW.models)) {
         sampleA_newcat <- private$PsAsW.models[[k_i]]$sampleA(newdata = newdata, ...)
         if (k_i == 1L) sampleA_mat[, k_i] <- sampleA_newcat
@@ -520,9 +505,9 @@ SummariesModel <- R6Class(classname = "SummariesModel",
 
       return(sampleA_cat)
     }
-	),
+  ),
 
-	active = list(
+  active = list(
     # recursively call all saved daughter model fits and wipe out any traces of saved data
     wipe.alldat = function() {
       for (k_i in seq_along(private$PsAsW.models)) {
@@ -530,9 +515,9 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       }
       return(self)
     }
-	),
+  ),
 
-	private = list(
+  private = list(
     deep_clone = function(name, value) {
       # if value is is an environment, quick way to copy:
       # list2env(as.list.environment(value, all.names = TRUE), parent = emptyenv())
@@ -547,10 +532,10 @@ SummariesModel <- R6Class(classname = "SummariesModel",
         value
       }
     },
-		PsAsW.models = list(),
-		fitted.pbins = list(),
-		cumprodAeqa = NULL
-	)
+    PsAsW.models = list(),
+    fitted.pbins = list(),
+    cumprodAeqa = NULL
+  )
 )
 
 
@@ -600,16 +585,16 @@ def_regs_subset <- function(self) {
 ## ---------------------------------------------------------------------
 #' R6 class for fitting and predicting joint probability for a univariate continuous summary measure sA[j]
 #'
-#' This R6 class defines and fits a conditional probability model \code{P(sA[j]|sW,...)} for a univariate 
+#' This R6 class defines and fits a conditional probability model \code{P(sA[j]|sW,...)} for a univariate
 #'  continuous summary measure \code{sA[j]}. This class inherits from \code{\link{SummariesModel}} class.
-#'  Defines the fitting algorithm for a regression model \code{sA[j] ~ sW + ...}. 
+#'  Defines the fitting algorithm for a regression model \code{sA[j] ~ sW + ...}.
 #'  Reconstructs the likelihood \code{P(sA[j]=sa[j]|sW,...)} afterwards.
-#'  Continuous \code{sA[j]} is discretized using either of the 3 interval cutoff methods, 
+#'  Continuous \code{sA[j]} is discretized using either of the 3 interval cutoff methods,
 #'  defined via \code{\link{RegressionClass}} object \code{reg} passed to this class constructor.
-#'  The fitting algorithm estimates the binary regressions for hazard \code{Bin_sA[j][i] ~ sW}, 
+#'  The fitting algorithm estimates the binary regressions for hazard \code{Bin_sA[j][i] ~ sW},
 #'  i.e., the probability that continuous \code{sA[j]} falls into bin \code{i}, \code{Bin_sA[j]_i},
 #'  given that \code{sA[j]} does not belong to any prior bins \code{Bin_sA[j]_1, ..., Bin_sA[j]_{i-1}}.
-#'  The dataset of discretized summary measures (\code{BinsA[j]_1,...,BinsA[j]_M}) is created 
+#'  The dataset of discretized summary measures (\code{BinsA[j]_1,...,BinsA[j]_M}) is created
 #'  inside the passed \code{data} or \code{newdata} object while discretizing \code{sA[j]} into \code{M} bins.
 #'
 #' @docType class
@@ -754,16 +739,16 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
 ## ---------------------------------------------------------------------
 #' R6 class for fitting and predicting joint probability for a univariate categorical summary measure sA[j]
 #'
-#' This R6 class defines and fits a conditional probability model \code{P(sA[j]|sW,...)} for a univariate 
+#' This R6 class defines and fits a conditional probability model \code{P(sA[j]|sW,...)} for a univariate
 #'  categorical summary measure \code{sA[j]}. This class inherits from \code{\link{SummariesModel}} class.
-#'  Defines the fitting algorithm for a regression model \code{sA[j] ~ sW + ...}. 
+#'  Defines the fitting algorithm for a regression model \code{sA[j] ~ sW + ...}.
 #'  Reconstructs the likelihood \code{P(sA[j]=sa[j]|sW,...)} afterwards.
-#'  Categorical \code{sA[j]} is first redefined into \code{length(levels)} bin indicator variables, where 
+#'  Categorical \code{sA[j]} is first redefined into \code{length(levels)} bin indicator variables, where
 #'  \code{levels} is a numeric vector of all unique categories in \code{sA[j]}.
-#'  The fitting algorithm estimates the binary regressions for hazard for each bin indicator, \code{Bin_sA[j][i] ~ sW}, 
+#'  The fitting algorithm estimates the binary regressions for hazard for each bin indicator, \code{Bin_sA[j][i] ~ sW},
 #'  i.e., the probability that categorical \code{sA[j]} falls into bin \code{i}, \code{Bin_sA[j]_i},
 #'  given that \code{sA[j]} does not fall in any prior bins \code{Bin_sA[j]_1, ..., Bin_sA[j]_{i-1}}.
-#'  The dataset of bin indicators (\code{BinsA[j]_1,...,BinsA[j]_M}) is created 
+#'  The dataset of bin indicators (\code{BinsA[j]_1,...,BinsA[j]_M}) is created
 #'  inside the passed \code{data} or \code{newdata} object when defining \code{length(levels)} bins for \code{sA[j]}.
 #'
 #' @docType class
