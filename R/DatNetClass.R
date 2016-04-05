@@ -23,7 +23,7 @@
 # * $make.dat.sWsA() must be called to create $dat.sWsA ($mat.sVar) - a df / mat of COMBINED sWsA;
 # * All binning / interval methods MUST BE called on DatNet.sWsA (NOT $datnetA, $datnetW) (inherited from DatNet);
 # * Both copies of DatNet.sWsA are storing datnetA/datnetW by reference - same copy;
-# * MOST IMPORTANTLY this gets rid of the Monte-Carlo simulation loop for evaling psi_n under g_star. 
+# * MOST IMPORTANTLY this gets rid of the Monte-Carlo simulation loop for evaling psi_n under g_star.
     # -> just use already sampled DatNet.gstar dataset and evaluate psi_n only once.
 # * NOTE: Changing datnetA/datnetW in one copy of DatNet.sWsA will result them being changed in the other copy of DatNet.sWsA as well.
 
@@ -35,18 +35,18 @@
   # This is fine for wide format, but will not work when pooling across bins. Pooling requires only non-degenerate bins.
   # Will have to find a way to re-define such bins, so that only 4 final bins are created instead of 7 (with 4th bin being degenerate)
   # [1] "freq count for original variable: "
-  #   0   1   2   3   4   5   6 
-  # 197 292 234 180  72  18   7 
+  #   0   1   2   3   4   5   6
+  # 197 292 234 180  72  18   7
   # [1] "freq count for transformed ord.sVar: "
   # ord.sVar
-  #   2   4   6   7 
+  #   2   4   6   7
   # 197 292 234 277
 #-----------------------------------------------------------------------------
 
 is.integerish <- function (x) is.integer(x) || (is.numeric(x) && all(x == as.integer(x)))
 
 #' @importFrom simcausal NetIndClass
-#' @importFrom stats as.formula glm na.exclude rbinom 
+#' @importFrom stats as.formula glm na.exclude rbinom
 NULL
 
 # Get the actual A^* sampled from user-supplied intervention f_gstar (fcn_name):
@@ -295,7 +295,7 @@ OdataDT <- R6Class(classname = "OdataDT",
     initialize = function(Odata, nFnode, iid_data_flag, ...) {
       assert_that(is.data.frame(Odata))
       self$curr_data_A_g0 <- TRUE
-      
+
       self$OdataDT <- data.table(Odata)
       # alternative is to set it without copying Odata
       # setDT(Odata); self$OdataDT <- Odata
@@ -371,7 +371,7 @@ OdataDT <- R6Class(classname = "OdataDT",
     # Swap re-saved Anodes and summaries sA with those in main data.table
     swapAnodes = function(Anodes) {
       if (missing(Anodes)) Anodes <- self$nodes$Anodes
-      
+
       # 1) Save the current values of Anodes and sA in the data:
       temp.Anodes <- self$OdataDT[, Anodes, with = FALSE]
       if (!is.null(self$sA_g0_DT) && !is.null(self$save_sA_Vars)) {
@@ -439,7 +439,7 @@ OdataDT <- R6Class(classname = "OdataDT",
 #'
 #' Class for evaluating and storing arbitrary summary measures sVar.
 #'  The summary measures are evaluated based on the user-specified sVar expressions in sVar.object (sW or sA),
-#'  in the environment of the input data.frame (Odata). 
+#'  in the environment of the input data.frame (Odata).
 #'  The evaluated summary measures from sVar.object are stored as a matrix (self$mat.sVar).
 #'  Contains methods for replacing missing values with default in gvars$misXreplace.
 #'  Also contains method for detecting / setting sVar variable type (binary, categor, contin).
@@ -463,7 +463,7 @@ OdataDT <- R6Class(classname = "OdataDT",
 #' \describe{
 #'   \item{\code{new(netind_cl, nodes, nFnode, ...)}}{...}
 #'   \item{\code{make.sVar(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE)}}{...}
-#'   \item{\code{def_types_sVar(type.sVar = NULL)}}{...}
+#'   \item{\code{def.types.sVar(type.sVar = NULL)}}{...}
 #'   \item{\code{norm_c_sVars()}}{...}
 #'   \item{\code{fixmiss_sVar()}}{...}
 #'   \item{\code{norm.sVar(name.sVar)}}{...}
@@ -525,8 +525,8 @@ DatNet <- R6Class(classname = "DatNet",
       self$sVar.object <- sVar.object
       self$dat.sVar <- sVar.object$eval.nodeforms(data.df = self$Odata$OdataDT, netind_cl = self$netind_cl)
 
-      # MAKE def_types_sVar an active binding? calling self$def_types_sVar <- type.sVar assigns, calling self$def_types_sVar defines.
-      self$def_types_sVar(type.sVar) # Define the type of each sVar[i]: bin, cat or cont
+      # MAKE def.types.sVar an active binding? calling self$def.types.sVar <- type.sVar assigns, calling self$def.types.sVar defines.
+      self$def.types.sVar(type.sVar) # Define the type of each sVar[i]: bin, cat or cont
       # normalize continuous and non-missing sVars, overwrite their columns in mat.sVar with normalized [0,1] vals
       if (norm.c.sVars) {
         self$norm.c.sVars <- norm.c.sVars
@@ -539,7 +539,7 @@ DatNet <- R6Class(classname = "DatNet",
     # Define the type (class) of each summary measure: bin, cat or cont
     # type.sVar acts as a flag: only detect types when !is.null(type.sVar)
     # otherwise can pass type.sVar = list(sVar = NA, ...) or a value type.sVar = NA/gvars$sVartypes$bin/etc
-    def_types_sVar = function(type.sVar = NULL) {
+    def.types.sVar = function(type.sVar = NULL) {
       # Detect the type of each sVar[i]: gvars$sVartypes$bin,  gvars$sVartypes$cat, gvars$sVartypes$cont
       if (is.null(type.sVar)) {
         self$type.sVar <- detect.col.types(self$dat.sVar)
@@ -649,13 +649,13 @@ DatNet <- R6Class(classname = "DatNet",
 ## ---------------------------------------------------------------------
 #' R6 class for storing and managing the combined summary measures \code{sW} & \code{sA} from DatNet classes.
 #'
-#' This class inherits from \code{DatNet} and extends its methods to handle a single matrix dataset of 
+#' This class inherits from \code{DatNet} and extends its methods to handle a single matrix dataset of
 #'  all summary measures \code{(sA,sW)}
-#'  The class \code{DatNet.sWsA} is the only way to access data in the entire package. 
+#'  The class \code{DatNet.sWsA} is the only way to access data in the entire package.
 #'  Contains methods for combining, subsetting, discretizing & binirizing summary measures \code{(sW,sA)}.
-#'  For continous sVar this class provides methods for detecting / setting bin intervals, 
+#'  For continous sVar this class provides methods for detecting / setting bin intervals,
 #'  normalization, disretization and construction of bin indicators.
-#'  The pointers to this class get passed on to \code{SummariesModel} functions: \code{$fit()}, 
+#'  The pointers to this class get passed on to \code{SummariesModel} functions: \code{$fit()},
 #'  \code{$predict()} and \code{$predictAeqa()}.
 #'
 #' @docType class
@@ -1029,7 +1029,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         if (length(self$datnetW$nodes) < 1) self$datnetW$nodes <- nodes
         if (length(self$datnetA$nodes) < 1) self$datnetA$nodes <- nodes
       }
-    }    
+    }
   ),
   private = list(
     protected.YnodeVals = NULL  # Actual observed values of the binary outcome (Ynode), along with deterministic vals
