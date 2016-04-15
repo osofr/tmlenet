@@ -2,7 +2,7 @@
 `%+%` <- function(a, b) paste0(a, b)
 as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 allNA = function(x) all(is.na(x))
- 
+
 if(FALSE) {
   # CHECK AND BUILD PACKAGE:  library("RUnit")
   library("roxygen2")
@@ -121,7 +121,7 @@ test.opts.misfun.chkpkgs <- function() {
   funmiss <- tmlenet:::testmisfun()
   checkTrue(funmiss(NA))
   checkTrue(is.na(tmlenet:::get.misval()))
-  
+
   tmlenet:::set.misval(tmlenet:::gvars, NaN)
   checkTrue(is.nan(tmlenet:::gvars$misval))
   tmlenet:::set.misval(tmlenet:::gvars, NA)
@@ -224,7 +224,7 @@ test.RegressionClass <- function() {
   datO <- get.testDat(nsamp)
   head(datO)
   nodeobjs <- get.testDatNet(datO)
-  
+
   # ContinSummaryModel$new
   # class(reg_test3)
   # Detect intervals with a minimal RegressionClass inputs:
@@ -233,7 +233,7 @@ test.RegressionClass <- function() {
                                                       bin_bymass = reg_test3$bin_bymass,
                                                       bin_bydhist = reg_test3$bin_bydhist,
                                                       max_nperbin = reg_test3$max_nperbin)
-  
+
   class(reg_test3$subset[[1]])
   model3 <- SummariesModel$new(reg = reg_test3, DatNet.sWsA.g0 = nodeobjs$datNetObs)
 }
@@ -253,7 +253,7 @@ test.butregquote <- function() {
   nodeobjs <- get.testDatNet(datO)
   datNetObs <- nodeobjs$datNetObs
   model3 <- SummariesModel$new(reg = reg_test, DatNet.sWsA.g0 = nodeobjs$datNetObs)
-  
+
   model3$getPsAsW.models()[[1]]$getPsAsW.models()
   model3$getPsAsW.models()[[1]]$reg$subset
   # model3$fit(data = nodeobjs$datNetObs)
@@ -262,7 +262,7 @@ test.butregquote <- function() {
 
 # ------------------------------------------------------------------------------------------------
 # Test for pooled fitting of the bin indicators
-# AN IDEA FOR TESTING pooled regression: 
+# AN IDEA FOR TESTING pooled regression:
 # USE IT TO ESTIMATE POOLED IPTW FOR LONGITUDINAL DATA WITH SEVERAL TIME POINTS (RN's simulation)
 # ------------------------------------------------------------------------------------------------
 test.PoolContRegression <- function() {
@@ -293,8 +293,8 @@ test.PoolContRegression <- function() {
   binpredict_time
   # [1] "fit (10K)"
   # $coef
-  #  Intercept     bin_ID         W1         W2         W3 
-  # -2.7756215  0.1553186 -1.0014477 -0.5720651 -0.3339728 
+  #  Intercept     bin_ID         W1         W2         W3
+  # -2.7756215  0.1553186 -1.0014477 -0.5720651 -0.3339728
   # [1] "res_DT: "
   #            ID ProbAeqa_long
   #      1:     1    0.97396036
@@ -302,7 +302,7 @@ test.PoolContRegression <- function() {
   #      3:     1    0.96480811
   #      4:     1    0.95913645
   #      5:     1    0.95259565
-  #     ---                    
+  #     ---
   # 104496:  9998    0.07668105
   # 104497:  9999    0.93215687
   # 104498:  9999    0.92165035
@@ -315,7 +315,7 @@ test.PoolContRegression <- function() {
   #     3:     3 0.03836225
   #     4:     4 0.05821479
   #     5:     5 0.07303417
-  #    ---                 
+  #    ---
   #  9996:  9996 0.05119563
   #  9997:  9997 0.05896735
   #  9998:  9998 0.06414013
@@ -334,9 +334,9 @@ test.PoolContRegression <- function() {
 ## ---------------------------------------------------------------------
 test.intervals <- function() {
   test_mat <- as.matrix(data.frame(a = c(0,1,0,0,1), b = rep(5,5), c = c(1,2,3,4,5), d = rnorm(5)))
-  correct.types <- list(a = tmlenet:::gvars$sVartypes$bin, 
-                        b = tmlenet:::gvars$sVartypes$bin, 
-                        c = tmlenet:::gvars$sVartypes$cat, 
+  correct.types <- list(a = tmlenet:::gvars$sVartypes$bin,
+                        b = tmlenet:::gvars$sVartypes$bin,
+                        c = tmlenet:::gvars$sVartypes$cat,
                         d = tmlenet:::gvars$sVartypes$cont)
   out.types <- tmlenet:::detect.col.types(test_mat)
   checkTrue(all.equal(correct.types, out.types))
@@ -431,14 +431,14 @@ test.detect.int.sA <- function() {
     datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(datNetObs)
   }
-  
+
   print("Binning by mass")
   nbins <- 10
   oldopts <- tmlenet_options(maxncats = 5, nbins = nbins)
 
   # ----------------------------------------------------------------------------------------
   # Continuous
-  # ---------------------------------------------------------------------------------------- 
+  # ----------------------------------------------------------------------------------------
   datNetObs <- makedat(nsamp=nsamp, Kmax=3)
   obsdat.sW <- datNetObs$datnetW$dat.sVar
   print("head(obsdat.sW)"); print(head(obsdat.sW,10))

@@ -56,7 +56,7 @@ get_sparse_Fiintersectmtx <- function() {
   # 12,032.1 Kb
   # system.time({
   #   conn_ind_mtx_1st_indir <- get.Fiintersectmtx(n = n)$conn_ind_mtx_1st
-  #   Dstar_old <- est.sigma_fsum(get.crossprodmtx(fvec_i), conn_ind_mtx_1st_indir)        
+  #   Dstar_old <- est.sigma_fsum(get.crossprodmtx(fvec_i), conn_ind_mtx_1st_indir)
   # })
   # print(all.equal(Dstar_new, Dstar_old))
   # # print(all.equal(Dstar, Dstar_old)); print(Dstar);
@@ -71,10 +71,10 @@ get_sparse_Fiintersectmtx <- function() {
 # ?'nsCMatrix-class'
 # ngCMatrix, nsCMatrix, and ntCMatrix
   # class of sparse pattern matrices, i.e., binary matrices conceptually with TRUE/FALSE entries. Only the positions of the elements that are TRUE are stored.
-  # Objects can be created by calls of the form new("ngCMatrix", ...) and so on. 
-  # More frequently objects are created by coercion of a numeric sparse matrix to the pattern form for use in the symbolic 
-  # analysis phase of an algorithm involving sparse matrices. Such algorithms often involve two phases: a symbolic phase wherein the 
-  # positions of the non-zeros in the result are determined and a numeric phase wherein the actual results are calculated. 
+  # Objects can be created by calls of the form new("ngCMatrix", ...) and so on.
+  # More frequently objects are created by coercion of a numeric sparse matrix to the pattern form for use in the symbolic
+  # analysis phase of an algorithm involving sparse matrices. Such algorithms often involve two phases: a symbolic phase wherein the
+  # positions of the non-zeros in the result are determined and a numeric phase wherein the actual results are calculated.
   # During the symbolic phase only the positions of the non-zero elements in any operands are of interest, hence numeric sparse matrices can be treated as sparse pattern matrices.
 # lsparseMatrix-classes {Matrix}
 # lsCMatrix
@@ -104,7 +104,7 @@ sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
     # "integer" of length nnzero, 0- based row numbers for each non-zero element in the matrix, i.e., i must be in 0:(nrow(.)-1).
     # p: integer vector for providing pointers, one for each column, to the initial (zero-based) index of elements in the column.
     # .@p is of length ncol(.) + 1, with p[1] == 0 and
-    # p[length(p)] == nnzero, such that in fact, diff(.@p) are the number of non-zero elements for each column.  
+    # p[length(p)] == nnzero, such that in fact, diff(.@p) are the number of non-zero elements for each column.
   assertthat::assert_that(is(sparseAdjMat, "sparseMatrix"))
   # 1) The number of friends for each observation:
   nF <- as.integer(diff(sparseAdjMat@p))
@@ -112,7 +112,7 @@ sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
   cumFindx <- sparseAdjMat@p
   # 3) All non-zero elements as a vector of 0-based row numbers:
   base0_IDrownums <- sparseAdjMat@i
-  # 4) For each observation i that has non-zero nF (friends), add fvec_i[i]*fvec_Fj for each friend Fj of i:  
+  # 4) For each observation i that has non-zero nF (friends), add fvec_i[i]*fvec_Fj for each friend Fj of i:
   non0nF.idx <- which(nF > 1L) # don`t care if nF[i]=1 since it means i has 0 actual friends (i itself is included in nF)
   # non0nF.idx <- which(nF > 0L)
   Dstar_crossprod <- 0
@@ -141,7 +141,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   `%+%` <- function(a, b) paste0(a, b)
 
   fWi <- fWi_mat[, "fWi_Qinit"]
-  QY.init <- QY_mat[, "QY.init"] 
+  QY.init <- QY_mat[, "QY.init"]
   h_wts <- wts_mat[, "h_wts"]
 
   # NetInd as sparse adjacency matrix (new version returns pattern sparse mat ngCMatrix):
@@ -154,8 +154,8 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO)
 
   # ------------------------------------------------------------------------------------------------------------
-  # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC: 
-  # var_IC_Q_tmle gives inference CONDITIONAL all W. 
+  # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC:
+  # var_IC_Q_tmle gives inference CONDITIONAL all W.
   # ------------------------------------------------------------------------------------------------------------
   IC_Q_tmle <- h_wts * (obsYvals - QY.init)
   var_IC_Q_tmle <- (1/n) * sum(IC_Q_tmle^2)
@@ -202,7 +202,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   rownames(as.var_mat) <- estnames; colnames(as.var_mat) <- "Var"
 
   # Inference conditional on all W
-  condW.vars.ests <- c(condW_var_tmle = abs(var_IC_Q_tmle), 
+  condW.vars.ests <- c(condW_var_tmle = abs(var_IC_Q_tmle),
                       condW_var_iptw_h = NA,
                       condW_var_gcomp = NA)
 
@@ -213,13 +213,13 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   # IID inference (ignores all dependence)
   iid.vars.ests = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
                     iid_var_iptw_h = abs(iid_var_iptw_h), # no adjustment for correlations i,j for iptw
-                    iid_var_gcomp = NA) 
+                    iid_var_gcomp = NA)
   iid.vars_mat <- matrix(0, nrow = length(iid.vars.ests), ncol = 1)
   iid.vars_mat[,1] <- iid.vars.ests
   rownames(iid.vars_mat) <- names(iid.vars.ests); colnames(iid.vars_mat) <- "Var"
 
   # QY.star <- QY_mat[, "QY.star"]
-  # g_wts <- wts_mat[,"g_wts"]  
+  # g_wts <- wts_mat[,"g_wts"]
   # var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
   # var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
   # # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
@@ -289,7 +289,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
 
 # bootstrap tmle by resampling (sW,sA,Y) with replacement (as if iid)
 iid_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat) {
-  QY.init <- QY_mat[, "QY.init"] 
+  QY.init <- QY_mat[, "QY.init"]
   off <- qlogis(QY.init)  # offset
   DatNet.gstar <- tmle_g_out$DatNet.gstar
   psi.evaluator <- tmle_g_out$psi.evaluator
@@ -308,7 +308,7 @@ iid_bootstrap_tmle <- function(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_ma
   for (i in (1:n.boot)) {
       boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
       boot.tmle.obj <- tmle.update(estnames = estnames,
-                                   Y = Y[boot_idx], off = off[boot_idx], h_wts = h_wts[boot_idx], 
+                                   Y = Y[boot_idx], off = off[boot_idx], h_wts = h_wts[boot_idx],
                                    determ.Q = determ.Q[boot_idx], predictQ = FALSE)
       boot_eps[i] <- boot.tmle.obj$m.Q.star.coef
       boot_tmle_B[i] <- mean(psi.evaluator$get.boot.tmleB(m.Q.starB = boot_eps[i], boot_idx = boot_idx))
@@ -330,15 +330,15 @@ findRegSummaryObj <- function(fit.obj, outvar) {
   }
 }
 
-fit_reg.forms <- function(boot.regs, DatNet.ObsP0, sW, sA) {
-  boot.regs.sVars <- process_regforms(boot.regs, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
-  pred_nms <- boot.regs.sVars$predvars
-  boot_outvar_nms <- boot.regs.sVars$outvars
+fit_reg.forms <- function(boot.form, DatNet.ObsP0, sW, sA) {
+  boot.form.sVars <- process_regforms(boot.form, sW.map = sW$sVar.names.map, sA.map = sA$sVar.names.map)
+  pred_nms <- boot.form.sVars$predvars
+  boot_outvar_nms <- boot.form.sVars$outvars
   check.pred.exist <- unlist(lapply(unlist(pred_nms), function(sWname) sWname %in% c(DatNet.ObsP0$datnetW$names.sVar,DatNet.ObsP0$datnetA$names.sVar)))
-  if (!all(check.pred.exist)) stop("the following predictors from boot.regs regression could not be located in sW/sA summary measures: " %+%
+  if (!all(check.pred.exist)) stop("the following predictors from boot.form regression could not be located in sW/sA summary measures: " %+%
                                     paste0(pred_nms[!check.pred.exist], collapse = ","))
   check.outvar.exist <- unlist(lapply(boot_outvar_nms, function(sAname) sAname %in% c(DatNet.ObsP0$datnetW$names.sVar,DatNet.ObsP0$datnetA$names.sVar)))
-  if (!all(check.outvar.exist)) stop("the following outcomes from boot.regs regression could not be located in sW/sA summary measures: " %+%
+  if (!all(check.outvar.exist)) stop("the following outcomes from boot.form regression could not be located in sW/sA summary measures: " %+%
                                     paste0(boot_outvar_nms[!check.outvar.exist], collapse = ","))
   outvar_class <- lapply(boot_outvar_nms, function(sA_nms) DatNet.ObsP0$datnetA$type.sVar[sA_nms])
   subsets_expr <- lapply(boot_outvar_nms, function(var) lapply(var, function(var) {var}))
@@ -353,12 +353,12 @@ fit_reg.forms <- function(boot.regs, DatNet.ObsP0, sW, sA) {
 }
 
 # Parametric bootstrap: sampling W as iid, boot.nodes from m.h.fit or special fit obj and Y from m.Q.init.N;
-# Parametric bootstrap: need to explicitly spec. fitted nodes which are cond independent and then resample from those fits. 
+# Parametric bootstrap: need to explicitly spec. fitted nodes which are cond independent and then resample from those fits.
 # Could be very different from Anodes or part of Anodes. If no reg form was specified, finds it among hforms by default;
 # However, Y's are always re-sampled from m.Q.init
 # Allows boot.nodes to be different from Anodes with their own regression formulas
-# These regressions are specified with "boot.regs" arg: specifies regression forms for conditionally independent nodes to be resampled from such fits
-par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
+# These regressions are specified with "boot.form" arg: specifies regression forms for conditionally independent nodes to be resampled from such fits
+par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.form, estnames, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
   # boot.nodes <- NULL
   # n.boot <- 50
   # ******** REPLACED this with the actual f.g0 or model fit g.N *********
@@ -396,12 +396,12 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
   DatNet.gstar <- tmle_g1_out$DatNet.gstar
 
   # -----------------------------------------------------------------------------------------------
-  # fit any regressions specified in boot.regs:
+  # fit any regressions specified in boot.form:
   # -----------------------------------------------------------------------------------------------
-  if (!is.null(boot.regs)) {
-    boot.regs_fit <- fit_reg.forms(boot.regs, DatNet.ObsP0, tmle_g1_out$sW, tmle_g1_out$sA)
-    summeas_boot <- boot.regs_fit$summeas_boot
-    boot_outvar_nms <- unlist(boot.regs_fit$boot_outvar_nms)
+  if (!is.null(boot.form)) {
+    boot.form_fit <- fit_reg.forms(boot.form, DatNet.ObsP0, tmle_g1_out$sW, tmle_g1_out$sA)
+    summeas_boot <- boot.form_fit$summeas_boot
+    boot_outvar_nms <- unlist(boot.form_fit$boot_outvar_nms)
   } else {
     boot_outvar_nms <- NULL
   }
@@ -427,13 +427,20 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
     # 2. Generate new A's from g0 or g.N (replace A with sampled A's in DatNet.ObsP0); Re-evaluate exposure summaries (sA) based on new DatNet.ObsP0:
     if (is.null(f.g0)) {
       for (Anode in boot.nodes) {
-        # If Anode was referenced in boot.regs, then sample Anode from this new fit, otherwise sample from hforms fit
+        # If Anode was referenced in boot.form, then sample Anode from this new fit, otherwise sample from hforms fit
         if (Anode %in% boot_outvar_nms) {
           model.sVar.gN <- findRegSummaryObj(summeas_boot, outvar = Anode)
         } else {
-          model.sVar.gN <- findRegSummaryObj(tmle_g1_out$m.h.fit$summeas.g0, outvar = Anode)  
+          # NOTE: new RegressionClass implementation will allow pulling top level outvar names directly
+          # (regardless of how the regressions were specified ("A1+A2~W" or c("A1~W","A2~W")))
+          # will allow checking directly if model for Anode exists: (Anode %in% unlist(tmle_g1_out$m.h.fit$summeas.g0$reg$outvar))
+          # current implementation doesn't allow that, so need to check the model is not NULL
+          model.sVar.gN <- findRegSummaryObj(tmle_g1_out$m.h.fit$summeas.g0, outvar = Anode)
         }
         if (is.list(model.sVar.gN)) model.sVar.gN <- model.sVar.gN[[1]]
+        if (is.null(model.sVar.gN)) stop("Model fit for parametric bootstrap variable '" %+% Anode %+% "' could not be located. " %+%
+          "Make sure to specify the regression formula for every variable in 'boot.nodes', either as part of regression formulas in 'hform.g0'/'hform.gstar'" %+%
+          "or 'boot.form'")
         A.sample.gN <- model.sVar.gN$sampleA(newdata = DatNet.ObsP0)
         DatNet.ObsP0$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = A.sample.gN)
       }
@@ -490,13 +497,13 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
     obsYvals.boot = DatNet.ObsP0$noNA.Ynodevals
     boot_IC_tmle[i] <- mean(h_wts_g1.boot * (obsYvals.boot - QY.init.boot) + (fWi.boot_g1 - boot_tmle_B_g1[i]))
 
-    # 10. If (!is.null(tmle_g2_out)) then the above steps 8 & 9 are repeated for tmle_g2_out and the ATE. 
+    # 10. If (!is.null(tmle_g2_out)) then the above steps 8 & 9 are repeated for tmle_g2_out and the ATE.
     # First restore (Anodes,sA) that were generated in the observed bootstrapped sample!
     # In this case the intervention summaries, s.a, "def_new_sA(A = A)" will correctly use the observed bootstrapped values of A
     # -----------------------------------------------------------------------------------------------------------------------------
-    # Q: How do we get the bootsrap var for the ATE? 
+    # Q: How do we get the bootsrap var for the ATE?
       # 1) We can generate a new TMLE update that directly corresponds to the EIC for ATE (need to figure out EIC)
-      # 2) We could also evaluate the ATE as a plug-in estimator from two separate TMLE updates - using this approach. 
+      # 2) We could also evaluate the ATE as a plug-in estimator from two separate TMLE updates - using this approach.
     # Both approaches should be equivalent, except for situations with 2 "incompatible" target parameters
     # -----------------------------------------------------------------------------------------------------------------------------
     if (!is.null(tmle_g2_out)) {
@@ -547,7 +554,7 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
 
     rownames(res_mat) <- c("Mean.Est", "Boot.Mean.Est", "Boot.Var")
     colnames(res_mat) <- c("gcomp_g1","gcomp_g2","gcomp_ATE","tmle_B_g1","tmle_B_g2","tmle_B_ATE")
-    print("Parametric Bootstrap Inference: "); print(res_mat)    
+    print("Parametric Bootstrap Inference: "); print(res_mat)
 
     est_mat <- cbind(tmle_g1_out$ests_mat, tmle_g2_out$ests_mat, tmle_g1_out$ests_mat - tmle_g2_out$ests_mat)
     colnames(est_mat) <- c("g1", "g2", "ATE")
@@ -565,7 +572,7 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.regs, estnames, DatNet.O
 }
 
 # create output object with param ests of EY_gstar, vars and CIs for given gstar (or ATE if two tmle obj are passed)
-# boot.var, n.boot, 
+# boot.var, n.boot,
 make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out, tmle_g2_out=NULL, var_tmleB_boot) {
   nobs <- DatNet.ObsP0$nobs
   NetInd_k <- DatNet.ObsP0$netind_cl$NetInd_k
@@ -587,14 +594,14 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   # get the IC-based asymptotic variance estimates:
   # ------------------------------------------------------------------------------------------
   getVar_time <- system.time(
-    as.vars_obj <- est_sigmas(estnames = estnames, n = nobs, 
+    as.vars_obj <- est_sigmas(estnames = estnames, n = nobs,
                               NetInd_k = NetInd_k, nF = nF,
                               obsYvals = DatNet.ObsP0$noNA.Ynodevals,
-                              ests_mat = ests_mat, QY_mat = QY_mat, 
+                              ests_mat = ests_mat, QY_mat = QY_mat,
                               wts_mat = wts_mat, fWi_mat = fWi_mat)
   )
   if (gvars$verbose) {
-    print("time to estimate Vars: "); print(getVar_time)  
+    print("time to estimate Vars: "); print(getVar_time)
   }
 
   # ------------------------------------------------------------------------------------------
@@ -633,7 +640,7 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
   colnames(iid.CIs_mat) <- c("LBCI_"%+%as.character(alpha/2), "UBCI_"%+%as.character(1-alpha/2))
 
   # ------------------------------------------------------------------------------------------
-  # RENAME ESTIMATORS FOR THE FINAL OUTPUT:
+  # Rename estimators for the final output:
   # ------------------------------------------------------------------------------------------
   rownames(ests_mat) <- estoutnames
   rownames(as.vars_obj$as.var_mat) <- rownames(boot.as.var_mat) <- rownames(as.vars_obj$condW.vars_mat) <- rownames(as.vars_obj$iid.vars_mat) <- estoutnames
@@ -646,7 +653,7 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
                     condW.IC.vars = (as.vars_obj$condW.vars_mat / nobs), # IC-based variance conditional on W
                     iid.vars = (as.vars_obj$iid.vars_mat / nobs), # iid Variance
 
-                    boot.CIs = boot.CIs_mat, 
+                    boot.CIs = boot.CIs_mat,
                     IC.CIs = CIs_mat,
                     condW.CIs = condW.CIs_mat,
                     iid.CIs = iid.CIs_mat,

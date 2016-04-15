@@ -34,7 +34,7 @@ Class for evaluating and storing arbitrary summary measures sVar.
 \describe{
   \item{\code{new(netind_cl, nodes, nFnode, ...)}}{...}
   \item{\code{make.sVar(Odata, sVar.object = NULL, type.sVar = NULL, norm.c.sVars = FALSE)}}{...}
-  \item{\code{def_types_sVar(type.sVar = NULL)}}{...}
+  \item{\code{def.types.sVar(type.sVar = NULL)}}{...}
   \item{\code{norm_c_sVars()}}{...}
   \item{\code{fixmiss_sVar()}}{...}
   \item{\code{norm.sVar(name.sVar)}}{...}
