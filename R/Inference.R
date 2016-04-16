@@ -80,7 +80,6 @@ get_sparse_Fiintersectmtx <- function() {
 # lsCMatrix
 # The second letter in the name of these non-virtual classes indicates general, symmetric, or triangular.
 # The lsparseMatrix class is a virtual class of sparse matrices with TRUE/FALSE or NA entries. Only the positions of the elements that are TRUE are stored.
-
 # Copied from simcausal, then modified to work as sparse pattern matrix:
 # return pattern sparse matrix, no @x is recorded (ngMatrix):
 NetInd.to.sparseAdjMat <- function(NetInd_k, nF, add_diag = FALSE) {
@@ -97,14 +96,14 @@ NetInd.to.sparseAdjMat <- function(NetInd_k, nF, add_diag = FALSE) {
 
 # For correlated i,j (s.t. i<j), add a term f_vec[i]*f_vec[j] to the cumulative sum
 # Helper function to calculate cross product sum of correlated f_Wi (see p.33 of vdL)
-sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
+sum_crossprod_Fij <- function(sparseAdjMat, fvec_i, excludeIDs = NULL) {
   # sparseAdjMat:
-    # nnzero: number of non-zero elements
-    # i: These are the 0-based row numbers for each non-zero element in the matrix.
-    # "integer" of length nnzero, 0- based row numbers for each non-zero element in the matrix, i.e., i must be in 0:(nrow(.)-1).
-    # p: integer vector for providing pointers, one for each column, to the initial (zero-based) index of elements in the column.
-    # .@p is of length ncol(.) + 1, with p[1] == 0 and
-    # p[length(p)] == nnzero, such that in fact, diff(.@p) are the number of non-zero elements for each column.
+  # nnzero: number of non-zero elements
+  # i: These are the 0-based row numbers for each non-zero element in the matrix.
+  # "integer" of length nnzero, 0- based row numbers for each non-zero element in the matrix, i.e., i must be in 0:(nrow(.)-1).
+  # p: integer vector for providing pointers, one for each column, to the initial (zero-based) index of elements in the column.
+  # .@p is of length ncol(.) + 1, with p[1] == 0 and
+  # p[length(p)] == nnzero, such that in fact, diff(.@p) are the number of non-zero elements for each column.
   assertthat::assert_that(is(sparseAdjMat, "sparseMatrix"))
   # 1) The number of friends for each observation:
   nF <- as.integer(diff(sparseAdjMat@p))
@@ -115,23 +114,30 @@ sum_crossprod_Fij <- function(sparseAdjMat, fvec_i) {
   # 4) For each observation i that has non-zero nF (friends), add fvec_i[i]*fvec_Fj for each friend Fj of i:
   non0nF.idx <- which(nF > 1L) # don`t care if nF[i]=1 since it means i has 0 actual friends (i itself is included in nF)
   # non0nF.idx <- which(nF > 0L)
+
   Dstar_crossprod <- 0
   for (idx in non0nF.idx) {
     Fidx_base0 <- (cumFindx[idx]) : (cumFindx[idx + 1] - 1)
     FriendIDs <- base0_IDrownums[Fidx_base0 + 1] + 1
-    # remove the diag term (idx,idx) from FriendIDs (always the last entry),
+    # always remove the diag term (idx,idx) from FriendIDs (always the last entry),
     # since we only need to sum all fvec_i[i]^2 once (outside this fun)
-    FriendIDs <- FriendIDs[-length(FriendIDs)]
+    if (!is.null(excludeIDs)) {
+      exclude_now <- c(which(FriendIDs %in% excludeIDs), length(FriendIDs))
+    } else {
+      exclude_now <- length(FriendIDs)
+    }
+    # FriendIDs <- FriendIDs[-length(FriendIDs)]
+    FriendIDs <- FriendIDs[-exclude_now]
     Dstar_crossprod <- Dstar_crossprod + sum(fvec_i[idx] * fvec_i[FriendIDs])
   }
   return(Dstar_crossprod)
 }
 
 # Sum the cross prod vector over connectivity mtx (prod will only appear if (i,j) entry is 1):
-est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
+est.sigma_sparse <- function(fvec_i, sparse_connectmtx, excludeIDs = NULL)  {
   n <- length(fvec_i)
   # sum of fvec_i[i]*fvec[j] for correlated cross-product terms (i,j), s.t., i<j
-  Dstar_crossprod <- sum_crossprod_Fij(sparseAdjMat = sparse_connectmtx, fvec_i = fvec_i)
+  Dstar_crossprod <- sum_crossprod_Fij(sparseAdjMat = sparse_connectmtx, fvec_i = fvec_i, excludeIDs = excludeIDs)
   # double cross prod sum + sum of squares over i=1,...,n
   Dstar <- (1/n) * ((2*Dstar_crossprod) + sum(fvec_i^2))
   return(Dstar)
@@ -139,7 +145,6 @@ est.sigma_sparse <- function(fvec_i, sparse_connectmtx)  {
 
 est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat) {
   `%+%` <- function(a, b) paste0(a, b)
-
   fWi <- fWi_mat[, "fWi_Qinit"]
   QY.init <- QY_mat[, "QY.init"]
   h_wts <- wts_mat[, "h_wts"]
@@ -148,10 +153,29 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   sparse_mat <- NetInd.to.sparseAdjMat(NetInd_k, nF = nF, add_diag = TRUE)
   # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
   connectmtx_1stO <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
-
-  # TMLE inference based on the iid IC:
+  # observation-specific IC values:
   IC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  # TMLE variance estimator based on the above IC that adjusts for correlated observation (a double sum):
   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO)
+
+  n_knockout <- c(10, 25, 50, 100, 500, 1000, 1500, 2000)
+  # aux.vars_mat <- matrix(0, nrow = n_knockout+1, ncol = 1)
+  aux.vars_mat <- matrix(0, nrow = 1+length(n_knockout), ncol = 1)
+  colnames(aux.vars_mat) <- "Var"
+  var_tmle_noindirect <- est.sigma_sparse(IC_tmle, sparse_mat)
+  aux.vars_mat[1,1] <- var_tmle_noindirect
+
+  # browser()
+  # connectmtx_1stO_aux <- connectmtx_1stO
+  print("sum(connectmtx_1stO)/n^2: " %+% as.character(sum(connectmtx_1stO)/n^2))
+
+  for (ID_idx in n_knockout) {
+    # to knock-out ID one from all the double sums (setting the obs-specific columns to FALSE):
+    # connectmtx_1stO_aux[, ID_idx] <- FALSE
+    # connectmtx_1stO_aux[ID_idx, ID_idx] <- TRUE
+    aux.vars_mat[which(n_knockout %in% ID_idx) + 1, 1] <- est.sigma_sparse(IC_tmle, connectmtx_1stO, excludeIDs = c(1:ID_idx))
+  }
+  rownames(aux.vars_mat) <- c("noindirect", "noID_1_to_" %+% n_knockout)
 
   # ------------------------------------------------------------------------------------------------------------
   # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC:
@@ -171,7 +195,6 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   # Simple estimator of the iid asymptotic IC-based variance (no adjustment made when two observations i!=j are dependent):
   # ------------------------------------------------------------------------------------------------------------
   iid_var_tmle <- (1/n) * sum(IC_tmle^2)
-
   IC_vars <- rbind(var_tmle/n, var_IC_Q_tmle/n, iid_var_tmle/n)
   rownames(IC_vars) <- c("var_IC_tmle", "var_IC_Q_tmle", "iid_var_tmle")
   print(IC_vars)
@@ -284,7 +307,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   #               )
 
   # return(list(as.var_mat = as.var_mat))
-  return(list(as.var_mat = as.var_mat, condW.vars_mat = condW.vars_mat, iid.vars_mat = iid.vars_mat))
+  return(list(as.var_mat = as.var_mat, condW.vars_mat = condW.vars_mat, iid.vars_mat = iid.vars_mat, aux.vars_mat = aux.vars_mat))
 }
 
 # bootstrap tmle by resampling (sW,sA,Y) with replacement (as if iid)
@@ -470,8 +493,8 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.form, estnames, DatNet.O
 
     # 7. Fit a TMLE update epsilon on this new bootstapped dataset.
     boot.tmle_g1.obj <- tmle.update(estnames = estnames,
-                                 Y = Y.boot, off = off.boot, h_wts = h_wts_g1.boot,
-                                 determ.Q = detY.boot, predictQ = FALSE)
+                                    Y = Y.boot, off = off.boot, h_wts = h_wts_g1.boot,
+                                    determ.Q = detY.boot, predictQ = FALSE)
     boot_eps_g1[i] <- boot.tmle_g1.obj$m.Q.star.coef
 
     # If tmle_g2_out is present, do the same, before DatNet.ObsP0 is overwritten
@@ -652,6 +675,8 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
                     IC.vars = (as.vars_obj$as.var_mat / nobs), # IC-based variance (dependent)
                     condW.IC.vars = (as.vars_obj$condW.vars_mat / nobs), # IC-based variance conditional on W
                     iid.vars = (as.vars_obj$iid.vars_mat / nobs), # iid Variance
+
+                    aux.vars = (as.vars_obj$aux.vars_mat / nobs), # auxilary (additional variance estimators)
 
                     boot.CIs = boot.CIs_mat,
                     IC.CIs = CIs_mat,
