@@ -167,6 +167,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
 
   # browser()
   # connectmtx_1stO_aux <- connectmtx_1stO
+  print("sum(connectmtx_1stO)/n: " %+% as.character(sum(connectmtx_1stO)/n))
   print("sum(connectmtx_1stO)/n^2: " %+% as.character(sum(connectmtx_1stO)/n^2))
 
   for (ID_idx in n_knockout) {
@@ -176,7 +177,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
     aux.vars_mat[which(n_knockout %in% ID_idx) + 1, 1] <- est.sigma_sparse(IC_tmle, connectmtx_1stO, excludeIDs = c(1:ID_idx))
   }
   rownames(aux.vars_mat) <- c("noindirect", "noID_1_to_" %+% n_knockout)
-
+  print("aux.vars_mat: "); print(aux.vars_mat)
   # ------------------------------------------------------------------------------------------------------------
   # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC:
   # var_IC_Q_tmle gives inference CONDITIONAL all W.
@@ -184,11 +185,13 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   IC_Q_tmle <- h_wts * (obsYvals - QY.init)
   var_IC_Q_tmle <- (1/n) * sum(IC_Q_tmle^2)
 
-  # IC_W_tmle <- (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
-  # var_IC_W_tmle <- est.sigma_sparse(IC_W_tmle, connectmtx_1stO)
-  # var_tmle_2 <- var_IC_Q_tmle + var_IC_W_tmle
-  # print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
-  # print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
+  IC_W_tmle <- (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  var_IC_W_tmle <- est.sigma_sparse(IC_W_tmle, connectmtx_1stO)
+  var_tmle_2 <- var_IC_Q_tmle + var_IC_W_tmle
+
+  print("var_IC_Q_tmle: " %+% as.numeric(var_IC_Q_tmle/n))
+  print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
+  print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
   # print("total n of non-zero entries in connectmtx_1stO / N^2: "); print(sum(connectmtx_1stO)/(n^2))
 
   # ------------------------------------------------------------------------------------------------------------
@@ -232,6 +235,8 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   condW.vars_mat <- matrix(0, nrow = length(condW.vars.ests), ncol = 1)
   condW.vars_mat[,1] <- condW.vars.ests
   rownames(condW.vars_mat) <- names(condW.vars.ests); colnames(condW.vars_mat) <- "Var"
+
+  print("condW.vars_mat: "); print(condW.vars_mat)
 
   # IID inference (ignores all dependence)
   iid.vars.ests = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
