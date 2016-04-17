@@ -13,9 +13,9 @@ Description: Estimation of average causal effects for single time point
     correct influence-curve-based confidence intervals are constructed for the
     TMLE and IPTW. The data are assumed to consist of rows of unit-specific
     observations, each row i represented by variables (F.i,W.i,A.i,Y.i), where
-    F.i is a vector of friend IDs of unit i (i's network), W.i is a vector of 
+    F.i is a vector of friend IDs of unit i (i's network), W.i is a vector of
     i's baseline covariates, A.i is i's exposure (can be binary, categorical or
-    continuous) and Y.i is i's binary outcome. Exposure A.i depends on 
+    continuous) and Y.i is i's binary outcome. Exposure A.i depends on
     (multivariate) user-specified baseline summary measure(s) sW.i, where sW.i
     is any function of i's baseline covariates W.i and the baseline covariates
     of i's friends in F.i. Outcome Y.i depends on sW.i and (multivariate)
@@ -50,3 +50,4 @@ Suggests:
 VignetteBuilder: knitr
 License: GPL-2
 LazyData: true
+RoxygenNote: 5.0.1

@@ -580,14 +580,14 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
 #' @param NETIDnode Network specification by a column name in input \code{data} consisting of strings that identify the unit's friends
 #'  by their IDs or their row numbers (two friends are separated by space, e.g., \code{"1 2"}; unit with no friends should have
 #'  an empty \code{""} string). See Details.
-#' @param intervene1.sA
+#' @param intervene1.sA Intervention 1
 #' @param f_gstar1 Either a function or a vector of counterfactual exposures. If a function, must return
 #'  a vector of counterfactual exposures evaluated based on the summary measures matrix (\code{sW,sA}) passed as a named
 #'  argument \code{"data"}, therefore, the function in \code{f_gstar1} must have a named argument \code{"data"} in its signature.
 #'  The interventions defined by \code{f_gstar1} can be static, dynamic or stochastic. If \code{f_gstar1} is specified as a
 #'  vector, it must be of length \code{nrow(data)} or 1 (constant treatment assigned to all observations).
 #'  See Details below and Examples in "EQUIVALENT WAYS OF SPECIFYING INTERVENTION \code{f_gstar1}" for demonstration.
-#' @param intervene2.sA
+#' @param intervene2.sA Intervention 2
 #' @param f_gstar2 Either a function or a vector of counterfactual exposure assignments.
 #'  Used for estimating contrasts (average treatment effect) for two interventions, if omitted, only the average
 #'  counterfactual outcome under intervention \code{f_gstar1} is estimated. The requirements for \code{f_gstar2}
@@ -934,7 +934,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
                       alpha = 0.05,
                       lbound = 0.005,
                       family = "binomial", # NOT YET IMPLEMENTED
-                      n_MCsims = 1,
+                      # n_MCsims = 1,
                       # n_MCsims = ifelse(!missing(data),ceiling(sqrt(nrow(data))),10),
                       runTMLE = c("tmle.intercept", "tmle.covariate"),
                       YnodeDET = NULL,
@@ -948,7 +948,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
   oldverboseopt <- getOption("tmlenet.verbose")
   options(tmlenet.verbose = verbose)
   gvars$verbose <- verbose
-
+  n_MCsims <- 1
   #----------------------------------------------------------------------------------
   # ADDITIONAL ARGUMENTS (removed from input args of tmlenet())
   #----------------------------------------------------------------------------------
@@ -1222,14 +1222,22 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
 
   iidEIC.eval <- TRUE
   if (iidEIC.eval) {
-    MC.tmle.eval <- MCeval_fWi(n.MC= n_MCsims, DatNet.ObsP0 = DatNet.ObsP0, tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
+    MC.tmle.eval.t <- system.time(
+      MC.tmle.eval <- MCeval_fWi(n.MC = n.bootstrap, DatNet.ObsP0 = DatNet.ObsP0, tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
+    )
+    tmle_g1_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar1)
+    if (!is.null(tmle_g2_out)) tmle_g2_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar2)
+  } else {
+    MC.tmle.eval <- list(EY_gstar1 = NA, EY_gstar2 = NA, ATE = NA)
   }
+  print("MC.tmle.eval.t"); print(MC.tmle.eval.t)
 
   if (bootstrap.var) {
     # ------------------------------------------------------------------------------------------
-    # IID BOOSTRAP FOR THE TMLE:
+    # IID BOOSTRAP FOR THE TMLE (DOES'T WORK FOR DEP DATA):
     # ------------------------------------------------------------------------------------------
     # var_tmleB_boot <- iid_bootstrap_tmle(n.boot, estnames, DatNet.ObsP0, tmle_g_out, QY_mat, wts_mat)
+
     # ------------------------------------------------------------------------------------------
     # PARAMETRIC BOOSTRAP TMLE variance estimate:
     # ------------------------------------------------------------------------------------------
@@ -1244,21 +1252,21 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
   # Create output list (estimates, as. variances, CIs)
   #----------------------------------------------------------------------------------
   EY_gstar1 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha,
-                            # boot.var = bootstrap.var, n.boot = n.bootstrap,
-                            DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, MC.tmle.eval = MC.tmle.eval,
+                            DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out,
+                            MC.tmle.eval = MC.tmle.eval$EY_gstar1,
                             var_tmleB_boot = var_tmleB_boot$EY_gstar1)
 
   EY_gstar2 <- NULL; ATE <- NULL
 
   if (!is.null(intervene2.sA) || !is.null(f_gstar2)) {
     EY_gstar2 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha,
-                              # boot.var = bootstrap.var, n.boot = n.bootstrap,
                               DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out=tmle_g2_out,
+                              MC.tmle.eval = MC.tmle.eval$EY_gstar2,
                               var_tmleB_boot = var_tmleB_boot$EY_gstar2)
 
     ATE <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha,
-                        # boot.var = bootstrap.var, n.boot = n.bootstrap,
                         DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, tmle_g2_out = tmle_g2_out,
+                        MC.tmle.eval = MC.tmle.eval$ATE,
                         var_tmleB_boot = var_tmleB_boot$ATE)
 	}
 
