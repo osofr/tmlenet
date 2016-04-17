@@ -143,7 +143,7 @@ est.sigma_sparse <- function(fvec_i, sparse_connectmtx, excludeIDs = NULL)  {
   return(Dstar)
 }
 
-est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat) {
+est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wts_mat, fWi_mat, MC.tmle.eval = NULL) {
   `%+%` <- function(a, b) paste0(a, b)
   fWi <- fWi_mat[, "fWi_Qinit"]
   QY.init <- QY_mat[, "QY.init"]
@@ -154,45 +154,44 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   # Second pass over columns of connectivity mtx to connect indirect intersections (i and j have a common friend but are not friends themselves):
   connectmtx_1stO <- Matrix::crossprod(sparse_mat) # t(sparse_mat)%*%sparse_mat returns nsCMatrix (only non-zero entries)
   # observation-specific IC values:
-  IC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  # IC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  IC_tmle <- h_wts * (obsYvals - QY.init) + (fWi - MC.tmle.eval$mean_obs_tmle_B_g1)
+
   # TMLE variance estimator based on the above IC that adjusts for correlated observation (a double sum):
   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO)
 
-  n_knockout <- c(10, 25, 50, 100, 500, 1000, 1500, 2000)
-  # aux.vars_mat <- matrix(0, nrow = n_knockout+1, ncol = 1)
-  aux.vars_mat <- matrix(0, nrow = 1+length(n_knockout), ncol = 1)
-  colnames(aux.vars_mat) <- "Var"
-  var_tmle_noindirect <- est.sigma_sparse(IC_tmle, sparse_mat)
-  aux.vars_mat[1,1] <- var_tmle_noindirect
-
-  # browser()
-  # connectmtx_1stO_aux <- connectmtx_1stO
-  print("sum(connectmtx_1stO)/n: " %+% as.character(sum(connectmtx_1stO)/n))
-  print("sum(connectmtx_1stO)/n^2: " %+% as.character(sum(connectmtx_1stO)/n^2))
-
-  for (ID_idx in n_knockout) {
-    # to knock-out ID one from all the double sums (setting the obs-specific columns to FALSE):
-    # connectmtx_1stO_aux[, ID_idx] <- FALSE
-    # connectmtx_1stO_aux[ID_idx, ID_idx] <- TRUE
-    aux.vars_mat[which(n_knockout %in% ID_idx) + 1, 1] <- est.sigma_sparse(IC_tmle, connectmtx_1stO, excludeIDs = c(1:ID_idx))
-  }
-  rownames(aux.vars_mat) <- c("noindirect", "noID_1_to_" %+% n_knockout)
-  print("aux.vars_mat: "); print(aux.vars_mat)
   # ------------------------------------------------------------------------------------------------------------
-  # Alternative TMLE variance estimator based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC:
+  # Alternative TMLE variance estimators based on conditional independence of Q(A_i,W_i_ and decomposition of the EIC:
   # var_IC_Q_tmle gives inference CONDITIONAL all W.
   # ------------------------------------------------------------------------------------------------------------
+  # browser()
+  # n_knockout <- c(10, 25, 50, 100, 500, 1000, 1500, 2000)
+  n_knockout <- c(10, 25, 2000)
+  aux.vars_mat <- matrix(0, nrow = 2+length(n_knockout), ncol = 1)
+  colnames(aux.vars_mat) <- "Var"
+
   IC_Q_tmle <- h_wts * (obsYvals - QY.init)
   var_IC_Q_tmle <- (1/n) * sum(IC_Q_tmle^2)
-
-  IC_W_tmle <- (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  # IC_W_tmle <- (fWi - ests_mat[rownames(ests_mat)%in%"TMLE",])
+  IC_W_tmle <- (fWi - MC.tmle.eval$mean_obs_tmle_B_g1)
   var_IC_W_tmle <- est.sigma_sparse(IC_W_tmle, connectmtx_1stO)
   var_tmle_2 <- var_IC_Q_tmle + var_IC_W_tmle
+  # print("var_IC_Q_tmle: " %+% as.numeric(var_IC_Q_tmle/n))
+  # print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
+  # print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
 
-  print("var_IC_Q_tmle: " %+% as.numeric(var_IC_Q_tmle/n))
-  print("var_IC_W_tmle: " %+% as.numeric(var_IC_W_tmle/n))
-  print("var_IC_Q_tmle + var_IC_W_tmle: " %+% as.numeric(var_tmle_2/n))
   # print("total n of non-zero entries in connectmtx_1stO / N^2: "); print(sum(connectmtx_1stO)/(n^2))
+
+  var_tmle_noindirect <- est.sigma_sparse(IC_tmle, sparse_mat)
+  aux.vars_mat[1,1] <- var_tmle_2
+  aux.vars_mat[2,1] <- var_tmle_noindirect
+  # print("sum(connectmtx_1stO)/n: " %+% as.character(sum(connectmtx_1stO)/n))
+  # print("sum(connectmtx_1stO)/n^2: " %+% as.character(sum(connectmtx_1stO)/n^2))
+  for (ID_idx in n_knockout) {
+    aux.vars_mat[which(n_knockout %in% ID_idx) + 2, 1] <- est.sigma_sparse(IC_tmle, connectmtx_1stO, excludeIDs = c(1:ID_idx))
+  }
+  rownames(aux.vars_mat) <- c("factorized_DY_DW", "noindirect_var", "noID_1_to_" %+% n_knockout)
+  print("aux.vars_mat: "); print(aux.vars_mat)
 
   # ------------------------------------------------------------------------------------------------------------
   # Simple estimator of the iid asymptotic IC-based variance (no adjustment made when two observations i!=j are dependent):
@@ -200,7 +199,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   iid_var_tmle <- (1/n) * sum(IC_tmle^2)
   IC_vars <- rbind(var_tmle/n, var_IC_Q_tmle/n, iid_var_tmle/n)
   rownames(IC_vars) <- c("var_IC_tmle", "var_IC_Q_tmle", "iid_var_tmle")
-  print(IC_vars)
+  # print(IC_vars)
 
   # # ------------------------------------------------------------------------------------------------------------
   #   # Alternative estimate, removes everyone who has >25 friends from the connectivity matrix:
@@ -378,6 +377,96 @@ fit_reg.forms <- function(boot.form, DatNet.ObsP0, sW, sA) {
   regclass.boot$S3class <- "generic"
   summeas_boot <- newsummarymodel(reg = regclass.boot, DatNet.sWsA.g0 = DatNet.ObsP0)$fit(data = DatNet.ObsP0)
   return(list(boot_outvar_nms = boot_outvar_nms, summeas_boot = summeas_boot))
+}
+
+
+MCeval_fWi <- function(n.MC, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
+  f.g0 <- NULL
+
+  mean_obs_gcomp_g1 <- vector(mode = "numeric", length = DatNet.ObsP0$nobs)
+  mean_obs_tmle_B_g1 <- vector(mode = "numeric", length = DatNet.ObsP0$nobs)
+  mean_obs_gcomp_g1[] <- mean_obs_tmle_B_g1[] <- 0L
+
+  boot_gcomp_g1 <- vector(mode = "numeric", length = n.MC)
+  boot_gcomp_g2 <- vector(mode = "numeric", length = n.MC)
+  boot_gcomp_ATE <- vector(mode = "numeric", length = n.MC)
+  boot_tmle_B_g1 <- vector(mode = "numeric", length = n.MC)
+  boot_tmle_B_g2 <- vector(mode = "numeric", length = n.MC)
+  boot_tmle_B_ATE <- vector(mode = "numeric", length = n.MC)
+  boot_IC_tmle <- vector(mode = "numeric", length = n.MC)
+
+  psi.evaluator <- tmle_g1_out$psi.evaluator
+  # Always start with the observed Anodes
+  if (!DatNet.ObsP0$Odata$curr_data_A_g0) {
+    DatNet.ObsP0$Odata$restoreAnodes()
+  }
+
+  # -----------------------------------------------------------------------------------------------
+  # Save the original input data.table OdataDT, otherwise it will be over-written:
+  # Note we are not saving the original saved Anodes and sA -> these fields NULLed during bootstrap
+  # -----------------------------------------------------------------------------------------------
+  OdataDT.P0 <- DatNet.ObsP0$Odata$OdataDT
+  noNA.Ynodevals.P0 <- DatNet.ObsP0$noNA.Ynodevals
+  det.Y.P0 <- DatNet.ObsP0$det.Y
+  DatNet.gstar <- tmle_g1_out$DatNet.gstar
+
+  # -----------------------------------------------------------------------------------------------
+  # loop over n.MC
+  # -----------------------------------------------------------------------------------------------
+  for (i in (1:n.MC)) {
+    # 1. Resample W (with replacement) as if IID (re-purposing the instance of DatNet.gstar); Re-evaluate baseline summaries sW;
+    boot_idx <- sample.int(n = DatNet.ObsP0$nobs, replace = TRUE)
+    DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0[boot_idx, ]
+    # Need to NULL previously backed-up values of A and sA, since they no longer correspond with bootstrapped sample
+    DatNet.ObsP0$Odata$A_g0_DT <- NULL
+    DatNet.ObsP0$Odata$sA_g0_DT <- NULL
+    DatNet.ObsP0$Odata$save_sA_Vars <- NULL
+    DatNet.ObsP0$datnetW$make.sVar(sVar.object = tmle_g1_out$sW)
+    DatNet.ObsP0$datnetW$fixmiss_sVar() # permanently replace NA values in sW with 0
+    DatNet.ObsP0$det.Y <- det.Y.P0[boot_idx]
+    DatNet.ObsP0$noNA.Ynodevals <- noNA.Ynodevals.P0[boot_idx]
+
+    # 2. USE old observed A's (no re-sampling); Re-evaluate exposure summaries (sA) based on resampled W's in DatNet.ObsP0:
+    for (Anode in DatNet.ObsP0$nodes$Anodes) {
+      DatNet.ObsP0$Odata$replaceOneAnode(AnodeName = Anode, newAnodeVal = OdataDT.P0[[Anode]])
+    }
+    # re-evaluate exposure summaries based on resampled W and old (observed) A's
+    DatNet.ObsP0$datnetA$make.sVar(sVar.object = tmle_g1_out$sA)
+    DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
+    # nF.PA.tab <- table(DatNet.ObsP0$Odata$OdataDT[["nF.PA"]]) / nrow(DatNet.ObsP0$Odata$OdataDT)
+    # nF.PA.tab_mat[i, ] <- c(nF.PA.tab, rep(0L, ncol(nF.PA.tab_mat)-length(nF.PA.tab)))
+
+    # 4. Predict P(Y_i=1|sW,sA) using m.Q.init (the initial fit \bar{Q}_N) based on newly resampled W and re-evaluated (sW,sA)
+    detY.boot <- DatNet.ObsP0$det.Y
+    QY.init.boot <- DatNet.ObsP0$noNA.Ynodevals
+    QY.init.boot[!detY.boot] <- tmle_g1_out$m.Q.init$predict(newdata = DatNet.ObsP0)$getprobA1[!detY.boot] # getting predictions P(Y=1) for non-DET Y
+    # off.boot <- qlogis(QY.init.boot)  # offset
+
+    # 8. Re-create DatNet.gstar with boostrapped summaires sW and sA generated under f.gstar:
+    # However, first need to save (Anodes, sA) from the observed bootstrapped sample, otherwise they are forever lost
+    DatNet.ObsP0$Odata$backupAnodes(sA = tmle_g1_out$sA)
+    # Will over-write Anodes/sA in DatNet.ObsP0$Odata:
+    DatNet.gstar$make.dat.sWsA(p = 1, new.sA.object = tmle_g1_out$new.sA, sA.object = tmle_g1_out$sA, DatNet.ObsP0 = DatNet.ObsP0)
+
+    # 9. Evaluate the substitution estimator and the components of the EIC D_Y and D_W:
+    fWi.g1 <- psi.evaluator$get.gcomp(m.Q.init = tmle_g1_out$m.Q.init)
+    tmle.g1 <- psi.evaluator$get.tmleB(m.Q.starB = tmle_g1_out$MC_fit_params$m.Q.star)
+
+    mean_obs_gcomp_g1 <- mean_obs_gcomp_g1 + fWi.g1
+    mean_obs_tmle_B_g1 <- mean_obs_tmle_B_g1 + tmle.g1
+
+  }
+
+  mean_obs_gcomp_g1 <- mean_obs_gcomp_g1 / n.MC
+  mean_obs_tmle_B_g1 <- mean_obs_tmle_B_g1 / n.MC
+  # Restore the original data.table OdataDT, Y values and indicator of deterministic Y values
+  # Otherwise it messes up the IC-based inference, since it uses the observed Yvals to est. the IC
+  DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0
+  DatNet.ObsP0$noNA.Ynodevals <- noNA.Ynodevals.P0
+  DatNet.ObsP0$det.Y <- det.Y.P0
+
+  out_mean_tmleB_gcomp <- list(mean_obs_gcomp_g1 = mean_obs_gcomp_g1, mean_obs_tmle_B_g1 = mean_obs_tmle_B_g1)
+  return(out_mean_tmleB_gcomp)
 }
 
 # Parametric bootstrap: sampling W as iid, boot.nodes from m.h.fit or special fit obj and Y from m.Q.init.N;
@@ -601,7 +690,7 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.form, estnames, DatNet.O
 
 # create output object with param ests of EY_gstar, vars and CIs for given gstar (or ATE if two tmle obj are passed)
 # boot.var, n.boot,
-make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out, tmle_g2_out=NULL, var_tmleB_boot) {
+make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out, tmle_g2_out=NULL, MC.tmle.eval = NULL, var_tmleB_boot) {
   nobs <- DatNet.ObsP0$nobs
   NetInd_k <- DatNet.ObsP0$netind_cl$NetInd_k
   nF <- DatNet.ObsP0$netind_cl$nF
@@ -626,7 +715,7 @@ make_EYg_obj <- function(estnames, estoutnames, alpha, DatNet.ObsP0, tmle_g_out,
                               NetInd_k = NetInd_k, nF = nF,
                               obsYvals = DatNet.ObsP0$noNA.Ynodevals,
                               ests_mat = ests_mat, QY_mat = QY_mat,
-                              wts_mat = wts_mat, fWi_mat = fWi_mat)
+                              wts_mat = wts_mat, fWi_mat = fWi_mat, MC.tmle.eval = MC.tmle.eval)
   )
   if (gvars$verbose) {
     print("time to estimate Vars: "); print(getVar_time)

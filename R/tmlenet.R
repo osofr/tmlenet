@@ -354,6 +354,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
                sA = est_params_list$sA,       # for par. bootstrap
                f.gstar = est_params_list$f.gstar, # for par. bootstrap
                new.sA = est_params_list$new.sA, # for par. bootstrap
+               MC_fit_params = MC_fit_params,   # for Monte-Carlo eval of the iid W EIC
                h_g0_SummariesModel = m.h.fit$summeas.g0,
                h_gstar_SummariesModel = m.h.fit$summeas.gstar
               ))
@@ -1219,6 +1220,10 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
     tmle_g2_out <- NULL
   }
 
+  iidEIC.eval <- TRUE
+  if (iidEIC.eval) {
+    MC.tmle.eval <- MCeval_fWi(n.MC= n_MCsims, DatNet.ObsP0 = DatNet.ObsP0, tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
+  }
 
   if (bootstrap.var) {
     # ------------------------------------------------------------------------------------------
@@ -1240,7 +1245,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
   #----------------------------------------------------------------------------------
   EY_gstar1 <- make_EYg_obj(estnames = estnames.internal, estoutnames = estnames.out, alpha = alpha,
                             # boot.var = bootstrap.var, n.boot = n.bootstrap,
-                            DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out,
+                            DatNet.ObsP0 = DatNet.ObsP0, tmle_g_out = tmle_g1_out, MC.tmle.eval = MC.tmle.eval,
                             var_tmleB_boot = var_tmleB_boot$EY_gstar1)
 
   EY_gstar2 <- NULL; ATE <- NULL
