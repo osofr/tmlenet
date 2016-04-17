@@ -1225,8 +1225,8 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
     MC.tmle.eval.t <- system.time(
       MC.tmle.eval <- MCeval_fWi(n.MC = n.bootstrap, DatNet.ObsP0 = DatNet.ObsP0, tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
     )
-    tmle_g1_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar1)
-    if (!is.null(tmle_g2_out)) tmle_g2_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar2)
+    # tmle_g1_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar1)
+    # if (!is.null(tmle_g2_out)) tmle_g2_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar2)
   } else {
     MC.tmle.eval <- list(EY_gstar1 = NA, EY_gstar2 = NA, ATE = NA)
   }
