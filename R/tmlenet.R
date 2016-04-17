@@ -933,7 +933,7 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
                       alpha = 0.05,
                       lbound = 0.005,
                       family = "binomial", # NOT YET IMPLEMENTED
-                      # n_MCsims = 1,
+                      n_MCsims = 1,
                       # n_MCsims = ifelse(!missing(data),ceiling(sqrt(nrow(data))),10),
                       runTMLE = c("tmle.intercept", "tmle.covariate"),
                       YnodeDET = NULL,

@@ -236,7 +236,7 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
   condW.vars_mat[,1] <- condW.vars.ests
   rownames(condW.vars_mat) <- names(condW.vars.ests); colnames(condW.vars_mat) <- "Var"
 
-  print("condW.vars_mat: "); print(condW.vars_mat)
+  print("condW.vars_mat: "); print(condW.vars_mat/n)
 
   # IID inference (ignores all dependence)
   iid.vars.ests = c(iid_var_tmle = abs(iid_var_tmle), # no adjustment for correlations i,j for tmle

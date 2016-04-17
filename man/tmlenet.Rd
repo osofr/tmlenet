@@ -9,9 +9,9 @@ tmlenet(DatNet.ObsP0, data, Kmax, sW, sA, intervene1.sA, f_gstar1 = NULL,
   hform.g0 = NULL, hform.gstar = NULL, NETIDmat = NULL, IDnode = NULL,
   NETIDnode = NULL, verbose = getOption("tmlenet.verbose"),
   optPars = list(bootstrap.var = FALSE, n.bootstrap = 100, boot.nodes = NULL,
-  boot.form = NULL, alpha = 0.05, lbound = 0.005, family = "binomial", runTMLE =
-  c("tmle.intercept", "tmle.covariate"), YnodeDET = NULL, sep = " ", f_g0 =
-  NULL, h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
+  boot.form = NULL, alpha = 0.05, lbound = 0.005, family = "binomial", n_MCsims
+  = 1, runTMLE = c("tmle.intercept", "tmle.covariate"), YnodeDET = NULL, sep =
+  " ", f_g0 = NULL, h_g0_SummariesModel = NULL, h_gstar_SummariesModel = NULL))
 }
 \arguments{
 \item{DatNet.ObsP0}{Instance of class \code{\link{DatNet.sWsA}} returned under the same name by the \code{\link{eval.summaries}} function.

@@ -72,7 +72,7 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
   #                       )
   #   psi_est_mean <- apply(ests_reps, 2, mean, na.rm = T)
   #   psi_est_var <- apply(ests_reps, 2, var, na.rm = T)
-  #   psi_percerr <- 2 * abs(psi_est_mean * max.err_eps) # estimate the maximum allowed epsilon for each estimator, based pre-defined % error:  
+  #   psi_percerr <- 2 * abs(psi_est_mean * max.err_eps) # estimate the maximum allowed epsilon for each estimator, based pre-defined % error:
   #   prob_percerr <- psi_est_var / ((nQ.MCsims * nrepeat) * (psi_percerr)^2)
   #   prob_percerr[psi_est_var < 0.0001] <- 0.0001
   #   fin_ests_sel <- c(1:3) # final vec of estimators for which error is measured
@@ -80,24 +80,24 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
   #     break
   #   }
   #   nrepeat <- nrepeat + 1
-  # }   
+  # }
   # # print("nrepeat"); print(nrepeat)
 
   return(list(psi_est_mean = psi_est_mean, psi.evaluator = evaluator))
 }
 
 ## ---------------------------------------------------------------------
-  # 
+  #
 
 ## ---------------------------------------------------------------------
 #' R6 class for Monte-Carlo evaluation of various substitution estimators for exposures generated under the user-specified stochastic intervention function.
 #'
-#' This R6 class performs the Monte-Carlo evaluation of the target parameters using the data generated under 
+#' This R6 class performs the Monte-Carlo evaluation of the target parameters using the data generated under
 #'  the user-specified arbitrary intervention \code{gstar}.
 #'  For a given dataset, take \code{E[Y|sA,sW] = m.Q.init} and calcualte estimate of \code{psi_n} under \code{g_star}
 #'  using Monte-Carlo integration:
 #'  (*) \code{W} can be iid or not (\code{W}'s are never resampled).
-#'  (*) Use \code{P_n(W) = 1} for the distribution of \code{W = (W_1,...,W_n)} and draw \code{n} new exposures 
+#'  (*) Use \code{P_n(W) = 1} for the distribution of \code{W = (W_1,...,W_n)} and draw \code{n} new exposures
 #'  \code{A=(A_1,...,A_n)} from the distribution of \code{g_star}.
 #'  (*) Evaluate \code{n} summary measures \code{sA=(sA_1,...,sA_n)} using these \code{n} newly sampled exposures \code{A}.
 #'  (*) Evaluate the subsititution estimators as an average of n predictions \code{E[Y=1|sA,sW]}.
