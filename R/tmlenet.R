@@ -276,6 +276,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
     if (!DatNet.gstar$datnetA$Odata$restored_sA_Vars)
       DatNet.gstar$datnetA$make.sVar(sVar.object = sA) # just recreate the summaries sA based on current Anode values in the data
   }
+
   # generate new A's under f.gstar, then re-create new summaries sA:
   # DatNet.gstar$make.dat.sWsA(p = 1, f.g_fun = est_params_list$f.gstar, sA.object = sA, DatNet.ObsP0 = DatNet.ObsP0)
   # DatNet.gstar$datnetA$Odata$OdataDT
@@ -344,7 +345,6 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
                wts_mat = wts_mat,
                fWi_mat = fWi_mat,
                QY_mat = QY_mat,
-
                # var_tmleB_boot = var_tmleB_boot,
                psi.evaluator = psi.evaluator, # for par. bootstrap
                m.Q.init = m.Q.init,           # for par. bootstrap

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-# Fit and Predict the IPTW (clever covariate) for summary measures (sW,sA): 
+# Fit and Predict the IPTW (clever covariate) for summary measures (sW,sA):
 # P_{\bar{g}^*}(sA | sW)/P_{\bar{g}0}(sA | sW)
 #-----------------------------------------------------------------------------
 
@@ -262,8 +262,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
 
   # 1) back-up Anodes and sA generated under f.g.star so that we don't have to re-generate them again & then restore old Anodes and sA (under g.0)
   DatNet.gstar$Odata$swapAnodes()
-
- # 2) verify sA's were also restored and if not, regenerate them
+  # 2) verify sA's were also restored and if not, regenerate them
   if (!DatNet.ObsP0$datnetA$Odata$restored_sA_Vars)
     DatNet.ObsP0$datnetA$make.sVar(sVar.object = sA)
 

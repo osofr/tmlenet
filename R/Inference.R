@@ -333,12 +333,62 @@ MCeval_fWi <- function(n.MC, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
   mean_obs_gcomp_g1[] <- mean_obs_gcomp_g2[] <- mean_obs_tmle_B_g1[] <- mean_obs_tmle_B_g2[] <- 0L
 
   psi.evaluator <- tmle_g1_out$psi.evaluator
+
+#   mean(DatNet.ObsP0$Odata$OdataDT[["A"]]) # [1] 0.102
+
+# # curr data is under gstar:
+#   DatNet.ObsP0$Odata$OdataDT
+# #         ID HUB W1 W2 WNoise corrW.F1 corrW.F2 corrW.F3 corrW.F4 corrW.F5 PA nF.PA A sum.net.A Y nF A.PAeq0 nFPAeq0.PAeq1 sum.net.A.sum.netPA
+# #    1:    1   1  5  0      1        1        1        1        1        1  0     4 0         1 1 61       0             0                   4
+# #    2:    2   1  6  1      1        1        1        0        0        1  0     5 0         2 1 57       0             0                  10
+# #    3:    3   1  5  0      1        0        0        0        0        0  0     6 0         5 1 46       0             0                  30
+# #    4:    4   1  6  1      0        1        1        0        1        1  0     2 0         2 1 58       0             0                   4
+# #    5:    5   1  3  1      1        1        0        1        0        1  0     4 0         3 1 59       0             0                  12
+# #   ---
+# # 4996: 4996   0  2  0      1        1        1        1        1        1  0     0 0         0 0  5       0             0                   0
+# # 4997: 4997   0  3  0      0        1        1        1        1        1  0     1 1         1 0  5       1             0                   1
+# # 4998: 4998   0  5  0      1        0        0        1        1        1  1     0 0         0 0  5       0             1                   0
+# # 4999: 4999   0  4  1      0        1        1        1        1        1  0     0 1         0 0  5       1             0                   0
+# # 5000: 5000   0  3  0      0        0        0        0        0        0  1     1 0         1 1  5       0             0                   1
+# DatNet.ObsP0$Odata$A_g0_DT
+# #      A
+# #    1: 0
+# #    2: 1
+# #    3: 1
+# #    4: 0
+# #    5: 1
+# #   ---
+# # 4996: 0
+# # 4997: 1
+# # 4998: 0
+# # 4999: 0
+# # 5000: 1
+
+# mean(DatNet.ObsP0$Odata$A_g0_DT[["A"]]) # [1] 0.2498
+# DatNet.ObsP0$Odata$sA_g0_DT
+# #       nF.PA A.PAeq0 nFPAeq0.PAeq1 sum.net.A sum.net.A.sum.netPA
+# #    1:     4       0             0         6                  24
+# #    2:     5       1             0         7                  35
+# #    3:     6       1             0         8                  48
+# #    4:     2       0             0         4                   8
+# #    5:     4       1             0         4                  16
+# #   ---
+# # 4996:     0       0             0         2                   0
+# # 4997:     1       1             0         0                   0
+# # 4998:     0       0             1         2                   0
+# # 4999:     0       0             0         2                   0
+# # 5000:     1       0             0         1                   1
+
   # -----------------------------------------------------------------------------------------------
   # Always start with the observed Anodes
   # Save the original input data.table OdataDT, otherwise it will be over-written:
   # Note we are not saving the original saved Anodes and sA -> these fields NULLed during bootstrap
   # -----------------------------------------------------------------------------------------------
-  if (!DatNet.ObsP0$Odata$curr_data_A_g0) DatNet.ObsP0$Odata$restoreAnodes()
+  if (!DatNet.ObsP0$Odata$curr_data_A_g0) {
+    DatNet.ObsP0$Odata$restoreAnodes()
+    DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
+  }
+
   OdataDT.P0 <- DatNet.ObsP0$Odata$OdataDT
   noNA.Ynodevals.P0 <- DatNet.ObsP0$noNA.Ynodevals
   det.Y.P0 <- DatNet.ObsP0$det.Y
@@ -416,6 +466,11 @@ MCeval_fWi <- function(n.MC, DatNet.ObsP0, tmle_g1_out, tmle_g2_out) {
   DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0
   DatNet.ObsP0$noNA.Ynodevals <- noNA.Ynodevals.P0
   DatNet.ObsP0$det.Y <- det.Y.P0
+  # these values are based on bootstrapped and or resampled W, so better to erase them:
+  DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
+  DatNet.ObsP0$Odata$A_g0_DT <- NULL
+  DatNet.ObsP0$Odata$sA_g0_DT <- NULL
+  DatNet.ObsP0$Odata$save_sA_Vars <- NULL
 
   # mean_obs_gcomp_g1 = mean_obs_gcomp_g1,
   out_mean_tmleB <- list(EY_gstar1 = mean_obs_tmle_B_g1, EY_gstar2 = mean_obs_tmle_B_g2, ATE = mean_obs_tmle_B_g1 - mean_obs_tmle_B_g2)
@@ -486,9 +541,11 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.form, estnames, DatNet.O
   boot_IC_tmle <- vector(mode = "numeric", length = n.boot)
 
   psi.evaluator <- tmle_g1_out$psi.evaluator
+
   # Always start with the observed Anodes
   if (!DatNet.ObsP0$Odata$curr_data_A_g0) {
     DatNet.ObsP0$Odata$restoreAnodes()
+    DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
   }
 
   # -----------------------------------------------------------------------------------------------
@@ -632,17 +689,6 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.form, estnames, DatNet.O
   var_tmleB_boot_g2 <- var(boot_tmle_B_g2)
   var_tmleB_boot_ATE <- var(boot_tmle_B_ATE)
 
-  # browser()
-  # boxplot(nF.PA.tab_mat[,c(1:5)], main = "bootstrap distr of nF.PA over 500 reps")
-  # boxplot(nF.PA.tab_mat[,c(1:10)], main = "bootstrap distr of nF.PA over 500 reps")
-  # plot(density(boot_gcomp_g1))
-  # plot(density(boot_tmle_B_g1))
-
-  # print("boot_time for n.boot = " %+% n.boot); print(boot_time)
-  # [1] "boot_time for n.boot = 500"
-  #    user  system elapsed
-  # 708.094 134.648 844.491
-
   if (!is.null(tmle_g2_out)) {
     gcomp_g1_boot_col <- rbind(tmle_g1_out$ests_mat["MLE",],                                  mean(boot_gcomp_g1), var(boot_gcomp_g1))
     gcomp_g2_boot_col <- rbind(tmle_g2_out$ests_mat["MLE",],                                  mean(boot_gcomp_g2), var(boot_gcomp_g2))
@@ -668,6 +714,11 @@ par_bootstrap_tmle <- function(n.boot, boot.nodes, boot.form, estnames, DatNet.O
   DatNet.ObsP0$Odata$OdataDT <- OdataDT.P0
   DatNet.ObsP0$noNA.Ynodevals <- noNA.Ynodevals.P0
   DatNet.ObsP0$det.Y <- det.Y.P0
+  # these values are based on bootstrapped and or resampled W, so better to erase them:
+  DatNet.ObsP0$Odata$curr_data_A_g0 <- TRUE
+  DatNet.ObsP0$Odata$A_g0_DT <- NULL
+  DatNet.ObsP0$Odata$sA_g0_DT <- NULL
+  DatNet.ObsP0$Odata$save_sA_Vars <- NULL
 
   out_var_tmleB_boot <- list(EY_gstar1 = var_tmleB_boot_g1, EY_gstar2 = var_tmleB_boot_g2, ATE = var_tmleB_boot_ATE)
   return(out_var_tmleB_boot)
