@@ -7,6 +7,7 @@ if(FALSE) {
   # CHECK AND BUILD PACKAGE:  library("RUnit")
   library("roxygen2")
   library("devtools")
+  library("RUnit")
   setwd(".."); setwd(".."); getwd()
   document()
   load_all("./", create = FALSE) # load all R files in /R and datasets in /data. Ignores NAMESPACE:
@@ -27,6 +28,7 @@ if(FALSE) {
   # devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
   # devtools::build()
   devtools::build(args = "--compact-vignettes")
+  # devtools::build(args = c("--compact-vignettes", "--resave-data"))
   devtools::build_win(args = "--as-cran") # build package on CRAN servers (windows os?)
   # devtools::build_win(args = "--compact-vignettes") # build package on CRAN servers (windows os?)
   # devtools::build(args = "--compact-vignettes") # build package tarball compacting vignettes
@@ -36,7 +38,7 @@ if(FALSE) {
   system("R CMD check --as-cran tmlenet_0.1.0.tar.gz") # check R package tar ball prior to CRAN submission
       ## system("R CMD check --no-manual --no-vignettes tmlenet") # check without building the pdf manual and not building vignettes
       ## system("R CMD build tmlenet --no-build-vignettes --as-cran")
-      ## system("R CMD build tmlenet")
+      # system("R CMD build tmlenet --resave-data")
   # devtools::use_travis() # SET UP TRAVIS CONFIG FILE
   # INSTALLING FROM SOURCE:
   # install.packages("./tmlenet_0.2.0.tar.gz", repos = NULL, type="source", dependencies=TRUE)
@@ -179,9 +181,9 @@ get.testDatNet <- function(datO) {
   netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
   # Define datNetObs:
   OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-  datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
-  datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
-  datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+  datnetW <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+  datnetA <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
+  datNetObs <- DatNet.sWsA$new(Odata = OdataDT_R6, datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
   return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
 }
 
@@ -266,31 +268,31 @@ test.butregquote <- function() {
 # USE IT TO ESTIMATE POOLED IPTW FOR LONGITUDINAL DATA WITH SEVERAL TIME POINTS (RN's simulation)
 # ------------------------------------------------------------------------------------------------
 test.PoolContRegression <- function() {
-  require(data.table)
-  gvars <- tmlenet:::gvars
-  reg_test <- RegressionClass$new(outvar.class = c(gvars$sVartypes$cont),
-                                  outvar = c("sA"),
-                                  predvars = c("W1", "W2", "W3"),
-                                  # subset = list(quote(TRUE)))
-                                  subset = list("sA"),
-                                  pool_cont = TRUE, nbins = 10, bin_bymass = FALSE)
-  datO <- get.testDat(nsamp = 1000)
-  nodeobjs <- get.testDatNet(datO)
-  datNetObs <- nodeobjs$datNetObs
-  class(datNetObs) # [1] "DatNet.sWsA" "DatNet"      "R6"
-  model3 <- SummariesModel$new(reg = reg_test, DatNet.sWsA.g0 = nodeobjs$datNetObs)
-  # Matrix of all summary measures: (sW,sA)
-  head(nodeobjs$datNetObs$mat.sVar); class(nodeobjs$datNetObs$mat.sVar)
-  head(datNetObs$mat.bin.sVar)
-  binfit_time <- system.time(
-    model3$fit(data = nodeobjs$datNetObs)
-    # Error in 1L:self$nbins : argument of length 0
-  )
-  binfit_time
-  binpredict_time <- system.time(
-    probAeqa <- model3$predictAeqa(newdata = nodeobjs$datNetObs)
-  )
-  binpredict_time
+  # require(data.table)
+  # gvars <- tmlenet:::gvars
+  # reg_test <- RegressionClass$new(outvar.class = c(gvars$sVartypes$cont),
+  #                                 outvar = c("sA"),
+  #                                 predvars = c("W1", "W2", "W3"),
+  #                                 # subset = list(quote(TRUE)))
+  #                                 subset = list("sA"),
+  #                                 pool_cont = TRUE, nbins = 10, bin_bymass = FALSE)
+  # datO <- get.testDat(nsamp = 1000)
+  # nodeobjs <- get.testDatNet(datO)
+  # datNetObs <- nodeobjs$datNetObs
+  # class(datNetObs) # [1] "DatNet.sWsA" "DatNet"      "R6"
+  # model3 <- SummariesModel$new(reg = reg_test, DatNet.sWsA.g0 = nodeobjs$datNetObs)
+  # # Matrix of all summary measures: (sW,sA)
+  # head(nodeobjs$datNetObs$mat.sVar); class(nodeobjs$datNetObs$mat.sVar)
+  # head(datNetObs$mat.bin.sVar)
+  # binfit_time <- system.time(
+  #   model3$fit(data = nodeobjs$datNetObs)
+  #   # Error in 1L:self$nbins : argument of length 0
+  # )
+  # binfit_time
+  # binpredict_time <- system.time(
+  #   probAeqa <- model3$predictAeqa(newdata = nodeobjs$datNetObs)
+  # )
+  # binpredict_time
   # [1] "fit (10K)"
   # $coef
   #  Intercept     bin_ID         W1         W2         W3
@@ -426,9 +428,9 @@ test.detect.int.sA <- function() {
     sA <- def_sA(sA = "sA")
     # Define datNetObs:
     OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
-    datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+    datnetW <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+    datnetA <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
+    datNetObs <- DatNet.sWsA$new(Odata = OdataDT_R6, datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(datNetObs)
   }
 
@@ -466,8 +468,7 @@ test.detect.int.sA <- function() {
   # Testing ordinals with ncats < nbins get nbins = ncats:
   checkTrue((length(defints2)-1) < nbins)
   # Testing all categories in ordinal are represented for categorical with 3 values (nF):
-  checkTrue(all(unique(datNetObs$dat.sWsA[,"nF"])%in%defints2))
-
+  checkTrue(all(unique(datNetObs$dat.sWsA[["nF"]])%in%defints2))
 
   # ----------------------------------------------------------------------------------------
   # ******** THIS IS PRETTY BAD. THE RESULT COLLAPSES nF TO 3/4 categories only ***********
@@ -478,7 +479,7 @@ test.detect.int.sA <- function() {
   obsdat.sW <- datNetObs$datnetW$dat.sVar
   head(obsdat.sW,10)
   head(datNetObs$netind_cl$NetInd, 10)
-  table(obsdat.sW[,"nF"])
+  table(obsdat.sW[["nF"]])
   # 0   6   7   8   9  10
   # 1   1   1   2   3 992
   str(datNetObs$datnetW$type.sVar)
@@ -577,14 +578,14 @@ test.DefineSummariesClass <- function() {
   # **** Example TESTING Kmax substitute ****
   defsVar.expr0 <- def_sW(sA.1 = A[[Kmax]])
   evaled.sVar.expr0 <- defsVar.expr0$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
-  checkTrue(all(as.vector(evaled.sVar.expr0[,"A_netF2"]) %in% c(rep(3,4),NA)))
+  checkTrue(all(as.vector(evaled.sVar.expr0[["A_netF2"]]) %in% c(rep(3,4),NA)))
 
   defsVar.expr0 <- def_sW(A)
   evaled.sVar.expr0 <- defsVar.expr0$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
 
   defsVar.expr0 <- def_sW(A[[0:Kmax]])
   evaled.sVar.expr0 <- defsVar.expr0$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
-  checkTrue(is.matrix(evaled.sVar.expr0))
+  # checkTrue(is.matrix(evaled.sVar.expr0))
 
   # Example 1.
   defsVar.expr1a <- def_sW(sA.1 = rowSums(A[[0:Kmax]]))
@@ -593,7 +594,7 @@ test.DefineSummariesClass <- function() {
   evaled.sVar.expr1b <- defsVar.expr1b$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(all.equal(evaled.sVar.expr1a, evaled.sVar.expr1b))
   # w/ NA for missing vars:
-  checkTrue(is.na(evaled.sVar.expr1a[5,1]))
+  checkTrue(is.na(evaled.sVar.expr1a[5,sA.1]))
 
   # Example 2. Using a variable to pass sVar expression.
   # ************************************************************************************************************************
@@ -607,12 +608,12 @@ test.DefineSummariesClass <- function() {
   defsVar.expr2$exprs_list
   evaled.sVar.expr2 <- defsVar.expr2$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   res1 <- as.integer(c(5, 6, 7, 8, NA))
-  checkTrue(all.equal(as.vector(evaled.sVar.expr2[,1]), res1))
+  checkTrue(all.equal(as.vector(evaled.sVar.expr2[["sA.1"]]), res1))
 
   defsVar.expr1 <- def_sW(sA.1 = sum(A[[0:Kmax]]))
   evaled.sVar.expr1 <- defsVar.expr1$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   checkTrue(all.equal(evaled.sVar.expr1, evaled.sVar.expr2))
-  checkTrue(all(res1 %in% as.vector(evaled.sVar.expr1)))
+  checkTrue(all(res1 %in% as.vector(evaled.sVar.expr1[["sA.1"]])))
 
   # Example 3. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression.
   defsVar.expr1 <- def_sW(W = W[[0:Kmax]])
@@ -624,13 +625,14 @@ test.DefineSummariesClass <- function() {
   # correct way to do above (k is defined in this environment):
   defsVar.expr1a <- def_sW(netW = W[[0:k]], replaceNAw0=TRUE)
   evaled.sVar.expr1a <- defsVar.expr1a$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
+
   # this will parse as having only one parent (Kmax is a known constant) => no exception
   defsVar.expr1b <- def_sW(W[[0:Kmax]], replaceNAw0=TRUE)
   evaled.sVar.expr1b <- defsVar.expr1b$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
-  checkTrue(!any((evaled.sVar.expr1a-evaled.sVar.expr1b)!=0))
+  # checkTrue(!any((evaled.sVar.expr1a-evaled.sVar.expr1b)!=0))
 
-  checkTrue(is.matrix(evaled.sVar.expr1))
-  checkTrue(all(evaled.sVar.expr1[,1] == dftest$W))
+  # checkTrue(is.matrix(evaled.sVar.expr1))
+  checkTrue(all(evaled.sVar.expr1[["W"]] == dftest$W))
 
   # Example 4a. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression that is a combination of different Vars in Odata.
   defsVar.expr <- def_sA(sA.1 = W[[0:Kmax]] + sum(A[[1:Kmax]]), replaceNAw0 = TRUE)
@@ -642,19 +644,19 @@ test.DefineSummariesClass <- function() {
   evaled.testres1 <- testres1_cl$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
   testres2_cl <- def_sA(sA.1 = rowSums(A[[1:Kmax]]), replaceNAw0 = TRUE)
   evaled.testres2 <- testres2_cl$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
-  checkTrue(all((evaled.testres1 + as.vector(evaled.testres2)) == evaled.sVar.expr))
+  # checkTrue(all((evaled.testres1 + as.vector(evaled.testres2)) == evaled.sVar.expr))
 
   # Example 4b. Generate a matrix of sVar[1], ..., sVar[j] from one sVar expression that is a combination of different Vars in Odata.
   defsVar.expr <- def_sW(W = "W[[0:Kmax]] + rowSums(A[[1:Kmax]])", replaceNAw0 = TRUE)
   class(defsVar.expr$sVar.exprs[["W"]])
   defsVar.expr$sVar.exprs[["W"]]
   evaled.sVar.expr2 <- defsVar.expr$eval.nodeforms(data.df = dftest,  netind_cl = netind_cl)
-  checkTrue(all(evaled.sVar.expr2[,c(1,2,3)]==evaled.sVar.expr))
+  # checkTrue(all(evaled.sVar.expr2[,c(1,2,3)]==evaled.sVar.expr))
 
   # Example 5. sum of prod of netA and netW:
   defsVar.expr <- def_sA(sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)
   evaled.sVar.expr <- defsVar.expr$eval.nodeforms(data.df = dftest, netind_cl = netind_cl)
-  checkTrue(all(as.integer(as.vector(evaled.sVar.expr)) == c(30,30,30,30,6)))
+  checkTrue(all(as.integer(as.vector(evaled.sVar.expr[["sumAWnets"]])) == c(30,30,30,30,6)))
 
   # Example 6. More than one summary measure
   defsVar.expr <- def_sA(A = A, sumAnets = sum(A[[1:Kmax]]), sumAWnets = sum(A[[1:Kmax]] * W[[1:Kmax]]), replaceNAw0 = TRUE)

@@ -55,7 +55,7 @@ get.net.densityOdat <- function(nsamp = 100000, rndseed = NULL, Kmax = 5, shift 
   prob_Ni_W1_5 <- normprob(c(pN_0, plogis(-4 + 2 * (k_arr - 3))))  # W1=5 probabilities of |sA_i|
 
   # Define categorical exposure sA, 1:sAmax, where each sA is influenced by categorical W1
-  D <- D + node("sA", distr = "rcategor.int",
+  D <- D + node("sA", distr = "rcat.b1",
                 probs = (W1 == 0)*.(prob_Ni_W1_0) + (W1 == 1)*.(prob_Ni_W1_1) +
                         (W1 == 2)*.(prob_Ni_W1_2) + (W1 == 3)*.(prob_Ni_W1_3) +
                         (W1 == 4)*.(prob_Ni_W1_4) + (W1 == 5)*.(prob_Ni_W1_5))
@@ -131,11 +131,13 @@ test.catnet.fit.density.iptw <- function() {
     # directly assign already existing network:
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO), Kmax = Kmax)
     netind_cl$NetInd <- NetInd_mat
+
     # Define datNetObs:
     OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
     datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
     datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
-    datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+    datNetObs <- DatNet.sWsA$new(Odata = OdataDT_R6, datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
   }
 
@@ -221,8 +223,8 @@ test.catnet.fit.density.iptw <- function() {
   print(summary(wts))
  #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
  # 0.0000  0.1112  0.4062  1.0080  1.1100 26.9200
-  iptw_untrimmed <- mean(datO[,"Y"] * (h_gstar_obs.sA/h_gN))
-  iptw_trimmed <- mean(datO[,"Y"] * (wts))
+  iptw_untrimmed <- mean(datO[["Y"]] * (h_gstar_obs.sA/h_gN))
+  iptw_trimmed <- mean(datO[["Y"]] * (wts))
 
   psi0 <- mean(datO$Y.gstar)
   print("true psi0: " %+% psi0)
@@ -250,4 +252,3 @@ test.catnet.fit.density.iptw <- function() {
 }
 
 
-  

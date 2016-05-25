@@ -80,7 +80,7 @@ mat1a <- sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 sW <- def_sW(sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
 
 \dontrun{
-  mat1b <- sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)  
+  mat1b <- sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 }
 
 #***************************************************************************************
@@ -137,7 +137,7 @@ sW$sVar.names.map
 #***************************************************************************************
 sW <- def_sW(netW2 = W2[[1:Kmax]]) +
       def_sW(netW3_sum = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
-            
+
 sA <- def_sA(sum.AW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE) +
       def_sA(netA = A[[0:Kmax]])
 
@@ -148,10 +148,8 @@ res <- eval.summaries(sW = sW, sA = sA, Kmax = 6, data = df_netKmax6,
 
 # Contents of the list returned by eval.summaries():
 names(res)
-# matrix of sW summary measures:
-head(res$sW.matrix)
-# matrix of sA summary measures:
-head(res$sA.matrix)
+# observed data matrix with (sW,sA) summary measures:
+head(res$DatNet.ObsP0$dat.sWsA)
 # matrix of network IDs:
 head(res$NETIDmat)
 # Observed data (sW,sA) stored as "DatNet.sWsA" R6 class object:

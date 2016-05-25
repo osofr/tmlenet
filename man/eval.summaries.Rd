@@ -61,7 +61,7 @@ sW <- def_sW(W1, W2, W3) +
 #***************************************************************************************
 # Define some summary measures for sA
 #***************************************************************************************
-sA <- def_sA(netA = A[[0:Kmax]]) +
+sA <- def_sA(A = A, netA = A[[0:Kmax]]) +
       def_sA(sum.netAW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE)
 
 #***************************************************************************************
@@ -78,13 +78,11 @@ res <- eval.summaries(sW = sW, sA = sA,  Kmax = 6, data = df_netKmax6,
 # Contents of the list returned by eval.summaries():
 #***************************************************************************************
 names(res)
-# matrix of sW summary measures:
-head(res$sW.matrix)
-# matrix of sA summary measures:
-head(res$sA.matrix)
+# observed data matrix with (sW,sA) summary measures:
+head(res$DatNet.ObsP0$dat.sWsA)
 # matrix of network IDs:
 head(res$NETIDmat)
-# Observed data summary measures (sW,sA) and network 
+# Observed data summary measures (sW,sA) and network
 # stored as "DatNet.sWsA" R6 class object:
 res$DatNet.ObsP0
 class(res$DatNet.ObsP0)
@@ -93,15 +91,28 @@ class(res$DatNet.ObsP0)
 # Using DatNet.ObsP0 as input to tmlenet():
 #***************************************************************************************
 options(tmlenet.verbose = FALSE) # set to TRUE to print status messages
-res_K6 <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
+
+res_K6 <- tmlenet(data =  df_netKmax6, NETIDmat = NetInd_mat_Kmax6,
+                    Kmax = 6,
+                    sA = sA, sW = sW,
                     Qform = "Y ~ sum.netW3 + sum.netAW2",
                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
                     hform.gstar = "netA ~ sum.netW3",
-                    Anodes = "A", Ynode = "Y", f_gstar1 = 0L)
+                    Ynode = "Y",
+                    intervene1.sA = def_new_sA(A = 1L))
+
+# res_K6 <- tmlenet(DatNet.ObsP0 = res$DatNet.ObsP0,
+#                     Qform = "Y ~ sum.netW3 + sum.netAW2",
+#                     hform.g0 = "netA ~ netW2 + sum.netW3 + nF",
+#                     hform.gstar = "netA ~ sum.netW3",
+#                     Ynode = "Y",
+#                     intervene1.sA = def_new_sA(A = 0L))
+# f_gstar1 = 0L)
+# Anodes = "A",
 
 res_K6$EY_gstar1$estimates
-res_K6$EY_gstar1$vars
-res_K6$EY_gstar1$CIs
+res_K6$EY_gstar1$IC.vars
+res_K6$EY_gstar1$IC.CIs
 
 
 

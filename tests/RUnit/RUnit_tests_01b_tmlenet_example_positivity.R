@@ -2,8 +2,8 @@
 `%+%` <- function(a, b) paste0(a, b)
 as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 allNA = function(x) all(is.na(x))
- 
- 
+
+
 test.hforms_IPTW_positivity <- function() {
   data(datO_input)
   summary(datO_input)
@@ -32,7 +32,7 @@ test.hforms_IPTW_positivity <- function() {
                   optPars = list(
                     bootstrap.var = FALSE, n.bootstrap = 10
                     ))
-  assert_that(res1[["EY_gstar1"]][["estimates"]]["h_iptw",] < 0.20)
+  assertthat::assert_that(res1[["EY_gstar1"]][["estimates"]]["h_iptw",] < 0.20)
 
   # This ordering gives bounded IPTW, since A is now automatically put as a first covar when fitting sum.net.A:
   hform2.g0 <- "A + sum.net.A ~ HUB + nF.PA + PA0 + nFPAeq0.PAeq1"
@@ -43,7 +43,7 @@ test.hforms_IPTW_positivity <- function() {
                   optPars = list(
                     bootstrap.var = FALSE, n.bootstrap = 10
                     ))
-  assert_that(res2[["EY_gstar1"]][["estimates"]]["h_iptw",] < 0.20)
+  assertthat::assert_that(res2[["EY_gstar1"]][["estimates"]]["h_iptw",] < 0.20)
 
   # this ordering was working before (and works now as well), giving bounded IPTW:
   hform3.g0 <- "A + sum.net.A ~ HUB + PA0 + nF.PA + nFPAeq0.PAeq1"
@@ -54,5 +54,5 @@ test.hforms_IPTW_positivity <- function() {
                   optPars = list(
                     bootstrap.var = FALSE, n.bootstrap = 10
                     ))
-  assert_that(res3[["EY_gstar1"]][["estimates"]]["h_iptw",] < 0.20)
+  assertthat::assert_that(res3[["EY_gstar1"]][["estimates"]]["h_iptw",] < 0.20)
 }

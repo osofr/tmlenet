@@ -27,37 +27,37 @@ R6 object of class \code{DefineSummariesClass} which can be passed as an argumen
  and \code{tmlenet} functions.
 }
 \description{
-Define and store summary measures \code{sW} and \code{sA} that can be later processed inside 
+Define and store summary measures \code{sW} and \code{sA} that can be later processed inside
  \code{\link{eval.summaries}} or \code{\link{tmlenet}} functions.
  \code{def_sW} and \code{def_sA} return an \code{R6} object of class \code{\link{DefineSummariesClass}}
  which stores the user-defined summary measure functions of the baseline covariates \code{W}
  and exposure \code{A}, which can be later evaluated inside the environment of the input \code{data} data frame.
- Note that calls to \code{def_sW} must be used for defining the summary measures that are functions 
+ Note that calls to \code{def_sW} must be used for defining the summary measures that are functions
  of \strong{only the baseline covariates \code{W}}, while calls to \code{def_sA} must be used
  for defining the summary measures that are functions of both, \strong{the baseline covariates \code{W}
  and exposure \code{A}}.
- Each summary measure is specified as an evaluable R expression or a string that can be parsed into 
+ Each summary measure is specified as an evaluable R expression or a string that can be parsed into
  an evaluable R expression. Any variable name that exists as a named column in the input \code{data}
  data frame can be used as part of these expressions.
- Separate calls to \code{def_sW/def_sA} functions can be aggregated into a single collection with '+' function, 
+ Separate calls to \code{def_sW/def_sA} functions can be aggregated into a single collection with '+' function,
  e.g., \code{def_sW(W1)+def_sW(W2)}.
- A special syntax is allowed inside these summary expressions:  
+ A special syntax is allowed inside these summary expressions:
  \itemize{
- \item \code{'Var[[index]]'} - will index the friend covariate values of the variable \code{Var}, e.g., 
+ \item \code{'Var[[index]]'} - will index the friend covariate values of the variable \code{Var}, e.g.,
    \code{'Var[[1]]'} will pull the covariate value of \code{Var} for the first friend, \code{'Var[[Kmax]]'}
    of the last friend, and
    \code{'Var[[0]]'} is equivalent to writing \code{'Var'} itself (indexes itself).
  }
  A special argument named \code{replaceNAw0} can be also passed to the \code{def_sW}, \code{def_sA} functions:
  \itemize{
- \item \code{replaceNAw0 = TRUE} - automatically replaces all the missing network covariate values 
+ \item \code{replaceNAw0 = TRUE} - automatically replaces all the missing network covariate values
  (\code{NA}) with \code{0}.
  }
- One can then test the evaluation of these summary measures by either passing the returned 
- \code{\link{DefineSummariesClass}} object to function \code{\link{eval.summaries}} or by calling the 
+ One can then test the evaluation of these summary measures by either passing the returned
+ \code{\link{DefineSummariesClass}} object to function \code{\link{eval.summaries}} or by calling the
  internal method \code{eval.nodeforms(data.df, netind_cl)} on the result returned by \code{def_sW} or \code{def_sA}.
  Each separate argument to \code{def_sW} or \code{def_sA} represents a new summary measure.
- The user-specified argument name defines the name of the corresponding summary measure 
+ The user-specified argument name defines the name of the corresponding summary measure
  (where the summary measure represents the result of the evaluation of the corresponding R expression specified by the argument).
  When a particular argument is unnamed, the summary measure name
  will be generated automatically (see Details, Naming Conventions and Examples below).
@@ -65,14 +65,14 @@ Define and store summary measures \code{sW} and \code{sA} that can be later proc
 \section{Details}{
 
 
-The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or 
+The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or
  \code{\link{eval.summaries}} functions,
  using the environment of the input data frame, which is enclosed within the user-calling environment.
 
 Note that when observation \code{i} has only \code{j-1} friends, the \code{i}'s value of \code{"W_netFj"} is
- automatically set to \code{NA}. 
+ automatically set to \code{NA}.
  This can be an undersirable behavior in some circumstances, in which case one can automatically replace all such
- \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling functions 
+ \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling functions
  \code{def_sW} or \code{def_sA}, i.e., \code{def_sW(W[[1]], replaceMisVal0 = TRUE)}.
 }
 
@@ -82,9 +82,9 @@ Naming conventions for summary measures with no user-supplied name (e.g., \code{
 
 ....................................
  \itemize{
- \item If only one unique variable name is used in the summary expression (only one parent), use the variable 
+ \item If only one unique variable name is used in the summary expression (only one parent), use the variable
    name itself to name the summary measure;
- \item If there is more than 1 unique variable name (e.g., \code{"W1+W2"}) in the summary expression, throw an exception 
+ \item If there is more than 1 unique variable name (e.g., \code{"W1+W2"}) in the summary expression, throw an exception
    (user must always supply summary measure names for such expressions).
  }
 
@@ -94,7 +94,7 @@ Naming conventions for the evaluation results of summary measures defined by \co
  \itemize{
  \item When summary expression evaluates to a vector result, the vector is first converted to a 1 col matrix,
    with column name set equal to the summary expression name;
- \item When the summary measure evaluates to a matrix result and the expression has only one unique variable 
+ \item When the summary measure evaluates to a matrix result and the expression has only one unique variable
    name (one parent), the matrix column names are generated as follows: for the expressions such as \code{"Var"}
    or \code{"Var[[0]]"}, the column names \code{"Var"} are assigned
    and for the expressions such as \code{"Var[[j]]"}, the column names \code{"Var_netFj"} are assigned.
@@ -190,7 +190,7 @@ mat1a <- sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 sW <- def_sW(sum(W3[[1:Kmax]]*W2[[1:Kmax]]), replaceNAw0 = TRUE)
 
 \dontrun{
-  mat1b <- sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)  
+  mat1b <- sW$eval.nodeforms(data.df = df_netKmax6, netind_cl = netind_cl)
 }
 
 #***************************************************************************************
@@ -247,7 +247,7 @@ sW$sVar.names.map
 #***************************************************************************************
 sW <- def_sW(netW2 = W2[[1:Kmax]]) +
       def_sW(netW3_sum = sum(W3[[1:Kmax]]), replaceNAw0 = TRUE)
-            
+
 sA <- def_sA(sum.AW2 = sum((1-A[[1:Kmax]])*W2[[1:Kmax]]), replaceNAw0 = TRUE) +
       def_sA(netA = A[[0:Kmax]])
 
@@ -258,10 +258,8 @@ res <- eval.summaries(sW = sW, sA = sA, Kmax = 6, data = df_netKmax6,
 
 # Contents of the list returned by eval.summaries():
 names(res)
-# matrix of sW summary measures:
-head(res$sW.matrix)
-# matrix of sA summary measures:
-head(res$sA.matrix)
+# observed data matrix with (sW,sA) summary measures:
+head(res$DatNet.ObsP0$dat.sWsA)
 # matrix of network IDs:
 head(res$NETIDmat)
 # Observed data (sW,sA) stored as "DatNet.sWsA" R6 class object:

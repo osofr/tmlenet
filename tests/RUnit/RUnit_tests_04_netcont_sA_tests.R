@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------------
 # TEST SET 4
 # ---------------------------------------------------------------------------------
-# network TMLE fit with continous sA 
+# network TMLE fit with continous sA
 # Run one TMLE simulation for network data generated igraph::sample_k_regular (all nodes have the same degree k)
 # estimate psi0 under trunced g.star (same as in iid)
 # sA is the same as in iid example w sAnet=(sA, rowMeans(sA[[1:Kmax]])).
@@ -12,23 +12,29 @@
 # ---------------------------------------------------------------------------------------------------------
 
 `%+%` <- function(a, b) paste0(a, b)
-run.net.1sim.tmlenet <- function(datO, NetInd_mat, sW, sA, Kmax, Qform, f.gstar, psi0) {
+# f.gstar,
+run.net.1sim.tmlenet <- function(datO, NetInd_mat, sW, sA, Kmax, Qform, newA.gstar, psi0) {
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Anodes = "sA", Ynode = "Y",
+  res <- tmlenet(data = datO_input,
+                  # Anodes = "sA",
+                  Ynode = "Y",
                   Kmax = Kmax,
                   NETIDmat = NetInd_mat,
-                  f_gstar1 = f.gstar,
+                  # f_gstar1 = f.gstar,
+                  intervene1.sA = newA.gstar,
                   sW = sW, sA = sA,
                   Qform = Qform,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
                   hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
-                  optPars = list(n_MCsims = 1))
+                  optPars = list(
+                    bootstrap.var = FALSE, n.bootstrap = 1
+                    ))
                   # correct Q:
                   # Qform = "Y ~ W1 + W2 + W3 + sA + net.mean.sA",
                   # misspecified Q:
                   # Qform = "Y ~ W2 + W3 + net.mean.sA",
 
-  CIs <- res$EY_gstar1$CIs
+  CIs <- res$EY_gstar1$IC.CIs
   print("CIs: "); print(CIs)
   (tmle_B.CI <- CIs[rownames(CIs)%in%"tmle_B",])
   (h_iptw.CI <- CIs[rownames(CIs)%in%"h_iptw",])
@@ -48,7 +54,7 @@ run.net.1sim.tmlenet <- function(datO, NetInd_mat, sW, sA, Kmax, Qform, f.gstar,
 # The user-defined network sampler(s) from igraph (regular graph model)
 # Generate regular random graphs with same degree for each node
 # Kmax - degree of each node
-make_netDAG <- function(Kmax, trunc.const, shift.const) {
+make_netDAG <- function(Kmax, trunc, shift) {
   generate.igraph.k.regular <- function(n, Kmax, ...) {
     if (n < 20) Kmax <- 5
     igraph.reg <- igraph::sample_k_regular(no.of.nodes = n, k = Kmax, directed = TRUE, multiple = FALSE)
@@ -80,10 +86,10 @@ make_netDAG <- function(Kmax, trunc.const, shift.const) {
       node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
       node("sA", distr = "rnorm", mean = sA.mu, sd = 1) +
       node("net.mean.sA", distr = "rconst", const = mean(sA[[1:Kmax]])) +
-      node("untrunc.sA.gstar",  distr = "rconst", const = sA + shift.const) +
+      node("untrunc.sA.gstar",  distr = "rconst", const = sA + shift) +
       node("r.new.sA",  distr = "rconst", const =
-            exp(shift.const * (untrunc.sA.gstar - sA.mu - shift.const / 2))) +
-      node("tr.sA.gstar",  distr = "rconst", const = ifelse(r.new.sA > trunc.const, sA, untrunc.sA.gstar)) +
+            exp(shift * (untrunc.sA.gstar - sA.mu - shift / 2))) +
+      node("tr.sA.gstar",  distr = "rconst", const = ifelse(r.new.sA > trunc, sA, untrunc.sA.gstar)) +
       node("probY", distr = "rconst", const =
             plogis(-0.35 * sA - 0.20 * mean(sA[[1:Kmax]]) - 0.5 * W1 - 0.58 * W2 - 0.33 * W3)) +
       node("Y", distr = "rbern", prob = probY) +
@@ -94,29 +100,30 @@ make_netDAG <- function(Kmax, trunc.const, shift.const) {
   return(Dset)
 }
 
-# Function that returns a stochastic intervention function intervening on sA, for given shift.const
-create_f.gstar <- function(shift, trunc.const) {
-  shift.const <- shift
-  trunc.const <- trunc.const
-  f.gstar <- function(data, ...) {
-    sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
-    sA <- data[,"sA"]
-    untrunc.sA.gstar <- sA + shift.const
-    # ratio of P_g^*(sA=sa|W)/P_g0(sA=sa|W) for sa=sA generated under g^*:
-    r.new.sA <- exp(shift.const * (untrunc.sA.gstar - sA.mu - shift.const / 2))
-    trunc.sA.gstar <- ifelse(r.new.sA > trunc.const, sA, untrunc.sA.gstar)
-    return(trunc.sA.gstar)
-  }
-  return(f.gstar)
-}
+# Function that returns a stochastic intervention function intervening on sA, for given shift
+# create_f.gstar <- function(shift, trunc) {
+#   shift <- shift
+#   trunc <- trunc
+#   f.gstar <- function(data, ...) {
+#     sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
+#     sA <- data[,"sA"]
+#     untrunc.sA.gstar <- sA + shift
+#     # ratio of P_g^*(sA=sa|W)/P_g0(sA=sa|W) for sa=sA generated under g^*:
+#     r.new.sA <- exp(shift * (untrunc.sA.gstar - sA.mu - shift / 2))
+#     trunc.sA.gstar <- ifelse(r.new.sA > trunc, sA, untrunc.sA.gstar)
+#     return(trunc.sA.gstar)
+#   }
+#   return(f.gstar)
+# }
 
 test.onesim.net.tmlefit <- function() {
   require(simcausal)
   #------------------------------------------------------------------------------------------------------------
   Kmax <- 5
-  trunc.const <- 4
-  shift.const <- 1
-  Dset <- make_netDAG(Kmax, trunc.const, shift.const)
+  trunc <- 4
+  shift <- 1
+  Dset <- make_netDAG(Kmax, trunc, shift)
+
   #------------------------------------------------------------------------------------------------------------
   # # plotDAG(Dset)
   # rndseed2 <- 54321
@@ -129,10 +136,18 @@ test.onesim.net.tmlefit <- function() {
   # # [1] "mean(datFull$Y): 0.301425"
   # psi0 <- mean(datFull$Y.gstar)
   # print("psi0: " %+% psi0)
-  # # [1] "psi0: 0.22062" for 50K sample (trunc.const = 4, shift = 1, Kmax = 5)
-  # # [1] "psi0: 0.19184" for 50K sample (trunc.const = 7, shift = 1, Kmax = 10)
+  # # [1] "psi0: 0.22062" for 50K sample (trunc = 4, shift = 1, Kmax = 5)
+  # # [1] "psi0: 0.19184" for 50K sample (trunc = 7, shift = 1, Kmax = 10)
 
-  f.gstar <- create_f.gstar(shift = shift.const, trunc.const = trunc.const)
+  # f.gstar <- create_f.gstar(shift = shift, trunc = trunc)
+
+  shift <- shift
+  trunc <- trunc
+
+  newA.gstar <-  def_new_sA(sA = ifelse(exp(shift * (sA + shift - (0.98*W1 + 0.58*W2 + 0.33*W3) - shift/2)) > trunc,
+                            sA,
+                            sA + shift))
+
   # DEFINE SUMMARY MEASURES:
   sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
   sA <- def_sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
@@ -161,14 +176,18 @@ test.onesim.net.tmlefit <- function() {
   timerun <- system.time(
     estres <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
                                     sW = sW, sA = sA, Kmax = Kmax,
-                                    Qform = Qform.mis, f.gstar = f.gstar, psi0 = 0)
+                                    Qform = Qform.mis,
+                                    newA.gstar = newA.gstar,
+                                    # f.gstar = f.gstar,
+                                    psi0 = 0)
   )
   timerun
   #  user  system elapsed
   # 1.659   0.121   1.791
   estres
   #      tmle    h_iptw     gcomp
-  # 0.2159311 0.2181338 0.2648796   # [1] "CIs: "
+  # 0.2159311 0.2181338 0.2648796
+  # [1] "CIs: "
   #        LBCI_0.025 UBCI_0.975
   # tmle    0.1930713  0.2387909
   # h_iptw  0.1886270  0.2476407
@@ -192,7 +211,10 @@ test.onesim.net.tmlefit <- function() {
   timerun <- system.time(
     estres_eqlen <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
                                     sW = sW, sA = sA, Kmax = Kmax,
-                                    Qform = Qform.mis, f.gstar = f.gstar, psi0 = 0)
+                                    Qform = Qform.mis,
+                                    newA.gstar = newA.gstar,
+                                    # f.gstar = f.gstar,
+                                    psi0 = 0)
   )
   timerun
   estres_eqlen
@@ -215,7 +237,10 @@ test.onesim.net.tmlefit <- function() {
   Qform.corr <- "Y ~ W1 + W2 + W3 + sA + net.mean.sA"
   estres2 <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
                                   sW = sW, sA = sA, Kmax = Kmax,
-                                  Qform = Qform.corr, f.gstar = f.gstar, psi0 = 0)
+                                  Qform = Qform.corr,
+                                  newA.gstar = newA.gstar,
+                                  # f.gstar = f.gstar,
+                                  psi0 = 0)
   estres2
   #      tmle    h_iptw     gcomp
   # 0.2150487 0.2181338 0.2140926
@@ -253,16 +278,5 @@ test.onesim.net.tmlefit <- function() {
   # checkTrue(abs(estres_par$est["h_iptw"] - 0.2181338) < 10^-6)
   # # test 3:
   # checkTrue(abs(estres_par$est["gcomp"] - 0.2648796) < 10^-6)
-
-
-
-
-
-
-
-
-
-
-
 
 }

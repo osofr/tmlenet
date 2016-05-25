@@ -223,11 +223,12 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   # m.Q.init$getsubset             # valid subset (!det.Y)
   # m.Q.init$reg                   # regression class (Qreg)
 
+  # making sure the current dataset consists of the OBSERVED Anodes and sA (summaries)
   if (!DatNet.ObsP0$Odata$curr_data_A_g0) {
     if (is.null(DatNet.ObsP0$Odata$A_g0_DT))
       stop("Can't recover the initial observed A (exposures), as those were over-written and not backed-up")
     DatNet.ObsP0$Odata$swapAnodes()
-    if (!DatNet.ObsP0$Odata$restored_sA_Vars) DatNet.ObsP0$datnetA$make.sVar(sVar.object = sA)
+    if (!DatNet.ObsP0$Odata$restored_sA_Vars) DatNet.ObsP0$datnetA$make.sVar(sVar.object = est_params_list$sA)
   }
 
   nodes <- DatNet.ObsP0$nodes
@@ -270,11 +271,11 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
 	#************************************************
   MC_fit_params <- append(est_params_list, list(m.Q.star = tmle.obj$m.Q.star.coef))
 
-  # swap the nodes to put back A and sA under g.star:
+  # make sure the current dataset constits of INTERVENED Anodes and sA (under g.star):
   if (DatNet.ObsP0$datnetW$Odata$curr_data_A_g0) {
     DatNet.gstar$datnetA$Odata$swapAnodes()
     if (!DatNet.gstar$datnetA$Odata$restored_sA_Vars)
-      DatNet.gstar$datnetA$make.sVar(sVar.object = sA) # just recreate the summaries sA based on current Anode values in the data
+      DatNet.gstar$datnetA$make.sVar(sVar.object = est_params_list$new.sA) # just recreate the summaries sA based on current Anode values in the data
   }
 
   # generate new A's under f.gstar, then re-create new summaries sA:

@@ -152,14 +152,15 @@ test.net.fit.density.iptw <- function() {
     sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3",
                     net.mean.W1 = ifelse(nF > 0, rowSums(W1[[1:Kmax]])/nF, 0),
                     replaceNAw0 = TRUE)
+
     # directly assign already existing network:
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO), Kmax = Kmax)
     netind_cl$NetInd <- NetInd_mat
     # Define datNetObs:
     OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
-    datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+    datnetW <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+    datnetA <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
+    datNetObs <- DatNet.sWsA$new(Odata = OdataDT_R6, datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
   }
 
@@ -272,8 +273,8 @@ test.net.fit.density.iptw <- function() {
   wts[wts > trim_wt] <- trim_wt
   summary(h_gstar_obs.sA/h_gN)
   summary(wts)
-  iptw_untrimmed <- mean(datO[,"Y"] * (h_gstar_obs.sA/h_gN))
-  iptw_trimmed <- mean(datO[,"Y"] * (wts))
+  iptw_untrimmed <- mean(datO[["Y"]] * (h_gstar_obs.sA/h_gN))
+  iptw_trimmed <- mean(datO[["Y"]] * (wts))
 
   psi0 <- mean(datO$Y.gstar)
   print("true psi0: " %+% psi0)
@@ -297,11 +298,11 @@ test.net.fit.density.iptw <- function() {
   # >   max(h_gstar_obs.sA); min(h_gstar_obs.sA);
   # [1] 0.4188395
   # [1] 4.281069e-16
-  # > 
+  # >
   # >   wts <- h_gstar_obs.sA / h_gN
   # >   wts[is.nan(wts)] <- 0
   # >   # wts[wts > 500] <- 500
-  # > 
+  # >
   # >   summary(h_gstar_obs.sA/h_gN)
   #      Min.   1st Qu.    Median      Mean   3rd Qu.      Max.
   #   0.00000   0.01102   0.06283   1.03100   0.30460 196.60000
@@ -315,4 +316,3 @@ test.net.fit.density.iptw <- function() {
 }
 
 
-  

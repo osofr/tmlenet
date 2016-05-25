@@ -2,7 +2,7 @@
 # TEST SET 2. TESTS FOR FITTING CONTINUOUS EXPOSURE sA IN IID DATA
 # ---------------------------------------------------------------------------------
 # Fitting continuous exposure by  binning, conditional on covariates
-# Overall exposure g0 (sA) is a mixture of 3 normals, 
+# Overall exposure g0 (sA) is a mixture of 3 normals,
 # individual exposure is normal with mu for each observation being a function of (W1,W2,W3), sd = 1;
 # ---------------------------------------------------------------------------------
 
@@ -50,10 +50,10 @@ test.simple.fit.density.sA <- function() {
     netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
     # Define datNetObs:
     OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-    datnetW <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+    datnetW <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
     checkTrue(tmlenet:::is.DatNet(datnetW))
-    datnetA <- DatNet$new(netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
-    datNetObs <- DatNet.sWsA$new(datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+    datnetA <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
+    datNetObs <- DatNet.sWsA$new(Odata = OdataDT_R6, datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
   }
 
@@ -107,7 +107,7 @@ test.simple.fit.density.sA <- function() {
   # Get P(sA|W) for the observed data (W,sA):
   # SHOULD BE SIMILAR TO THE OBSERVED DENSITY OF s.A (but discretized)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
-  
+
   print("h_gN fit under speedglm: " %+% mean(h_gN)) # [1] 0.2718823
   checkTrue(abs(mean(h_gN)-0.2718823) < 10^-4)
   # ---------------------------------------------------------------------------------------------------------
@@ -213,27 +213,27 @@ test.simple.fit.density.sA <- function() {
 # ---------------------------------------------------------------------------------------------------------
 # Test 2. Running iid TMLE fit for continous sA
 # TMLE for causal effect in i.i.d. data with continuous exposure under continuous stochastic intervention;
-# intervention g.star is defined by shifting the normal density of observed sA until g.star/g.0 >= 10, 
+# intervention g.star is defined by shifting the normal density of observed sA until g.star/g.0 >= 10,
 # then its truncated to be equal to g.0
 # ---------------------------------------------------------------------------------------------------------
 # Run one TMLE simulation for iid data sampled from get.iid.densityOdat, estimating psi0 under trunced g.star
 # ---------------------------------------------------------------------------------------------------------
-get.iid.densityOdat <- function(nsamp = 100000, rndseed = NULL, trunc.const = 10, shift.const = 2) {
+get.iid.densityOdat <- function(nsamp = 100000, rndseed = NULL, trunc = 10, shift = 2) {
   require(simcausal)
   # nsamp = 100000
   # rndseed = 12345
-  # trunc.const <- 10
-  # shift.const <- 2
+  trunc <- trunc
+  shift <- shift
   D <- DAG.empty()
   D <-
   D + node("W1", distr = "rbern", prob = 0.5) +
       node("W2", distr = "rbern", prob = 0.3) +
       node("W3", distr = "rbern", prob = 0.3) +
       node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
-      node("shift",  distr = "rconst", const = .(shift.const)) +
+      node("shift",  distr = "rconst", const = .(shift)) +
       node("sA", distr = "rnorm", mean = sA.mu, sd = 1) +
       node("r.obs.sA",  distr = "rconst", const = exp(shift * (sA - sA.mu - shift / 2))) +
-      node("trunc.c",  distr = "rconst", const = .(trunc.const)) +
+      node("trunc.c",  distr = "rconst", const = .(trunc)) +
       node("untrunc.sA.gstar",  distr = "rconst", const = sA + shift) +
       # node("p.gstar.sA", distr = "rconst", const = (1/sqrt(2*.(pi))) * exp((-1/2) * (untrunc.sA.gstar - sA.mu)^2)) +
       # node("p.gstar.sA.gstar", distr = "rconst", const = (1/sqrt(2*.(pi))) * exp((-1/2) * (untrunc.sA.gstar - (sA.mu + shift))^2)) +
@@ -257,28 +257,41 @@ get.iid.densityOdat <- function(nsamp = 100000, rndseed = NULL, trunc.const = 10
   return(list(psi0 = psi0, datO = datO))
 }
 
-run.1sim.tmlenet <- function(nsamp, psi0, Qform, f.gstar, trunc.const = 10, shift.const = 2, n_MCsims = 10) {
-  datO <- get.iid.densityOdat(nsamp = nsamp, rndseed = NULL, trunc.const = trunc.const, shift.const = shift.const)$datO
+# f.gstar,
+run.1sim.tmlenet <- function(nsamp, psi0, Qform, newA.gstar, trunc = 10, shift = 2, n_MCsims = 10) {
+  datO <- get.iid.densityOdat(nsamp = nsamp, rndseed = NULL, trunc = trunc, shift = shift)$datO
   datO <- datO[,c("W1", "W2", "W3", "sA", "Y")]
   print("head(datO)"); print(head(datO))
   print("summary(datO)"); print(summary(datO))
+
   Kmax <- 1
   sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
   sA <- def_sA(sA = "sA")
-  tmlenet_res <- tmlenet(data = datO, Anodes = "sA", Ynode = "Y",
+
+  # browser()
+
+  tmlenet_res <- tmlenet(data = datO,
+                          # Anodes = "sA",
+                          Ynode = "Y",
                           Kmax = Kmax,
                           # nFnode = NULL,
-                          f_gstar1 = f.gstar,
+                          # f_gstar1 = f.gstar,
+                          intervene1.sA = newA.gstar,
                           sW = sW, sA = sA,
                           Qform = Qform,
                           hform.g0 = "sA ~ W1 + W2 + W3",
                           hform.gstar = "sA ~ W1 + W2 + W3",
-                          optPars = list(n_MCsims = n_MCsims))
+                          optPars = list(
+                            bootstrap.var = FALSE, n.bootstrap = 10
+                          ))
                           # correct Q:
                           # Qform = "Y ~ W1 + W2 + W3 + sA",
                           # misspecified Q:
                           # Qform = "Y ~ W3 + sA",
-  CIs <- tmlenet_res$EY_gstar1$CIs
+
+# optPars = list(n_MCsims = n_MCsims)
+
+  CIs <- tmlenet_res$EY_gstar1$IC.CIs
   (tmle_B.CI <- CIs[rownames(CIs)%in%"tmle_B",])
   (h_iptw.CI <- CIs[rownames(CIs)%in%"h_iptw",])
   cover.tmle_B <- ((psi0 <= tmle_B.CI[2]) && (psi0 >= tmle_B.CI[1]))
@@ -297,30 +310,30 @@ run.1sim.tmlenet <- function(nsamp, psi0, Qform, f.gstar, trunc.const = 10, shif
 }
 
 # Function that returns a stochastic intervention function intervening on sA, for given shift
-create_f.gstar <- function(shift, trunc.const) {
-  shift.const <- shift
-  trunc.const <- trunc.const
-  f.gstar <- function(data, ...) {
-    print("shift.const: " %+% shift.const)
-    sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
-    untrunc.sA <- rnorm(n = nrow(data), mean = sA.mu + shift.const, sd = 1)
-    r.new.sA <- exp(shift.const * (untrunc.sA - sA.mu - shift.const / 2))
-    trunc.sA <- ifelse(r.new.sA > trunc.const, untrunc.sA - shift.const, untrunc.sA)
-    return(trunc.sA)
-  }
-  return(f.gstar)
-}
+# create_f.gstar <- function(shift, trunc) {
+#   shift <- shift
+#   trunc <- trunc
+#   f.gstar <- function(data, ...) {
+#     print("shift: " %+% shift)
+#     sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
+#     untrunc.sA <- rnorm(n = nrow(data), mean = sA.mu + shift, sd = 1)
+#     r.new.sA <- exp(shift * (untrunc.sA - sA.mu - shift / 2))
+#     trunc.sA <- ifelse(r.new.sA > trunc, untrunc.sA - shift, untrunc.sA)
+#     return(trunc.sA)
+#   }
+#   return(f.gstar)
+# }
 
 # NOTE:ADD THIS TO AN EXAMPLE OF STOCHASTIC INTERVENTION:
 test.onesim.iid.tmlefit <- function() {
   # ---------------------------------------------------------------------------------------------------------
-  trunc.const <- 10
-  shift.const <- 1
+  trunc <- 10
+  shift <- 1
   nsamp <- 10000
   # nsamp <- 2000
   # ---------------------------------------------------------------------------------------------------------
   # # get true psi.0:
-  # datO <- get.iid.densityOdat(nsamp = 100000, rndseed = 12345, trunc.const = trunc.const, shift.const = shift.const)
+  # datO <- get.iid.densityOdat(nsamp = 100000, rndseed = 12345, trunc = trunc, shift = shift)
   # psi0 <- datO$psi0
   # print("psi0: " %+% psi0)
   # [1] "psi0: 0.239584" (shift=1)
@@ -331,10 +344,22 @@ test.onesim.iid.tmlefit <- function() {
   # ---------------------------------------------------------------------------------------------------------
   set.seed(33556)
   Qform.mis <- "Y ~ W3 + sA" # misspecified Q:
-  f.gstar <- create_f.gstar(shift = shift.const, trunc.const = trunc.const)
+  # f.gstar <- create_f.gstar(shift = shift, trunc = trunc)
+
+  shift <- shift
+  trunc <- trunc
+
+  newA.gstar <-  def_new_sA(sA =
+    ifelse(exp(shift * (sA + shift - (0.98*W1 + 0.58*W2 + 0.33*W3) - shift/2)) > trunc,
+          sA,
+          sA + shift))
+
   res <- run.1sim.tmlenet(nsamp = nsamp, psi0 = 0, Qform = Qform.mis,
-                          f.gstar = f.gstar,  trunc.const = trunc.const, shift.const = shift.const,
-                          n_MCsims = 10)
+                          # f.gstar = f.gstar,
+                          newA.gstar = newA.gstar,
+                          trunc = trunc, shift = shift
+                          # n_MCsims = 10
+                          )
   res$est
 
 # [1] "mean(datO$Y): 0.3156"
@@ -357,18 +382,18 @@ test.onesim.iid.tmlefit <- function() {
 #  Max.   :1.0000   Max.   :1.000   Max.   :1.0000   Max.   : 5.280415   Max.   :1.0000
 
   #      tmle    h_iptw     gcomp
-  # 0.2360305 0.2441800 0.2131320
+  # 0.2357986 0.2439521 0.2130597
   # [1] "new MC.ests mat: "
   #         estimate
-  # TMLE   0.2360305
-  # h_IPTW 0.2441800
-  # MLE    0.2131320
+  # TMLE   0.2357986
+  # h_IPTW 0.2439521
+  # MLE    0.2130597
   # test 1:
-  checkTrue(abs(res$est["tmle"]-0.2360305) < 10^-4)
+  checkTrue(abs(res$est["tmle"]-0.2357986) < 10^-4)
   # test 2:
-  checkTrue(abs(res$est["h_iptw"]-0.2441800) < 10^-4)
+  checkTrue(abs(res$est["h_iptw"]-0.2439521) < 10^-4)
   # test 3:
-  checkTrue(abs(res$est["gcomp"]-0.2131320) < 10^-4)
+  checkTrue(abs(res$est["gcomp"]-0.2130597) < 10^-4)
 
   # ---------------------------------------------------------------------------------------------------------
   # Correct Q:
@@ -376,24 +401,24 @@ test.onesim.iid.tmlefit <- function() {
   set.seed(23466)
   Qform.corr <- "Y ~ W1 + W2 + W3 + sA" # correct Q:
   res2 <- run.1sim.tmlenet(nsamp = nsamp, psi0 = 0, Qform = Qform.corr,
-                          f.gstar = f.gstar,  trunc.const = 10, shift.const = shift.const,
+                          # f.gstar = f.gstar,
+                          newA.gstar = newA.gstar,
+                          trunc = 10, shift = shift,
                           n_MCsims = 10)
   res2$est
   # [1] "new MC.ests mat: "
   #         estimate
-  # TMLE   0.2391396
-  # h_IPTW 0.2443753
-  # MLE    0.2428439
+  # TMLE   0.2394423
+  # h_IPTW 0.2445226
+  # MLE    0.2429667
   #      tmle    h_iptw     gcomp
-  # 0.2391396 0.2443753 0.2428439
+  # 0.2394423 0.2445226 0.2429667
   # test 1:
-  checkTrue(abs(res2$est["tmle"]-0.2391396) < 10^-4)
+  checkTrue(abs(res2$est["tmle"]-0.2394423) < 10^-4)
   # test 2:
-  checkTrue(abs(res2$est["h_iptw"]-0.2443753) < 10^-4)
+  checkTrue(abs(res2$est["h_iptw"]-0.2445226) < 10^-4)
   # test 3:
-  checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-4)
-
-
+  checkTrue(abs(res2$est["gcomp"]-0.2429667) < 10^-4)
 
   # ---------------------------------------------------------------------------------------------------------
   # Correct Q w/ glm.fit:
@@ -403,34 +428,23 @@ test.onesim.iid.tmlefit <- function() {
   set.seed(23466)
   Qform.corr <- "Y ~ W1 + W2 + W3 + sA" # correct Q:
   res3 <- run.1sim.tmlenet(nsamp = nsamp, psi0 = 0, Qform = Qform.corr,
-                          f.gstar = f.gstar,  trunc.const = 10, shift.const = shift.const,
+                          # f.gstar = f.gstar,
+                          newA.gstar = newA.gstar,
+                          trunc = 10, shift = shift,
                           n_MCsims = 10)
   res3$est
   # [1] "new MC.ests mat: "
   #         estimate
-  # TMLE   0.2391396
-  # h_IPTW 0.2443753
-  # MLE    0.2428439
+  # TMLE   0.2394423
+  # h_IPTW 0.2445226
+  # MLE    0.2429667
   #      tmle    h_iptw     gcomp
-  # 0.2391396 0.2443753 0.2428439
+  # 0.2394423 0.2445226 0.2429667
   # test 1:
-  checkTrue(abs(res2$est["tmle"]-0.2391396) < 10^-4)
+  checkTrue(abs(res2$est["tmle"]-0.2394423) < 10^-4)
   # test 2:
-  checkTrue(abs(res2$est["h_iptw"]-0.2443753) < 10^-4)
+  checkTrue(abs(res2$est["h_iptw"]-0.2445226) < 10^-4)
   # test 3:
-  checkTrue(abs(res2$est["gcomp"]-0.2428439) < 10^-4)
-
-
-
-
+  checkTrue(abs(res2$est["gcomp"]-0.2429667) < 10^-4)
 
 }
-
-
-
-
-
-
-
-
-

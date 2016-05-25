@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------------
 # TEST SET 6
 # ---------------------------------------------------------------------------------
-# network TMLE fit with continous sA 
+# network TMLE fit with continous sA
 # Run one TMLE simulation for network data generated igraph::sample_k_regular (all nodes have the same degree k)
 # estimate psi0 under trunced g.star (same as in iid)
 # sA is the same as in iid example w sAnet=(sA, rowMeans(sA[[1:Kmax]])).
@@ -16,7 +16,7 @@
 # The user-defined network sampler(s) from igraph (regular graph model)
 # Generate regular random graphs with same degree for each node
 # Kmax - degree of each node
-make_netDAG <- function(Kmax, trunc.const, shift.const) {
+make_netDAG <- function(Kmax, trunc, shift) {
   generate.igraph.k.regular <- function(n, Kmax, ...) {
     if (n < 20) Kmax <- 5
     igraph.reg <- igraph::sample_k_regular(no.of.nodes = n, k = Kmax, directed = TRUE, multiple = FALSE)
@@ -40,10 +40,10 @@ make_netDAG <- function(Kmax, trunc.const, shift.const) {
       node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
       node("sA", distr = "rnorm", mean = sA.mu, sd = 1) +
       node("net.mean.sA", distr = "rconst", const = mean(sA[[1:Kmax]])) +
-      node("untrunc.sA.gstar",  distr = "rconst", const = sA + shift.const) +
+      node("untrunc.sA.gstar",  distr = "rconst", const = sA + shift) +
       node("r.new.sA",  distr = "rconst", const =
-            exp(shift.const * (untrunc.sA.gstar - sA.mu - shift.const / 2))) +
-      node("tr.sA.gstar",  distr = "rconst", const = ifelse(r.new.sA > trunc.const, sA, untrunc.sA.gstar)) +
+            exp(shift * (untrunc.sA.gstar - sA.mu - shift / 2))) +
+      node("tr.sA.gstar",  distr = "rconst", const = ifelse(r.new.sA > trunc, sA, untrunc.sA.gstar)) +
       node("probY", distr = "rconst", const =
             plogis(-0.35 * sA - 0.20 * mean(sA[[1:Kmax]]) - 0.5 * W1 - 0.58 * W2 - 0.33 * W3)) +
       node("Y", distr = "rbern", prob = probY) +
@@ -54,31 +54,39 @@ make_netDAG <- function(Kmax, trunc.const, shift.const) {
   return(Dset)
 }
 
-# Function that returns a stochastic intervention function intervening on sA, for given shift.const
-create_f.gstar <- function(shift, trunc.const) {
-  shift.const <- shift
-  trunc.const <- trunc.const
-  f.gstar <- function(data, ...) {
-    sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
-    sA <- data[,"sA"]
-    untrunc.sA.gstar <- sA + shift.const
-    # ratio of P_g^*(sA=sa|W)/P_g0(sA=sa|W) for sa=sA generated under g^*:
-    r.new.sA <- exp(shift.const * (untrunc.sA.gstar - sA.mu - shift.const / 2))
-    trunc.sA.gstar <- ifelse(r.new.sA > trunc.const, sA, untrunc.sA.gstar)
-    return(trunc.sA.gstar)
-  }
-  return(f.gstar)
-}
+# Function that returns a stochastic intervention function intervening on sA, for given shift
+# create_f.gstar <- function(shift, trunc) {
+#   shift <- shift
+#   trunc <- trunc
+#   f.gstar <- function(data, ...) {
+#     sA.mu <- 0.98 * data[,"W1"] + 0.58 * data[,"W2"] + 0.33 * data[,"W3"]
+#     sA <- data[,"sA"]
+#     untrunc.sA.gstar <- sA + shift
+#     # ratio of P_g^*(sA=sa|W)/P_g0(sA=sa|W) for sa=sA generated under g^*:
+#     r.new.sA <- exp(shift * (untrunc.sA.gstar - sA.mu - shift / 2))
+#     trunc.sA.gstar <- ifelse(r.new.sA > trunc, sA, untrunc.sA.gstar)
+#     return(trunc.sA.gstar)
+#   }
+#   return(f.gstar)
+# }
 
 test.shallowdeep.copy <- function() {
   require(simcausal)
   #------------------------------------------------------------------------------------------------------------
   Kmax <- 5
-  trunc.const <- 4
-  shift.const <- 1
-  Dset <- make_netDAG(Kmax, trunc.const, shift.const)
+  trunc <- 4
+  shift <- 1
+  Dset <- make_netDAG(Kmax, trunc, shift)
   #------------------------------------------------------------------------------------------------------------
-  f.gstar <- create_f.gstar(shift = shift.const, trunc.const = trunc.const)
+  # f.gstar <- create_f.gstar(shift = shift, trunc = trunc)
+
+  shift <- shift
+  trunc <- trunc
+  newA.gstar <-  def_new_sA(sA =
+    ifelse(exp(shift * (sA + shift - (0.98*W1 + 0.58*W2 + 0.33*W3) - shift/2)) > trunc,
+          sA,
+          sA + shift))
+
   sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
   sA <- def_sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
   seed <- 12345
@@ -87,6 +95,7 @@ test.shallowdeep.copy <- function() {
   checkTrue(abs(mean(datO$Y.gstar) - 0.2) < 10^-4)
   netind_cl <- attributes(datO)$netind_cl
   NetInd_mat <- attributes(datO)$netind_cl$NetInd
+
   #------------------------------------------------------------------------------------------------------------
   # RUN TMLE (bin by equal.mass):
   #------------------------------------------------------------------------------------------------------------
@@ -95,12 +104,17 @@ test.shallowdeep.copy <- function() {
   print_tmlenet_opts()
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
+  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA,
+                  # Anodes = "sA",
+                  # f_gstar1 = f.gstar,
+                  intervene1.sA = newA.gstar,
+                  Ynode = "Y",
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
-                  hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
-                  optPars = list(n_MCsims = 1))
+                  hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3"
+                  # optPars = list(n_MCsims = 1)
+                  )
   #------------------------------------------------------------------------------------------------------------
   # save the fits for h_g0 and h_star:
   #------------------------------------------------------------------------------------------------------------
@@ -155,11 +169,18 @@ test.usefitted.h <- function() {
   require(simcausal)
   #------------------------------------------------------------------------------------------------------------
   Kmax <- 5
-  trunc.const <- 4
-  shift.const <- 1
-  Dset <- make_netDAG(Kmax, trunc.const, shift.const)
+  trunc <- 4
+  shift <- 1
+  Dset <- make_netDAG(Kmax, trunc, shift)
   #------------------------------------------------------------------------------------------------------------
-  f.gstar <- create_f.gstar(shift = shift.const, trunc.const = trunc.const)
+  # f.gstar <- create_f.gstar(shift = shift, trunc = trunc)
+  shift <- shift
+  trunc <- trunc
+  newA.gstar <-  def_new_sA(sA =
+    ifelse(exp(shift * (sA + shift - (0.98*W1 + 0.58*W2 + 0.33*W3) - shift/2)) > trunc,
+          sA,
+          sA + shift))
+
   sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
   sA <- def_sA(sA = "sA", net.mean.sA = rowMeans(sA[[1:Kmax]]), replaceNAw0 = TRUE)
 
@@ -178,12 +199,17 @@ test.usefitted.h <- function() {
   print_tmlenet_opts()
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y", f_gstar1 = f.gstar,
+  res <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA,
+                  # Anodes = "sA",
+                  Ynode = "Y",
+                  # f_gstar1 = f.gstar,
+                  intervene1.sA = newA.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
                   hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
-                  optPars = list(n_MCsims = 1))
+                  optPars = list(bootstrap.var = FALSE, n.bootstrap = 1)
+                  )
   print("res$EY_gstar1$estimates: "); print(res$EY_gstar1$estimates)
   # tmle   0.2230316
   # h_iptw 0.2464948
@@ -223,14 +249,17 @@ test.usefitted.h <- function() {
   print_tmlenet_opts()
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   datO_input <- datO[,c("W1", "W2", "W3", "sA", "Y")]
-  
-  res2a <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y",
-                  f_gstar1 = f.gstar,
+
+  res2a <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA,
+                  # Anodes = "sA",
+                  Ynode = "Y",
+                  # f_gstar1 = f.gstar,
+                  intervene1.sA = newA.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
                   hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
-                  optPars = list(n_MCsims = 1))
+                  optPars = list(bootstrap.var = FALSE, n.bootstrap = 1))
   print("res2a$EY_gstar1$estimates: "); print(res2a$EY_gstar1$estimates)
   # tmle   0.2264758
   # h_iptw 0.2800000
@@ -242,24 +271,32 @@ test.usefitted.h <- function() {
   #------------------------------------------------------------------------------------------------------------
   # NULL'ed some fields in h_g0_SummariesModel -> will be NULL in the shallow copy => has to fail:
   checkException(
-  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y",
-                  f_gstar1 = f.gstar,
+  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA,
+                  # Anodes = "sA",
+                  Ynode = "Y",
+                  # f_gstar1 = f.gstar,
+                  intervene1.sA = newA.gstar,
                   NETIDmat = NetInd_mat,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
                   hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
-                  optPars = list(n_MCsims = 1,
+                  optPars = list(
+                    bootstrap.var = FALSE, n.bootstrap = 1,
                     h_g0_SummariesModel = h_g0_shallow_copy,
                     h_gstar_SummariesModel = h_gstar_SummariesModel)))
 
   # However, the deep copy should be allright and return results equivalent to results from the first tmlenet call:
-  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA, Anodes = "sA", Ynode = "Y",
-                  f_gstar1 = f.gstar,
+  res2b <- tmlenet(data = datO_input, Kmax = Kmax, sW = sW, sA = sA,
+                  # Anodes = "sA",
+                  Ynode = "Y",
+                  # f_gstar1 = f.gstar,
                   NETIDmat = NetInd_mat,
+                  intervene1.sA = newA.gstar,
                   Qform = Qform.mis,
                   hform.g0 = "sA + net.mean.sA ~ W1 + W2 + W3",
                   hform.gstar = "sA + net.mean.sA ~ W1 + W2 + W3",
-                  optPars = list(n_MCsims = 1,
+                  optPars = list(
+                    bootstrap.var = FALSE, n.bootstrap = 1,
                     h_g0_SummariesModel = h_g0_deep_copy,
                     h_gstar_SummariesModel = h_gstar_SummariesModel))
   print("res2b$EY_gstar1$estimates: "); print(res2b$EY_gstar1$estimates)

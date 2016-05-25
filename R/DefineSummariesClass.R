@@ -24,71 +24,71 @@ capture.exprs <- function(...) {
 
 #' Define Summary Measures sA and sW
 #'
-#' Define and store summary measures \code{sW} and \code{sA} that can be later processed inside 
+#' Define and store summary measures \code{sW} and \code{sA} that can be later processed inside
 #'  \code{\link{eval.summaries}} or \code{\link{tmlenet}} functions.
 #'  \code{def_sW} and \code{def_sA} return an \code{R6} object of class \code{\link{DefineSummariesClass}}
 #'  which stores the user-defined summary measure functions of the baseline covariates \code{W}
 #'  and exposure \code{A}, which can be later evaluated inside the environment of the input \code{data} data frame.
-#'  Note that calls to \code{def_sW} must be used for defining the summary measures that are functions 
+#'  Note that calls to \code{def_sW} must be used for defining the summary measures that are functions
 #'  of \strong{only the baseline covariates \code{W}}, while calls to \code{def_sA} must be used
 #'  for defining the summary measures that are functions of both, \strong{the baseline covariates \code{W}
 #'  and exposure \code{A}}.
-#'  Each summary measure is specified as an evaluable R expression or a string that can be parsed into 
+#'  Each summary measure is specified as an evaluable R expression or a string that can be parsed into
 #'  an evaluable R expression. Any variable name that exists as a named column in the input \code{data}
 #'  data frame can be used as part of these expressions.
-#'  Separate calls to \code{def_sW/def_sA} functions can be aggregated into a single collection with '+' function, 
+#'  Separate calls to \code{def_sW/def_sA} functions can be aggregated into a single collection with '+' function,
 #'  e.g., \code{def_sW(W1)+def_sW(W2)}.
-#'  A special syntax is allowed inside these summary expressions:  
+#'  A special syntax is allowed inside these summary expressions:
 #'  \itemize{
-#'  \item \code{'Var[[index]]'} - will index the friend covariate values of the variable \code{Var}, e.g., 
+#'  \item \code{'Var[[index]]'} - will index the friend covariate values of the variable \code{Var}, e.g.,
 #'    \code{'Var[[1]]'} will pull the covariate value of \code{Var} for the first friend, \code{'Var[[Kmax]]'}
 #'    of the last friend, and
 #'    \code{'Var[[0]]'} is equivalent to writing \code{'Var'} itself (indexes itself).
 #'  }
 #'  A special argument named \code{replaceNAw0} can be also passed to the \code{def_sW}, \code{def_sA} functions:
 #'  \itemize{
-#'  \item \code{replaceNAw0 = TRUE} - automatically replaces all the missing network covariate values 
+#'  \item \code{replaceNAw0 = TRUE} - automatically replaces all the missing network covariate values
 #'  (\code{NA}) with \code{0}.
 #'  }
-#'  One can then test the evaluation of these summary measures by either passing the returned 
-#'  \code{\link{DefineSummariesClass}} object to function \code{\link{eval.summaries}} or by calling the 
+#'  One can then test the evaluation of these summary measures by either passing the returned
+#'  \code{\link{DefineSummariesClass}} object to function \code{\link{eval.summaries}} or by calling the
 #'  internal method \code{eval.nodeforms(data.df, netind_cl)} on the result returned by \code{def_sW} or \code{def_sA}.
 #'  Each separate argument to \code{def_sW} or \code{def_sA} represents a new summary measure.
-#'  The user-specified argument name defines the name of the corresponding summary measure 
+#'  The user-specified argument name defines the name of the corresponding summary measure
 #'  (where the summary measure represents the result of the evaluation of the corresponding R expression specified by the argument).
 #'  When a particular argument is unnamed, the summary measure name
 #'  will be generated automatically (see Details, Naming Conventions and Examples below).
-#' 
+#'
 #' @section Details:
-#' 
-#' The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or 
+#'
+#' The R expressions passed to these functions are evaluated later inside \code{\link{tmlenet}} or
 #'  \code{\link{eval.summaries}} functions,
 #'  using the environment of the input data frame, which is enclosed within the user-calling environment.
-#' 
+#'
 #' Note that when observation \code{i} has only \code{j-1} friends, the \code{i}'s value of \code{"W_netFj"} is
-#'  automatically set to \code{NA}. 
+#'  automatically set to \code{NA}.
 #'  This can be an undersirable behavior in some circumstances, in which case one can automatically replace all such
-#'  \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling functions 
+#'  \code{NA}'s with \code{0}'s by setting the argument \code{replaceMisVal0 = TRUE} when calling functions
 #'  \code{def_sW} or \code{def_sA}, i.e., \code{def_sW(W[[1]], replaceMisVal0 = TRUE)}.
-#' 
+#'
 #' @section Naming conventions:
 #' Naming conventions for summary measures with no user-supplied name (e.g., \code{def_sW(W1)}).
-#' 
+#'
 #' ....................................
 #'  \itemize{
-#'  \item If only one unique variable name is used in the summary expression (only one parent), use the variable 
+#'  \item If only one unique variable name is used in the summary expression (only one parent), use the variable
 #'    name itself to name the summary measure;
-#'  \item If there is more than 1 unique variable name (e.g., \code{"W1+W2"}) in the summary expression, throw an exception 
+#'  \item If there is more than 1 unique variable name (e.g., \code{"W1+W2"}) in the summary expression, throw an exception
 #'    (user must always supply summary measure names for such expressions).
 #'  }
-#' 
+#'
 #' Naming conventions for the evaluation results of summary measures defined by \code{def_sW} & \code{def_sA}.
-#' 
+#'
 #' ....................................
 #'  \itemize{
 #'  \item When summary expression evaluates to a vector result, the vector is first converted to a 1 col matrix,
 #'    with column name set equal to the summary expression name;
-#'  \item When the summary measure evaluates to a matrix result and the expression has only one unique variable 
+#'  \item When the summary measure evaluates to a matrix result and the expression has only one unique variable
 #'    name (one parent), the matrix column names are generated as follows: for the expressions such as \code{"Var"}
 #'    or \code{"Var[[0]]"}, the column names \code{"Var"} are assigned
 #'    and for the expressions such as \code{"Var[[j]]"}, the column names \code{"Var_netFj"} are assigned.
@@ -167,19 +167,15 @@ def_new_sA <- function(...) {
 # Standardize all names (and fill-in the empty names) according TO THE *SAME* *NAMING* *CONVENTION*;
 # ------------------------------------------------------------------------------------------
 eval.standardize.expr <- function(expr.idx, self, data.df) {
-  # browser()
   # -------------------------------------------------------
   # First evaluate the expression result:
   # -------------------------------------------------------
-  # eval.nodeform.out_time <- system.time(
-    evalres <- eval.nodeform.out(expr.idx = expr.idx, self = self, data.df = data.df)
-    # )
-  # print("expr_char: " %+% self$exprs_list[[expr.idx]])
-  # print("eval.nodeform.out_time: "); print(eval.nodeform.out_time)
+  evalres <- eval.nodeform.out(expr.idx = expr.idx, self = self, data.df = data.df)
 
   expr_char <- self$exprs_list[[expr.idx]] # expression itself as string
   expr_nm <- names(self$exprs_list)[expr.idx] # current expression name
   expr_parents <- evalres[["par.nodes"]] # names of parents vars for this expression
+
   # -------------------------------------------------------
   # no user-supplied argument name, hence need to name this expression:
   # -------------------------------------------------------
@@ -193,6 +189,7 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
     }
     expr_nm <- expr_parents
   } else if (expr_noname) stop(expr_char%+% ": parents are null or not a character vector")
+
   # -------------------------------------------------------
   # convert vectors to columns, name the matrix columns according to the same naming convention:
   # -------------------------------------------------------
@@ -217,7 +214,7 @@ eval.standardize.expr <- function(expr.idx, self, data.df) {
 }
 
 # -----------------------------------------------------------------------------------------------------------------------
-# Special functions for network/time subsetting. 
+# Special functions for network/time subsetting.
 # Kept in a list, these functions over-ride the standard function `[` and `[[` when evaluating the summary measures
 # -----------------------------------------------------------------------------------------------------------------------
 node_fun <- list(
@@ -265,7 +262,7 @@ node_fun <- list(
     if (max(indx)>t) stop(paste0(var, "[", max(indx),"] cannot be referenced in node formulas at t = ", t))  # check indx<= t
 
     # ******* NOTE *******
-    # Don't like the current implementation that defines TDvars as characters and then returns a matrix by cbinding 
+    # Don't like the current implementation that defines TDvars as characters and then returns a matrix by cbinding
     # the existing columins in existing data.frame. This is possibly wasteful. Could we instead subset the existing data.frame?
     TDvars <- var.chr%+%"_"%+%indx
     # Checking the variables paste0(var, "_", indx) exist in simulated data.frame environment:
@@ -323,12 +320,13 @@ node_fun <- list(
       netVars_eval[is.na(netVars_eval)] <- env$misXreplace
       # )
     # print("replaceNA_time"); print(replaceNA_time)
-    
+
     return(netVars_eval)
   }
 )
 
 update.intervention.sA <- function(new.sA, sA) {
+
   assert_that(is.DefineSummariesClass(new.sA))
   # ------------------------------------------------------------------------------------------------
   # DEFINE AND EVALUATE INTERVENTION SUMMARIES:
@@ -336,11 +334,12 @@ update.intervention.sA <- function(new.sA, sA) {
   # 1. Copy (clone) sA object since we are going to modify it (over-write some summaries in sA$exprs_list with new intervention summaries)
   intervened.sA <- sA$clone()
   intervened.sA$type <- new.sA$type
- 
+
   # 2. Replace summaries/nodes in observed sA that were also defined in new.sA with their new (intervened) expressions:
   for (expr.name.sA in names(new.sA$exprs_list)) {
     intervened.sA$replace.expr(SummaryName = expr.name.sA, newSummaries = new.sA)
   }
+
   new.sA <- intervened.sA
   print("updated expression list for new.sA: "); print(new.sA$exprs_list)
   Anodes <- new.sA$Anodes
@@ -355,7 +354,6 @@ update.intervention.sA <- function(new.sA, sA) {
     # OdataDT_R6$backupAnodes(Anodes = Anodes)
     # OdataDT_R6$A_g0_DT
     # new.sA.dat <- new.sA$eval.nodeforms(data.df = OdataDT_R6$OdataDT, netind_cl = netind_cl)
-    
     # OdataDT_R6$restoreAnodes(Anodes = Anodes)
     # OdataDT_R6$OdataDT
     # obs.sA.dat <- sA$eval.nodeforms(data.df = OdataDT_R6$OdataDT, netind_cl = netind_cl)
@@ -374,11 +372,11 @@ update.intervention.sA <- function(new.sA, sA) {
 ## ---------------------------------------------------------------------
 #' R6 class for parsing and evaluating user-specified summary measures (in \code{exprs_list})
 #'
-#' This \pkg{R6} class that inherits from \code{Define_sVar} and can parse and evaluate (given the input data frame) the summary measures defined by functions 
-#'  \code{\link{def_sW}} and \code{\link{def_sA}}. 
+#' This \pkg{R6} class that inherits from \code{Define_sVar} and can parse and evaluate (given the input data frame) the summary measures defined by functions
+#'  \code{\link{def_sW}} and \code{\link{def_sA}}.
 #'  The object of this class is generally instantiated by calling functions \code{def_sA} or \code{def_sW}.
 #'  The summary expressions (stored in \code{exprs_list}) are evaluated in the environment of the input data.frame.
-#'  Note that the evaluation results of the summary measures are never stored inside this class, 
+#'  Note that the evaluation results of the summary measures are never stored inside this class,
 #'  data can be stored only inside \code{\link{DatNet}} and \code{\link{DatNet.sWsA}} \pkg{R6} classes.
 #'
 #' @docType class
@@ -388,7 +386,7 @@ update.intervention.sA <- function(new.sA, sA) {
 #' \itemize{
 #' \item{\code{type}} - Type of the summary measure, \code{sW} or \code{sA}, determined by the calling functions \code{\link{def_sW}} or \code{\link{def_sA}}.
 #' \item{\code{exprs_list}} - Deparsed list of summary expressions (as strings).
-#' \item{\code{new_expr_names}} - The summary measure names, if none were provided by the user these will be 
+#' \item{\code{new_expr_names}} - The summary measure names, if none were provided by the user these will be
 #'  evaluated on the basis of variable names used in the summary expression itself.
 #' \item{\code{sVar.names.map}} - Named list that maps the user specified summary measure names to the corresponding matrix column names
 #'  from the summary measure evaluation result.
@@ -397,11 +395,11 @@ update.intervention.sA <- function(new.sA, sA) {
 #' \describe{
 #'   \item{\code{new(type)}}{Instantiate a new object of class \code{DefineSummariesClass} by providing a type, \code{"sW"} or \code{"sA"}.}
 #'   \item{\code{set.new.exprs(exprs_list)}}{Sets the internal summary measure expressions to the list provided in \code{exprs_list}.}
-#'   \item{\code{add.new.exprs(NewSummaries)}}{Adds new internal summary measure expressions to the existing ones, \code{NewSummaries} 
+#'   \item{\code{add.new.exprs(NewSummaries)}}{Adds new internal summary measure expressions to the existing ones, \code{NewSummaries}
 #'    must be an object of class \code{DefineSummariesClass} (to enable \code{Object1 + Object2} syntax).}
 #'   item{\code{remove.expr(SummaryName)}}{Remove expression by name (for removing duplicate 'nF' expressions for repeated calls with def_sW()+def_sW()).}
 #'   \item{\code{eval.nodeforms(data.df, netind_cl)}}{Evaluate the expressions one by one, standardize all names according to one naming
-#'    convention (described in \code{\link{def_sW}}), \code{cbind}ing results together into one output matrix. \code{data.df} is the input 
+#'    convention (described in \code{\link{def_sW}}), \code{cbind}ing results together into one output matrix. \code{data.df} is the input
 #'    data.frame and \code{netind_cl} is the input network stored in an object of class \code{\link[simcausal]{NetIndClass}}.}
 #'   \item{\code{df.names(data.df)}}{List of variables in the input data \code{data.df} gets assigned to a special
 #'    variable (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
@@ -523,8 +521,10 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
         self$sVar.misXreplace[replace_idx] <- newSummaries$sVar.misXreplace[newSummaries_idx]
         # self$sVar.names.map[replace_idx] <- newSummaries$sVar.names.map[newSummaries_idx] # should not be replacing the map
 
-        # mark the summary/node name that was replaced:
-        self$Anodes <- c(self$Anodes, SummaryName)
+        # mark the summary/node name(s) that was replaced:
+        newAnodes <- self$sVar.names.map[[SummaryName]]
+        self$Anodes <- c(self$Anodes, newAnodes)
+        # self$Anodes <- c(self$Anodes, SummaryName)
 
       } else {
         stop("the intervention summary measure name has not been previously defined: " %+% SummaryName)
@@ -544,20 +544,34 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
       self$Kmax <- self$netind_cl$Kmax
       self$Nsamp <- nrow(data.df)
 
-      sVar.res_l <- self$new_expr_names <- self$sVar.names.map <- vector(mode = "list", length = length(self$exprs_list))
+      sVar.res_l <- self$new_expr_names <- vector(mode = "list", length = length(self$exprs_list))
 
-      # eval_and_addDT <- system.time(
-        for (i in seq_along(self$exprs_list)) {
-          sVar.eval.res <- eval.standardize.expr(i, self = self, data.df = data.df)
-          # sVar.res_l[[i]] <- sVar.eval.res
+      if (!is.null(self$sVar.names.map[[1]])) {
+        preserved.sVar.names.map <- self$sVar.names.map
+      } else {
+        preserved.sVar.names.map <- NULL
+      }
+      self$sVar.names.map <- self$new_expr_names
 
-          self$new_expr_names[[i]] <- sVar.eval.res$new_expr_name
-          self$sVar.names.map[[i]] <- colnames(sVar.eval.res$evaled_expr)
-
-          for (colname in colnames(sVar.eval.res$evaled_expr))
-            data.df[, (colname):= sVar.eval.res$evaled_expr[,colname]]
+      for (i in seq_along(self$exprs_list)) {
+        saved.col.names <- NULL
+        if (!is.null(preserved.sVar.names.map) && (self$exprs_list[[i]] %in% names(preserved.sVar.names.map))) {
+          saved.col.names <- preserved.sVar.names.map[[which(names(preserved.sVar.names.map) %in% self$exprs_list[[i]])]]
+          self$exprs_list[[i]] <- saved.col.names
+          if (length(self$exprs_list[[i]]) > 1) self$exprs_list[[i]] <- "c(" %+% paste0(self$exprs_list[[i]], collapse = ",") %+% ")"
         }
-      # )
+
+        sVar.eval.res <- eval.standardize.expr(i, self = self, data.df = data.df)
+        # sVar.res_l[[i]] <- sVar.eval.res
+
+        if (!is.null(preserved.sVar.names.map) && !is.null(saved.col.names)) colnames(sVar.eval.res$evaled_expr) <- saved.col.names
+
+        self$new_expr_names[[i]] <- sVar.eval.res$new_expr_name
+        self$sVar.names.map[[i]] <- colnames(sVar.eval.res$evaled_expr)
+
+        for (colname in colnames(sVar.eval.res$evaled_expr))
+          data.df[, (colname):= sVar.eval.res$evaled_expr[,colname]]
+      }
 
       # print("eval_and_addDT"); print(eval_and_addDT)
       # eval_only <- system.time(sVar.res_l <- lapply(seq_along(self$exprs_list), eval.standardize.expr, self = self, data.df = data.df))
@@ -590,19 +604,6 @@ DefineSummariesClass <- R6Class("DefineSummariesClass",
 
       # Indicator that these summaries have been evaluated on the real data at least once:
       self$evaled_before <- TRUE
-
-      # ************************************************************************************
-      # THIS IS NOW DONE AUTOMATICALLY WHEN ASSIGNING WITHIN data.table data.df
-      # ************************************************************************************
-      # 2) remove duplicate columns, keeping the ones that were added last:
-      # if (length(unique(colnames(mat.sVar))) < length(colnames(mat.sVar))) {
-      #   duplic_idx <- duplicated(colnames(mat.sVar), fromLast = TRUE)
-      #   message("warning: detected duplicate column names in summary evaluation matrix, (" %+%
-      #           paste0(colnames(mat.sVar)[duplic_idx], collapse=",") %+%
-      #           "), all duplicates starting from first to last will be removed...")
-      #   mat.sVar <- mat.sVar[,!duplic_idx]
-      # }
-      # return(mat.sVar)
 
       return(invisible(data.df))
     },

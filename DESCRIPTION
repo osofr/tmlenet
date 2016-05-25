@@ -1,6 +1,6 @@
 Package: tmlenet
 Title: Targeted Maximum Likelihood Estimation for Network Data
-Version: 0.1.1
+Version: 0.1.9
 Authors@R: c(
     person("Oleg", "Sofrygin", role=c("aut", "cre"), email="oleg.sofrygin@gmail.com"),
     person(c("Mark", "J."), "van der Laan", role="aut", email="laan@berkeley.edu"))

@@ -201,10 +201,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # Option 2: Create a new class DatNet.Obs of DatNet.sWsA (will be painful)
   # Going with OPTION 1 for now:
   # Already generated DatNet.ObsP0 in tmlenet:
-  # time_h_gN <- system.time(
   h_gN <- summeas.g0$predictAeqa(newdata = DatNet.ObsP0)
-  # )
-  # print("time_h_gN: "); print(time_h_gN)
 
   if (length(h_gN)!=DatNet.ObsP0$nobs) stop("the IPW weight prediction under g0 return invalid vector length: " %+% length(h_gN))
   # ------------------------------------------------------------------------------------
@@ -237,6 +234,7 @@ fit.hbars <- function(DatNet.ObsP0, est_params_list) {
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.gstar)
   # Define Intervals Under g_star Based on Union of Summary Measures under g_star and g0:
   # summeas.gstar <- SummariesModel$new(reg = regclass.gstar, DatNet.sWsA.g0 = DatNet.g0, datnet.gstar = DatNet.gstar)
+
 
   DatNet.gstar <- DatNet.sWsA$new(Odata = Odata, datnetW = O.datnetW, datnetA = O.datnetA)
   # f.g_fun to be replaced with new.sA:

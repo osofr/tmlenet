@@ -339,6 +339,7 @@ OdataDT <- R6Class(classname = "OdataDT",
 
     # Save Anodes and summaries sA from main data.table into separate fields
     backupAnodes = function(Anodes, sA) {
+
       if (missing(Anodes)) Anodes <- self$nodes$Anodes
       self$A_g0_DT <- self$OdataDT[, Anodes, with = FALSE]
 
@@ -346,8 +347,10 @@ OdataDT <- R6Class(classname = "OdataDT",
       if (!missing(sA)) {
         sA.Vars <- unlist(sA$sVar.names.map)
         save_sA_Vars <- sA.Vars[!sA.Vars%in%Anodes]
-        self$save_sA_Vars <- save_sA_Vars
-        self$sA_g0_DT <- self$OdataDT[, save_sA_Vars, with = FALSE]
+        if (length(save_sA_Vars)>0) {
+          self$save_sA_Vars <- save_sA_Vars
+          self$sA_g0_DT <- self$OdataDT[, save_sA_Vars, with = FALSE]
+        }
       }
       invisible(self)
     },
@@ -361,10 +364,11 @@ OdataDT <- R6Class(classname = "OdataDT",
 
       if (!is.null(self$sA_g0_DT) && !is.null(self$save_sA_Vars)) {
         self$OdataDT[, (self$save_sA_Vars) := self$sA_g0_DT, with = FALSE]
-        self$restored_sA_Vars <- TRUE
-      } else {
-        self$restored_sA_Vars <- FALSE
       }
+      self$restored_sA_Vars <- TRUE
+      # else {
+      #   self$restored_sA_Vars <- FALSE
+      # }
       invisible(self)
     },
 
@@ -942,32 +946,28 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
       assert_that(is.count(p))
       self$p <- p
       nobs <- datnetW$nOdata
+
       # Copy variable detected types (bin, cat or contin) from the observed data classes (datnetW, datnetA) to self:
       self$copy.sVar.types()
-      # set df.sWsA to observed data (sW,sA) if g.fun is.null:
+
+      # Setting df.sWsA to observed data (sW,sA) when both f.g_fun and new.sA.object are null:
       if (is.null(f.g_fun) & is.null(new.sA.object)) {
-        # df.sWsA <- cbind(datnetW$dat.sVar, datnetA$dat.sVar) # assigning summary measures as data.frames:
-        # df.sWsA <- datnetA$dat.sVar # assigning summary measures as data.table
         # ... nothing to do since all the summary measures have been created and put into Odata$Odata_DT data.table
         # ... in the future might need to call this to re-construct A and sA under g0, after those were over-written by A under g.star
-        # self$dat.sVar <- datnetA$dat.sVar
         self$dat.sVar <- Odata$OdataDT
-        # return(invisible(self))
 
-      # need to sample A under f.g_fun (gstar or known g0), possibly re-evaluate sW from O.datnetW
+      # Need to sample A under f.g_fun (gstar or known g0), possibly re-evaluate sW from O.datnetW
       } else {
         if (is.null(Odata$nodes$Anodes))
           stop("Anodes were not appropriately specified and are null; can't replace observed Anodes with those sampled from f.g0, interevene1.sA or interevene2.sA")
         assert_that(!is.null(DatNet.ObsP0))
 
-        # TO DO: ADD A FLAG TO ALLOW TO COPY Odata (so that it doesn't have to be re-generated back and forth between f.g0 and f.gstar)
-        datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes)
-        # df.sWsA <- matrix(nrow = (nobs * p), ncol = (datnetW$ncols.sVar + datnetA$ncols.sVar))  # pre-allocate result matx sWsA
-        # colnames(df.sWsA) <- self$names.sWsA
+        # datnetA.gstar <- DatNet$new(netind_cl = datnetW$netind_cl, nodes = self$nodes)
+        datnetA.gstar <- datnetA$clone()
 
         # for (i in seq_len(p)) {
-        i <- 1
 
+        i <- 1
         # if need to separately generate Anodes from a function (when not using new.sA.object)
         if (!is.null(f.g_fun)) {
           A.gstar.mat <- f.gen.A.star(data = DatNet.ObsP0$dat.sVar, f.g_fun = f.g_fun, Anodes = self$nodes$Anodes)
@@ -983,6 +983,7 @@ DatNet.sWsA <- R6Class(classname = "DatNet.sWsA",
         if (is.null(Odata$A_g0_DT)) warning("observed data Anodes were not backed-up and are being over-written with intervened Anodes values")
         # will modify OdataDT (data.table) in Odata object by reference:
         datnetA.gstar$make.sVar(Odata = Odata, sVar.object = new.sA.object) # create new summary measures sA (under g.star)
+
         # alternative way to do the same without datnetA.gstar (evaluate new summaries):
         # self$dat.sVar <- new.sA$eval.nodeforms(data.df = Odata$OdataDT, netind_cl = datnetW$netind_cl)
         Odata$curr_data_A_g0 <- FALSE

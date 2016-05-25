@@ -67,7 +67,6 @@ create_OnetDAG <- function() {
   D <- set.DAG(D, latent.v = c("LatentW"), n.test = 200)
 }
 
-
 Dset <- create_OnetDAG()
 net.seed <- 123345 # net.seed <- NULL
 rndseed.reset.node <- "LatentW" # to condition on the network (same network is sampled each time)
@@ -93,9 +92,6 @@ new.sA1.nFPA_A.8b <- def_new_sA(nF.PA = ifelse((nF <= 15) | (W1 <= 2), nF.PA + 1
 new.sA2.nFPA_A <- def_new_sA(nF.PA = nF.PA) +
                   def_new_sA(A = rbinom(n = length(A), size = 1, prob = 0.1))
 
-
-checkException(
-  )
 res <- tmlenet(data = datO, sW = sW, sA = sA,
               Ynode = "Y",
               Kmax = K, NETIDmat = NetInd_mat,
@@ -107,7 +103,7 @@ res <- tmlenet(data = datO, sW = sW, sA = sA,
               optPars = list(
                 bootstrap.var = TRUE,
                 n.bootstrap = 10,
-                boot.nodes = c("PA","A"),
+                boot.nodes = c("PA"),
                 boot.form = c("PA ~ W2")
                 )
               )
