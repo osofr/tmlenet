@@ -34,7 +34,7 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
     time_evalMC_get.fiW <- system.time(
       fiWs_list <- evaluator$get.fiW() # Get fi_W - hold W fixed to observed values
     )
-    print("time_evalMC_get.fiW"); print(time_evalMC_get.fiW)
+    # print("time_evalMC_get.fiW"); print(time_evalMC_get.fiW)
 
     # Put all estimators together and add names (defined in out_nms outside of this function):
     mean_psis_all <- c(TMLE = mean(TMLE), MLE = mean(GCOMP), fiWs_list$fiW_Qinit)
@@ -51,10 +51,10 @@ get.MCS_ests <- function(DatNet.ObsP0,  DatNet.gstar, MC_fit_params, m.h.fit) {
     return(mean_psis_all)
   }
 
-  time_eval_MC <- system.time(
+  # time_eval_MC <- system.time(
     psi_est_mean <- genMC.reps(1)
-    )
-  print("time_eval_MC: "); print(time_eval_MC)
+    # )
+  # print("time_eval_MC: "); print(time_eval_MC)
 
   # ********************************************************
   # HAVE NOT YET IMPLEMENTED DYNAMIC MC CONVERGENCE TESTING IN THIS VS:

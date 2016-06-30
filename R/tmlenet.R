@@ -264,7 +264,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
   # epsilon (intercept or coefficient for h): tmle.obj$m.Q.star
   # boot_idx <- seq.int(DatNet.ObsP0$nobs)
   tmle.obj <- tmle.update(estnames = estnames, Y = Y, off = off, h_wts = h_wts, determ.Q = determ.Q)
-  print("tmle.obj$m.Q.star.coef"); print(tmle.obj$m.Q.star.coef)
+  # print("tmle.obj$m.Q.star.coef"); print(tmle.obj$m.Q.star.coef)
 
   #************************************************
   # Run Monte-Carlo (MC) evaluation for all plug-in estimators (TMLE & Gcomp), under stochastic intervention g^*:
@@ -1223,15 +1223,15 @@ tmlenet <- function(DatNet.ObsP0, data, Kmax, sW, sA,
 
   iidEIC.eval <- TRUE
   if (iidEIC.eval) {
-    MC.tmle.eval.t <- system.time(
+    # MC.tmle.eval.t <- system.time(
       MC.tmle.eval <- MCeval_fWi(n.MC = n.bootstrap, DatNet.ObsP0 = DatNet.ObsP0, tmle_g1_out = tmle_g1_out, tmle_g2_out = tmle_g2_out)
-    )
+    # )
     # tmle_g1_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar1)
     # if (!is.null(tmle_g2_out)) tmle_g2_out$ests_mat["TMLE",] <- mean(MC.tmle.eval$EY_gstar2)
   } else {
     MC.tmle.eval <- list(EY_gstar1 = NA, EY_gstar2 = NA, ATE = NA)
   }
-  print("MC.tmle.eval.t"); print(MC.tmle.eval.t)
+  # print("MC.tmle.eval.t"); print(MC.tmle.eval.t)
 
   if (bootstrap.var) {
     # ------------------------------------------------------------------------------------------

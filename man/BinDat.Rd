@@ -9,9 +9,9 @@
 BinDat
 }
 \description{
-This R6 class can request, store and manage the design matrix Xmat, as well as the binary outcome Bin for the 
+This R6 class can request, store and manage the design matrix Xmat, as well as the binary outcome Bin for the
  logistic regression P(Bin|Xmat).
- Can also be used for converting data in wide format to long when requested, 
+ Can also be used for converting data in wide format to long when requested,
  e.g., when pooling across binary indicators (fitting one pooled logistic regression model for several indicators)
  The class has methods that perform queries to data storage R6 class DatNet.sWsA to get appropriate data columns & row subsets
 }
@@ -32,7 +32,7 @@ This R6 class can request, store and manage the design matrix Xmat, as well as t
 \section{Methods}{
 
 \describe{
-  \item{\code{new(reg)}}{Uses \code{reg} R6 \code{\link{RegressionClass}} object to instantiate a new storage container for a 
+  \item{\code{new(reg)}}{Uses \code{reg} R6 \code{\link{RegressionClass}} object to instantiate a new storage container for a
   design matrix and binary outcome.}
   \item{\code{show()}}{ Print information on outcome and predictor names used in this regression model}
   \item{\code{newdata()}}{...}

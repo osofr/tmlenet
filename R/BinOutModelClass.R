@@ -35,7 +35,7 @@ logisfit.speedglmS3 <- function(datsum_obj) {
     m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
   } else {
     # , maxit=1000
-    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), trace = FALSE), silent = TRUE)
+    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), trace = FALSE, method='Cholesky'), silent = TRUE)
     if (inherits(m.fit, "try-error")) { # if failed, fall back on stats::glm
       message("speedglm::speedglm.wfit failed, falling back on stats:glm.fit; ", m.fit)
       return(logisfit.glmS3(datsum_obj))
@@ -104,9 +104,9 @@ join.Xmat = function(X_mat, sVar_melt_DT, ID) {
 ## ---------------------------------------------------------------------
 #' R6 class for storing the design matrix and binary outcome for a single logistic regression
 #'
-#' This R6 class can request, store and manage the design matrix Xmat, as well as the binary outcome Bin for the 
+#' This R6 class can request, store and manage the design matrix Xmat, as well as the binary outcome Bin for the
 #'  logistic regression P(Bin|Xmat).
-#'  Can also be used for converting data in wide format to long when requested, 
+#'  Can also be used for converting data in wide format to long when requested,
 #'  e.g., when pooling across binary indicators (fitting one pooled logistic regression model for several indicators)
 #'  The class has methods that perform queries to data storage R6 class DatNet.sWsA to get appropriate data columns & row subsets
 #'
@@ -128,7 +128,7 @@ join.Xmat = function(X_mat, sVar_melt_DT, ID) {
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(reg)}}{Uses \code{reg} R6 \code{\link{RegressionClass}} object to instantiate a new storage container for a 
+#'   \item{\code{new(reg)}}{Uses \code{reg} R6 \code{\link{RegressionClass}} object to instantiate a new storage container for a
 #'   design matrix and binary outcome.}
 #'   \item{\code{show()}}{ Print information on outcome and predictor names used in this regression model}
 #'   \item{\code{newdata()}}{...}
@@ -269,7 +269,7 @@ BinDat <- R6Class(classname = "BinDat",
       BinsDat_long <- binirized.to.DTlong(BinsDat_wide = BinsDat_wide, binID_seq = binID_seq, ID = self$ID,
                                           bin_names = self$bin_names, pooled_bin_name = self$pooled_bin_name,
                                           name.sVar = self$outvar)
-      sVar_melt_DT <- join.Xmat(X_mat = data$get.dat.sWsA(self$subset_idx, self$predvars), 
+      sVar_melt_DT <- join.Xmat(X_mat = data$get.dat.sWsA(self$subset_idx, self$predvars),
                                 sVar_melt_DT = BinsDat_long, ID = self$ID)
       # prepare design matrix for modeling w/ glm.fit or speedglm.wfit:
       X_mat <- sVar_melt_DT[,c("bin_ID", self$predvars), with=FALSE][, c("Intercept") := 1] # select bin_ID + predictors, add intercept column
@@ -360,9 +360,9 @@ BinDat <- R6Class(classname = "BinDat",
 ## ---------------------------------------------------------------------
 #' R6 class for fitting and making predictions for a single logistic regression with binary outcome B, P(B | PredVars)
 #'
-#' This R6 class can request, store and manage the design matrix Xmat, as well as the binary outcome Bin for the 
+#' This R6 class can request, store and manage the design matrix Xmat, as well as the binary outcome Bin for the
 #'  logistic regression P(Bin|Xmat).
-#'  Can also be used for converting data in wide format to long when requested, 
+#'  Can also be used for converting data in wide format to long when requested,
 #'  e.g., when pooling across binary indicators (fitting one pooled logistic regression model for several indicators)
 #'  The class has methods that perform queries to data storage R6 class DatNet.sWsA to get appropriate data columns & row subsets
 #'
@@ -378,7 +378,7 @@ BinDat <- R6Class(classname = "BinDat",
 #' }
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(reg)}}{Uses \code{reg} R6 \code{\link{RegressionClass}} object to instantiate a new model for a 
+#'   \item{\code{new(reg)}}{Uses \code{reg} R6 \code{\link{RegressionClass}} object to instantiate a new model for a
 #'   logistic regression with binary outcome.}
 #'   \item{\code{show()}}{Print information on outcome and predictor names used in this regression model}
 #'   \item{\code{fit()}}{...}
@@ -439,7 +439,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     fit = function(overwrite = FALSE, data, ...) { # Move overwrite to a field? ... self$overwrite
       if (!overwrite) assert_that(!self$is.fitted) # do not allow overwrite of prev. fitted model unless explicitely asked
       self$bindat$newdata(newdata = data, ...) # populate bindat with X_mat & Y_vals
-      private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit() 
+      private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit()
       # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
       # **********************************************************************
@@ -531,7 +531,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     sampleA = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a`s)
       assert_that(self$is.fitted)
       assert_that(!missing(newdata))
-      
+
       # browser()
       # Don't want to subset by the outvar, since binarized mat for cat outcome is not re-created when just sampling
       # But need to reset it back when done
