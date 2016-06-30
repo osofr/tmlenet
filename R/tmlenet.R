@@ -238,7 +238,7 @@ get_all_ests <- function(estnames, DatNet.ObsP0, est_params_list) {
 
   QY.init <- DatNet.ObsP0$noNA.Ynodevals # getting all node vals, inc. deterministic
   QY.init[!DatNet.ObsP0$det.Y] <- m.Q.init$predict(newdata = DatNet.ObsP0)$getprobA1[!DatNet.ObsP0$det.Y] # getting predictions P(Y=1) for non-DET Y
-  off <- qlogis(QY.init)  # offset
+  off <- qlogis(QY.init)  # offset log(x/[1-x])
 
   #************************************************
   # h^*/h_N clever covariate:
