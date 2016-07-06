@@ -113,13 +113,17 @@ test.simple.fit.density.sA <- function() {
   # ---------------------------------------------------------------------------------------------------------
   # Plot predicted discretized probs conditional on some values of W's
   # ---------------------------------------------------------------------------------------------------------
-  # setWvals <- c(W1 = 0, W2 = 0, W3 = 1)
-  # subs <- (datO$W1==setWvals["W1"] & datO$W2==setWvals["W2"] & datO$W3==setWvals["W3"])
-  # sum(subs)
-  # setWdat_res <- get.setW.sAdat(setWvals, nsamp)
+  setWvals <- c(W1 = 0, W2 = 0, W3 = 1)
+  subs <- (datO$W1==setWvals["W1"] & datO$W2==setWvals["W2"] & datO$W3==setWvals["W3"])
+  sum(subs)
+  setWdat_res <- get.setW.sAdat(setWvals, nsamp)
+
+  # plot densitity first:
   # plot(density(setWdat_res$setWsA))
-  # lines(datO[subs,"sA"], h_gN[subs], type = "p", cex = .3, col = "red")
-  # plot(datO[subs,"sA"], h_gN[subs], type = "p", cex = .3, col = "red")
+  # lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
+
+  # plot predicted vals first:
+  # plot(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
   # lines(density(setWdat_res$setWsA))
 
   # ---------------------------------------------------------------------------------------------------------
@@ -154,10 +158,22 @@ test.simple.fit.density.sA <- function() {
   print("h_gN fit under glm: " %+% mean(h_gN.glm)) # [1] 0.2718823
   checkTrue(abs(mean(h_gN.glm)-0.2718823) < 10^-4)
 
+  # plot densitity first:
+  # plot(density(setWdat_res$setWsA))
+  # lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
+
+  # plot predicted vals first:
+  # plot(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
+  # lines(density(setWdat_res$setWsA))
+
 
   # ---------------------------------------------------------------------------------------------------------
   # **** Same fit as before but doing binnning by mass intervals & regressions with speedglm ****
   # ---------------------------------------------------------------------------------------------------------
+  # options(tmlenet.verbose = TRUE)
+  gvars$verbose <- TRUE
+  ls(gvars)
+
   print("fitting h_gN based on bin_bymass = TRUE and speedglm (default): ")
   regclass.binmass <- RegressionClass$new(useglm = FALSE,
                                           bin_bymass = TRUE,
@@ -172,6 +188,17 @@ test.simple.fit.density.sA <- function() {
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
   mean(h_gN) # [1] 0.2668144
   checkTrue(abs(mean(h_gN)-0.2668144) < 10^-4)
+
+  # get get the observed data:
+  nodeobjs$datNetObs$dat.sVar
+
+  # plot densitity first:
+  # plot(density(setWdat_res$setWsA))
+  # lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
+
+  # plot predicted vals first:
+  # plot(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
+  # lines(density(setWdat_res$setWsA))
 
   # ---------------------------------------------------------------------------------------------------------
   # **** Same fit as before but binning using "dhist" function & regressions with speedglm ****
