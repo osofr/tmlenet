@@ -171,8 +171,8 @@ test.simple.fit.density.sA <- function() {
   # **** Same fit as before but doing binnning by mass intervals & regressions with speedglm ****
   # ---------------------------------------------------------------------------------------------------------
   # options(tmlenet.verbose = TRUE)
-  gvars$verbose <- TRUE
-  ls(gvars)
+  # gvars$verbose <- TRUE  # set to TRUE after loading all package functions to print all output
+  # ls(gvars)
 
   print("fitting h_gN based on bin_bymass = TRUE and speedglm (default): ")
   regclass.binmass <- RegressionClass$new(useglm = FALSE,
