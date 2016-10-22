@@ -68,7 +68,7 @@ NULL
 # automatically removed all missing (degenerate) bin indicators
 binirized.to.DTlong <- function(BinsDat_wide, binID_seq, ID, bin_names, pooled_bin_name, name.sVar) {
   # Convert Bin matrix into a data.table (without data.frame as intermediate), with new row ID column:
-  DT_BinsDat_wide <- data.table::as.data.table(BinsDat_wide)[, c("ID") := ID, with = FALSE]
+  DT_BinsDat_wide <- data.table::as.data.table(BinsDat_wide)[, c("ID") := ID]
   data.table::setcolorder(DT_BinsDat_wide, c("ID", names(DT_BinsDat_wide)[-ncol(DT_BinsDat_wide)]))
   # melt into long format:
   sVar_melt_DT <- melt(DT_BinsDat_wide,
@@ -84,7 +84,7 @@ binirized.to.DTlong <- function(BinsDat_wide, binID_seq, ID, bin_names, pooled_b
     class(sVar_melt_DT)
     stop("sVar_melt_DT is not a data.table")
   }
-  sVar_melt_DT <- sVar_melt_DT[, c("bin_ID") := list(nbin_rep)][, name.sVar := NULL, with = FALSE][!is.na(get(pooled_bin_name))]
+  sVar_melt_DT <- sVar_melt_DT[, c("bin_ID") := list(nbin_rep)][, name.sVar := NULL][!is.na(get(pooled_bin_name))]
   data.table::setkeyv(sVar_melt_DT, c("ID", "bin_ID"))  # sort by ID, bin_ID to prepare for merge with predictors (sW)
   return(sVar_melt_DT)
 }
@@ -95,7 +95,7 @@ binirized.to.DTlong <- function(BinsDat_wide, binID_seq, ID, bin_names, pooled_b
 join.Xmat = function(X_mat, sVar_melt_DT, ID) {
   nIDs <- length(unique(sVar_melt_DT[["ID"]]))
   assert_that(nIDs == nrow(X_mat))
-  X_mat_DT <- data.table::as.data.table(X_mat)[, c("ID") := ID, with = FALSE]
+  X_mat_DT <- data.table::as.data.table(X_mat)[, c("ID") := ID]
   data.table::setkeyv(X_mat_DT, c("ID")) # sort by ID
   sVar_melt_DT <- sVar_melt_DT[X_mat_DT] # Merge long format (self$pooled_bin_name, binIDs) with predictors (sW)
   return(sVar_melt_DT)

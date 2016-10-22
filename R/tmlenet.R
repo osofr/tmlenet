@@ -482,12 +482,12 @@ eval.summaries <- function(data, Kmax, sW, sA, IDnode = NULL, NETIDnode = NULL, 
     assert_that(is.character(NETIDnode))
     # Net_str <- as.character(data[, NETIDnode])
     Net_str <- as.character(OdataDT_R6$OdataDT[[NETIDnode]])
-    OdataDT_R6$OdataDT[, NETIDnode:=NULL, with=FALSE]
+    OdataDT_R6$OdataDT[, NETIDnode:=NULL]
     if (!is.null(IDnode)) {
       assert_that(is.character(IDnode))
       # IDs_str <- as.character(data[, IDnode])
       IDs_str <- as.character(OdataDT_R6$OdataDT[[IDnode]])
-      OdataDT_R6$OdataDT[, IDnode:=NULL, with=FALSE]
+      OdataDT_R6$OdataDT[, IDnode:=NULL]
     } else {
       IDs_str <- NULL
     }

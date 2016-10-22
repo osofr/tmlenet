@@ -360,10 +360,10 @@ OdataDT <- R6Class(classname = "OdataDT",
       if (missing(Anodes)) Anodes <- self$nodes$Anodes
       if (is.null(self$A_g0_DT)) stop("Anodes in OdataDT cannot be restored, self$A_g0_DT is null!")
 
-      self$OdataDT[, (Anodes) := self$A_g0_DT, with=FALSE]
+      self$OdataDT[, (Anodes) := self$A_g0_DT]
 
       if (!is.null(self$sA_g0_DT) && !is.null(self$save_sA_Vars)) {
-        self$OdataDT[, (self$save_sA_Vars) := self$sA_g0_DT, with = FALSE]
+        self$OdataDT[, (self$save_sA_Vars) := self$sA_g0_DT]
       }
       self$restored_sA_Vars <- TRUE
       # else {

@@ -365,7 +365,7 @@ update.intervention.sA <- function(new.sA, sA) {
     # allvars <- as.vector(c(unlist(sW$sVar.names.map), unlist(sA$sVar.names.map), "Y"))
     # allDatNames <- names(OdataDT_R6$OdataDT)
     # remove_vars <- allDatNames[!(allDatNames %in% allvars)]
-    # OdataDT_R6$OdataDT[, (remove_vars):=NULL, with = FALSE]
+    # OdataDT_R6$OdataDT[, (remove_vars):=NULL]
   return(new.sA)
 }
 
