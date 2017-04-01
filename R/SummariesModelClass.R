@@ -726,8 +726,24 @@ ContinSummaryModel <- R6Class(classname = "ContinSummaryModel",
       return(cumprodAeqa)
     },
 
-    sampleA = function() {
-      stop("not implemented")
+    sampleA = function(newdata, ...) {
+      assert_that(is.DatNet.sWsA(newdata))
+      # bring the sampled variable back to its original scale / levels:
+      dat <- super$sampleA(newdata = newdata)
+      rate <- 1
+      # TODO: There should be a more elaborate way of sampling here, but it'll do for now
+      # If the found value is in one of the tails, make sure the probability of it going to
+      # A very distant value is small.
+      dat.sampled <- sapply(dat, function(current_dat) {
+        if (current_dat == 1) {
+          self$intrvls[current_dat+1] -  rexp(length(current_dat), rate)
+        } else if (current_dat == (length(self$intrvls) - 1)) {
+          self$intrvls[current_dat] +  rexp(length(current_dat), rate)
+        } else {
+          runif(length(current_dat), self$intrvls[current_dat], self$intrvls[current_dat+1])
+        }
+      })
+      return(dat.sampled)
     }
 
   ),

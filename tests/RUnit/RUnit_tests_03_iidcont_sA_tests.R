@@ -80,7 +80,8 @@ test.simple.fit.density.sA <- function() {
   regclass <- RegressionClass$new(outvar.class = sA_class,
                                   outvar = reg.sVars$outvars,
                                   predvars = reg.sVars$predvars,
-                                  subset = subset_vars)
+                                  subset = subset_vars,
+                                  nbins=50)
   summeas.g0 <- SummariesModel$new(reg = regclass, DatNet.sWsA.g0 = nodeobjs$datNetObs)
   summeas.g0$fit(data = nodeobjs$datNetObs)
 
@@ -119,8 +120,8 @@ test.simple.fit.density.sA <- function() {
   setWdat_res <- get.setW.sAdat(setWvals, nsamp)
 
   # plot densitity first:
-  # plot(density(setWdat_res$setWsA))
-  # lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
+  plot(density(setWdat_res$setWsA))
+  lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
 
   # plot predicted vals first:
   # plot(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
