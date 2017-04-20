@@ -2,51 +2,6 @@
 # Classes for modelling regression models with binary outcome Bin ~ Xmat
 #----------------------------------------------------------------------------------
 
-logisfit <- function(datsum_obj) UseMethod("logisfit") # Generic for fitting the logistic model
-
-# S3 method for glm binomial family fit, takes BinDat data object:
-logisfit.glmS3 <- function(datsum_obj) {
-  if (gvars$verbose) print("calling glm.fit...")
-  Xmat <- datsum_obj$getXmat
-  Y_vals <- datsum_obj$getY
-    # Xmat has 0 rows: return NA's and avoid throwing exception:
-  if (nrow(Xmat) == 0L) {
-    m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
-  } else {
-    ctrl <- glm.control(trace = FALSE)
-    # ctrl <- glm.control(trace = FALSE, maxit = 1000)
-    SuppressGivenWarnings({
-      m.fit <- stats::glm.fit(x = Xmat, y = Y_vals, family = binomial() , control = ctrl)
-    }, GetWarningsToSuppress())
-  }
-  fit <- list(coef = m.fit$coef, linkfun = "logit_linkinv", fitfunname = "glm")
-  if (gvars$verbose) print(fit$coef)
-  class(fit) <- c(class(fit), c("glmS3"))
-  return(fit)
-}
-
-# S3 method for speedglm binomial family fit, takes BinDat data object:
-logisfit.speedglmS3 <- function(datsum_obj) {
-  if (gvars$verbose) print("calling speedglm.wfit...")
-  Xmat <- datsum_obj$getXmat
-  Y_vals <- datsum_obj$getY
-
-  if (nrow(Xmat) == 0L) { # Xmat has 0 rows: return NA`s and avoid throwing exception
-    m.fit <- list(coef = rep.int(NA_real_, ncol(Xmat)))
-  } else {
-    # , maxit=1000
-    m.fit <- try(speedglm::speedglm.wfit(X = Xmat, y = Y_vals, family = binomial(), trace = FALSE, method='Cholesky'), silent = TRUE)
-    if (inherits(m.fit, "try-error")) { # if failed, fall back on stats::glm
-      message("speedglm::speedglm.wfit failed, falling back on stats:glm.fit; ", m.fit)
-      return(logisfit.glmS3(datsum_obj))
-    }
-  }
-  fit <- list(coef = m.fit$coef, linkfun = "logit_linkinv", fitfunname = "speedglm")
-  if (gvars$verbose) print(fit$coef)
-  class(fit) <- c(class(fit), c("speedglmS3"))
-  return(fit)
-}
-
 # S3 methods for getting coefs from fitted BinOutModel class object
 coef.BinOutModel <- function(binoutmodel) {
   assert_that(binoutmodel$is.fitted)
@@ -148,6 +103,7 @@ join.Xmat = function(X_mat, sVar_melt_DT, ID) {
 #'   \item{\code{getY}}{...}
 #' }
 #' @importFrom assertthat assert_that is.count is.string is.flag
+#' @include GlmAlgorithmClass.R
 #' @export
 BinDat <- R6Class(classname = "BinDat",
   cloneable = TRUE, # changing to TRUE to make it easy to clone input h_g0/h_gstar model fits
@@ -373,7 +329,7 @@ BinDat <- R6Class(classname = "BinDat",
 #' \itemize{
 #' \item{cont.sVar.flag} - Is the original outcome variable continuous?
 #' \item{bw.j} - Bin width (interval length) for an outcome that is a bin indicator of a discretized continous outcome.
-#' \item{glmfitclass} - Controls which package will be used for performing model fits (\code{glm} or \code{speedglm}).
+#' \item{binfitalgorithm} - Controls which package will be used for performing model fits (\code{glm} or \code{speedglm}).
 #' \item{bindat} - Pointer to an instance of \code{BinDat} class that contains the data.
 #' }
 #' @section Methods:
@@ -408,19 +364,22 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     predvars = character(), # names of predictor vars
     cont.sVar.flag = logical(),
     bw.j = numeric(),
-    glmfitclass = "glmS3", # default glm fit class
+    binfitalgorithm = NULL, # default glm fit class
     is.fitted = FALSE,
     bindat = NULL, # object of class BinDat that is used in fitting / prediction, never saved (need to be initialized with $new())
 
     initialize = function(reg, ...) {
       assert_that(is.flag(reg$useglm))
-      if (!reg$useglm) self$glmfitclass <- "speedglmS3"
+      if (reg$useglm) {
+        self$binfitalgorithm <- glmR6$new()
+      } else {
+        self$binfitalgorithm <- speedglmR6$new()
+      }
 
       self$outvar <- reg$outvar
       self$predvars <- reg$predvars
 
       self$bindat <- BinDat$new(reg = reg, ...) # postponed adding data in BinDat until self$fit() is called
-      class(self$bindat) <- c(class(self$bindat), self$glmfitclass)
       if (gvars$verbose) {
         print("New BinOutModel instance:"); print(self$show())
       }
@@ -439,7 +398,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     fit = function(overwrite = FALSE, data, ...) { # Move overwrite to a field? ... self$overwrite
       if (!overwrite) assert_that(!self$is.fitted) # do not allow overwrite of prev. fitted model unless explicitely asked
       self$bindat$newdata(newdata = data, ...) # populate bindat with X_mat & Y_vals
-      private$m.fit <- logisfit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit()
+      private$m.fit <- self$binfitalgorithm$process(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit()
       # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
       # **********************************************************************
