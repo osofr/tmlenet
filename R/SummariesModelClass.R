@@ -56,8 +56,9 @@ newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) CategorSummaryMode
 #' \item{\code{nbins}} - Integer number of bins used for a continuous outvar, the intervals are defined inside
 #'  \code{ContinSummaryModel$new()} and then saved in this field.
 #' \item{\code{bin_nms}} - Character vector of column names for bin indicators.
-#' \item{\code{useglm}} - Logical, if TRUE then fit the logistic regression model using \code{\link{glm.fit}},
-#'    if FALSE use \code{\link{speedglm.wfit}}..
+#' \item{\code{bin_estimator}} - A subclass of \code{\link{logisfitR6}}. This is the algorithm used to fit the bins. The
+#'    default options are \code{\link{glmR6}} (fit the logistic regression model using \code{glm}), and \code{\link{speedglmR6}},
+#'    with which we use use \code{speedglm}.
 #' \item{\code{parfit}} - Logical, if TRUE then use parallel \code{foreach::foreach} loop to fit and predict binary logistic
 #'    regressions (requires registering back-end cluster prior to calling the fit/predict functions)..
 #' \item{\code{bin_bymass}} - Logical, for continuous outvar, create bin cutoffs based on equal mass distribution.
@@ -81,7 +82,7 @@ newsummarymodel.categor <- function(reg, DatNet.sWsA.g0, ...) CategorSummaryMode
 #'                   outvar.class = gvars$sVartypes$bin,
 #'                   outvar, predvars, subset, intrvls,
 #'                   ReplMisVal0 = TRUE,
-#'                   useglm = getopt("useglm"),
+#'                   bin_estimator = getopt("bin_estimator"),
 #'                   parfit = getopt("parfit"),
 #'                   nbins = getopt("nbins"),
 #'                   bin_bymass = getopt("bin.method")%in%"equal.mass",
@@ -118,7 +119,7 @@ RegressionClass <- R6Class("RegressionClass",
     ReplMisVal0 = TRUE,            # if TRUE all gvars$misval among predicators are replaced with with gvars$misXreplace (0)
     nbins = NULL,                  # actual nbins used, for cont. outvar, defined in ContinSummaryModel$new()
     bin_nms = NULL,                # column names for bin indicators
-    useglm = logical(),            # TRUE to fit reg with glm.fit(), FALSE to fit with speedglm.wfit
+    bin_estimator = NULL,          # The algorithm to use for fitting the regressions
     parfit = logical(),            # TRUE for fitting binary regressions in parallel
     bin_bymass = logical(),        # for cont outvar, create bin cutoffs based on equal mass distribution?
     bin_bydhist = logical(),       # if TRUE, use dhist approach for bin definitions
@@ -137,7 +138,7 @@ RegressionClass <- R6Class("RegressionClass",
                           outvar.class = gvars$sVartypes$bin,
                           outvar, predvars, subset, intrvls,
                           ReplMisVal0 = TRUE, # Needed to add ReplMisVal0 = TRUE for case sA = (netA, sA[j]) with sA[j] continuous, was causing an error otherwise:
-                          useglm = getopt("useglm"),
+                          bin_estimator = getopt("bin_estimator"),
                           parfit = getopt("parfit"),
                           nbins = getopt("nbins"),
                           bin_bymass = getopt("bin.method")%in%"equal.mass",
@@ -161,7 +162,7 @@ RegressionClass <- R6Class("RegressionClass",
       }
 
       self$ReplMisVal0 <- ReplMisVal0
-      self$useglm <- useglm
+      self$bin_estimator <- bin_estimator
       self$parfit <- parfit
       self$nbins <- nbins
       self$bin_bymass <- bin_bymass

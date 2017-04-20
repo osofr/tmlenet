@@ -163,8 +163,8 @@ test.onesim.net.tmlefit <- function() {
 
   getOption("tmlenet.verbose")
   options(tmlenet.verbose = FALSE)
-  # tmlenet_options(binByMass = FALSE, useglm = TRUE)
-  # tmlenet_options(poolContinVar = TRUE, useglm = FALSE) # to pool by contin outcome:
+  # tmlenet_options(binByMass = FALSE, bin_estimator = glmR6$new())
+  # tmlenet_options(poolContinVar = TRUE, bin_estimator = speedglmR6$new()) # to pool by contin outcome:
   print_tmlenet_opts()
 
   #------------------------------------------------------------------------------------------------------------
@@ -205,8 +205,8 @@ test.onesim.net.tmlefit <- function() {
   #------------------------------------------------------------------------------------------------------------
   Qform.mis <- "Y ~ W2 + W3 + net.mean.sA" # # misspecified Q:
   tmlenet_options(maxNperBin = 1000, bin.method = "equal.len", nbins = 10)
-  # tmlenet_options(binByMass = FALSE, useglm = TRUE)
-  # tmlenet_options(poolContinVar = TRUE, useglm = FALSE) # to pool by contin outcome:
+  # tmlenet_options(binByMass = FALSE, bin_estimator = glmR6$new())
+  # tmlenet_options(poolContinVar = TRUE, bin_estimator = speedglmR6$new()) # to pool by contin outcome:
   print_tmlenet_opts()
   timerun <- system.time(
     estres_eqlen <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
@@ -266,8 +266,8 @@ test.onesim.net.tmlefit <- function() {
   # registerDoParallel(cores = 2)
   # # registerDoParallel(cores = 1)
   # tmlenet_options(maxNperBin = 1000, bin.method="equal.mass", parfit = TRUE)
-  # # tmlenet_options(binByMass = FALSE, useglm = TRUE)
-  # # tmlenet_options(poolContinVar = TRUE, useglm = FALSE) # to pool by contin outcome:
+  # # tmlenet_options(binByMass = FALSE, bin_estimator = glmR6$new())
+  # # tmlenet_options(poolContinVar = TRUE, bin_estimator = speedglmR6$new()) # to pool by contin outcome:
   # print_tmlenet_opts()
   # estres_par <- run.net.1sim.tmlenet(datO = datO, NetInd_mat = NetInd_mat,
   #                                   sW = sW, sA = sA, Kmax = Kmax,

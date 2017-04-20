@@ -189,7 +189,7 @@ test.catnet.fit.density.iptw <- function() {
                                       bin_bymass = TRUE,
                                       max_nperbin = 500,
                                       pool_cont = FALSE,
-                                      useglm = FALSE,
+                                      bin_estimator = speedglmR6$new(),
                                       parfit = FALSE)
   # -------------------------------------------------------------------------------------------
   # estimating h_g0:

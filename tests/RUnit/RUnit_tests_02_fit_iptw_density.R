@@ -221,7 +221,7 @@ test.net.fit.density.iptw <- function() {
   #                                                 # nbins = 100,
   #                                                 # nbins = 50,
   #                                                 # nbins = 20,
-  #                                                 useglm = FALSE,
+  #                                                 bin_estimator = speedglmR6$new(),
   #                                                 parfit = TRUE
   #                                                 )
   regclass.obj <- RegressionClass$new(outvar.class = sA_class,
@@ -231,7 +231,7 @@ test.net.fit.density.iptw <- function() {
                                                 bin_bymass = TRUE,
                                                 max_nperbin = 500,
                                                 pool_cont = FALSE,
-                                                useglm = FALSE,
+                                                bin_estimator = speedglmR6$new(),
                                                 parfit = FALSE,
                                                 intrvls = intervals
                                                 )
@@ -244,7 +244,7 @@ test.net.fit.density.iptw <- function() {
   #                                               nbins = 50,
   #                                               # nbins = 70,
   #                                               pool_cont = FALSE,
-  #                                               useglm = FALSE,
+  #                                               bin_estimator = speedglmR6$new(),
   #                                               parfit = TRUE
   #                                               )
 

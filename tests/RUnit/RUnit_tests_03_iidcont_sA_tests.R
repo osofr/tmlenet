@@ -137,7 +137,8 @@ test.simple.fit.density.sA <- function() {
   # **** Same fit as before but doing regressions with stats::glm.fit ****
   # ---------------------------------------------------------------------------------------------------------
   print("fitting h_gN based equal.len intervals (default) and glm.fit: ")
-  regclass.gml <- RegressionClass$new(useglm = TRUE, outvar.class = sA_class,
+                                                 
+  regclass.gml <- RegressionClass$new(bin_estimator = glmR6$new(), outvar.class = sA_class,
                                       outvar = reg.sVars$outvars,
                                       predvars = reg.sVars$predvars,
                                       subset = subset_vars)
@@ -176,7 +177,7 @@ test.simple.fit.density.sA <- function() {
   # ls(gvars)
 
   print("fitting h_gN based on bin_bymass = TRUE and speedglm (default): ")
-  regclass.binmass <- RegressionClass$new(useglm = FALSE,
+  regclass.binmass <- RegressionClass$new(bin_estimator = speedglmR6$new(),
                                           bin_bymass = TRUE,
                                           max_nperbin = 1000,
                                           outvar.class = sA_class,
@@ -205,7 +206,7 @@ test.simple.fit.density.sA <- function() {
   # **** Same fit as before but binning using "dhist" function & regressions with speedglm ****
   # ---------------------------------------------------------------------------------------------------------
   print("fitting h_gN based on dhist intervals and speedglm (default): ")
-  regclass.bidhist <- RegressionClass$new(useglm = FALSE,
+  regclass.bidhist <- RegressionClass$new(bin_estimator = speedglmR6$new(),
                                           bin_bymass = FALSE,
                                           bin_bydhist = TRUE,
                                           max_nperbin = 1000,
@@ -451,7 +452,7 @@ test.onesim.iid.tmlefit <- function() {
   # ---------------------------------------------------------------------------------------------------------
   # Correct Q w/ glm.fit:
   # ---------------------------------------------------------------------------------------------------------
-  old_opts <- tmlenet_options(useglm = FALSE)
+  old_opts <- tmlenet_options(bin_estimator = speedglmR6$new())
   print_tmlenet_opts()
   set.seed(23466)
   Qform.corr <- "Y ~ W1 + W2 + W3 + sA" # correct Q:

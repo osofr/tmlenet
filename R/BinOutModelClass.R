@@ -353,6 +353,7 @@ BinDat <- R6Class(classname = "BinDat",
 #'   \item{\code{wipe.alldat}}{...}
 #' }
 #' @importFrom assertthat assert_that is.flag
+#' @include GlmAlgorithmClass.R 
 #' @export
 BinOutModel  <- R6Class(classname = "BinOutModel",
   # cloneable = FALSE,
@@ -369,12 +370,8 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     bindat = NULL, # object of class BinDat that is used in fitting / prediction, never saved (need to be initialized with $new())
 
     initialize = function(reg, ...) {
-      assert_that(is.flag(reg$useglm))
-      if (reg$useglm) {
-        self$binfitalgorithm <- glmR6$new()
-      } else {
-        self$binfitalgorithm <- speedglmR6$new()
-      }
+      assert_that(is(reg$bin_estimator, 'logisfitR6'))
+      self$binfitalgorithm <- reg$bin_estimator
 
       self$outvar <- reg$outvar
       self$predvars <- reg$predvars
