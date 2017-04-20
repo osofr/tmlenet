@@ -45,6 +45,6 @@ The data is stored as a data.table under the public field \code{OdataDT}.
    \item{\code{nodes}}{...}
 }
 }
+
 \keyword{R6}
 \keyword{class}
-

@@ -19,7 +19,7 @@ This R6 class can request, store and manage the design matrix Xmat, as well as t
 \itemize{
 \item{cont.sVar.flag} - Is the original outcome variable continuous?
 \item{bw.j} - Bin width (interval length) for an outcome that is a bin indicator of a discretized continous outcome.
-\item{glmfitclass} - Controls which package will be used for performing model fits (\code{glm} or \code{speedglm}).
+\item{binfitalgorithm} - Controls which package will be used for performing model fits (\code{glm} or \code{speedglm}).
 \item{bindat} - Pointer to an instance of \code{BinDat} class that contains the data.
 }
 }
@@ -48,6 +48,6 @@ This R6 class can request, store and manage the design matrix Xmat, as well as t
   \item{\code{wipe.alldat}}{...}
 }
 }
+
 \keyword{R6}
 \keyword{class}
-

@@ -64,6 +64,6 @@ This class inherits from \code{DatNet} and extends its methods to handle a singl
    \item{\code{nodes}}{...}
 }
 }
+
 \keyword{R6}
 \keyword{class}
-

@@ -33,4 +33,3 @@ Simulated dataset containing measured i.i.d. baseline covariate (\code{W1}), dep
  Individual variables are described below.
 }
 \keyword{datasets}
-

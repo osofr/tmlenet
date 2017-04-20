@@ -41,6 +41,6 @@ This \pkg{R6} class that inherits from \code{Define_sVar} and can parse and eval
    variable (\code{ANCHOR_ALLVARNMS_VECTOR_0}).}
 }
 }
+
 \keyword{R6}
 \keyword{class}
-

@@ -15,4 +15,3 @@ Print Current Option Settings for \code{tmlenet}
 \seealso{
 \code{\link{tmlenet_options}}
 }
-

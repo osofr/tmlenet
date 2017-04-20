@@ -370,6 +370,7 @@ The data-adaptive approach dhist is a mix of Approaches 1 & 2. See Denby and Mal
  (2009)). This interval definition method is selected by passing an argument \code{bin.method="dhist"} to
  \code{tmlenet_options()}  prior to calling \code{tmlenet()}.
 }
+
 \examples{
 #***************************************************************************************
 data(df_netKmax6) # Load observed data
@@ -621,4 +622,3 @@ res_K2_2$ATE$IC.CIs
  and \code{\link{df_netKmax2}}/\code{\link{df_netKmax6}}/\code{\link{NetInd_mat_Kmax6}}
  for examples of network datasets.
 }
-

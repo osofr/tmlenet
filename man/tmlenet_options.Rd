@@ -4,13 +4,13 @@
 \alias{tmlenet_options}
 \title{Setting Options for \code{tmlenet}}
 \usage{
-tmlenet_options(useglm = FALSE, parfit = FALSE,
+tmlenet_options(bin_estimator = speedglmR6$new(), parfit = FALSE,
   bin.method = c("equal.len", "equal.mass", "dhist"), nbins = NA,
   maxncats = 20, poolContinVar = FALSE, maxNperBin = 1000)
 }
 \arguments{
-\item{useglm}{Set to \code{FALSE} to estimate with \code{\link[speedglm]{speedglm.wfit}} and \code{TRUE} for 
-\code{\link[stats]{glm.fit}}.}
+\item{bin_estimator}{The estimator to use for fitting the binary outcomes (defaults to \code{speedglmR6} which estimates with \code{\link[speedglm]{speedglmR6}})
+another default option is \code{\link[stats]{glmR6}}.}
 
 \item{parfit}{Default is \code{FALSE}. Set to \code{TRUE} to use \code{foreach} package and its functions
 \code{foreach} and \code{dopar} to perform
@@ -51,4 +51,3 @@ Additional options that control the estimation algorithm in \code{tmlenet} packa
 \seealso{
 \code{\link{print_tmlenet_opts}}
 }
-
