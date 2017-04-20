@@ -67,6 +67,7 @@ logisfitR6 <- R6Class("logisfitR6",
 #'
 #' @docType class
 #' @importFrom R6 R6Class
+#' @export
 glmR6 <- R6Class("glmR6",
   inherit = logisfitR6,
   public =
@@ -101,6 +102,7 @@ glmR6 <- R6Class("glmR6",
 #'
 #' @docType class
 #' @importFrom R6 R6Class
+#' @export
 speedglmR6 <- R6Class("speedglmR6",
   inherit = logisfitR6,
   public =
