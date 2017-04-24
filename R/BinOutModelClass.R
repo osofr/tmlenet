@@ -89,9 +89,7 @@ join.Xmat = function(X_mat, sVar_melt_DT, ID) {
 #'   \item{\code{newdata()}}{...}
 #'   \item{\code{define.subset_idx(...)}}{...}
 #'   \item{\code{setdata()}}{...}
-#'   \item{\code{logispredict()}}{...}
 #'   \item{\code{setdata.long()}}{...}
-#'   \item{\code{logispredict.long()}}{...}
 #' }
 #' @section Active Bindings:
 #' \describe{
@@ -250,50 +248,6 @@ BinDat <- R6Class(classname = "BinDat",
         # To find and replace misvals in X_mat:
         if (self$ReplMisVal0) private$X_mat[gvars$misfun(private$X_mat)] <- gvars$misXreplace
       # }
-    },
-
-    logispredict.long = function(m.fit) {
-      assert_that(!is.null(private$X_mat)); assert_that(!is.null(self$subset_idx))
-      assert_that(nrow(private$X_mat)==length(private$Y_vals))
-      pAout <- rep.int(gvars$misval, self$n)
-      if (sum(self$subset_idx > 0)) {
-        # -----------------------------------------------------------------
-        # OBTAINING PREDICTIONS FOR LONG FORMAT P(Ind_j = 1 | Bin_j, W) BASED ON EXISTING POOLED FIT:
-        # -----------------------------------------------------------------
-        eta <- private$X_mat[,!is.na(m.fit$coef), drop = FALSE] %*% m.fit$coef[!is.na(m.fit$coef)]
-        probA1 <- match.fun(FUN = m.fit$linkfun)(eta)
-        # -----------------------------------------------------------------
-        # GETTING ID-BASED PREDICTIONS (n) as cumprod of P(Ind_j = 1 | Bin_j, W) for j = 1, ..., K
-        # -----------------------------------------------------------------
-        ProbAeqa_long <- as.vector(probA1^(private$Y_vals) * (1L - probA1)^(1L - private$Y_vals))
-        res_DT <- data.table(ID = self$ID, ProbAeqa_long = ProbAeqa_long)
-        res_DT <- res_DT[, list(cumprob = cumprod(ProbAeqa_long)), by = ID]
-        data.table::setkeyv(res_DT, c("ID")) # sort by ID
-        res_DT_short <- res_DT[unique(res_DT[, key(res_DT), with = FALSE]), mult = 'last']
-        ProbAeqa <- res_DT_short[["cumprob"]]
-        # print("res_DT: "); print(res_DT)
-        # print("res_DT w/ cumprob: "); print(res_DT)
-        # print("res_DT_short: "); print(res_DT_short)
-        # print("length(ProbAeqa): " %+% length(ProbAeqa))
-        # print("head(ProbAeqa, 50)"); print(head(ProbAeqa, 50))
-        pAout[self$subset_idx] <- ProbAeqa
-      }
-      return(pAout)
-    },
-
-    # Generic prediction fun for logistic regression coefs, predicts P(A = 1 | newXmat)
-    # No need for S3 for now, until need different pred. funs for different classes
-    # Does not handle cases with deterministic Anodes in the original data..
-    logispredict = function(m.fit) {
-      assert_that(!is.null(private$X_mat)); assert_that(!is.null(self$subset_idx))
-      # Set to default missing value for A[i] degenerate/degerministic/misval:
-      # Alternative, set to default replacement val: pAout <- rep.int(gvars$misXreplace, newdatsum_obj$n)
-      pAout <- rep.int(gvars$misval, self$n)
-      if (sum(self$subset_idx > 0)) {
-        eta <- private$X_mat[,!is.na(m.fit$coef), drop = FALSE] %*% m.fit$coef[!is.na(m.fit$coef)]
-        pAout[self$subset_idx] <- match.fun(FUN = m.fit$linkfun)(eta)
-      }
-      return(pAout)
     }
   ),
 
@@ -395,7 +349,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
     fit = function(overwrite = FALSE, data, ...) { # Move overwrite to a field? ... self$overwrite
       if (!overwrite) assert_that(!self$is.fitted) # do not allow overwrite of prev. fitted model unless explicitely asked
       self$bindat$newdata(newdata = data, ...) # populate bindat with X_mat & Y_vals
-      private$m.fit <- self$binfitalgorithm$process(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit()
+      private$m.fit <- self$binfitalgorithm$fit(datsum_obj = self$bindat) # private$m.fit <- data_obj$logisfit or private$m.fit <- data_obj$logisfit()
       # alternative 2 is to apply data_obj method / method that fits the model
       self$is.fitted <- TRUE
       # **********************************************************************
@@ -412,6 +366,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 
     # take fitted BinOutModel class object as an input and save the fits to itself
     copy.fit = function(bin.out.model) {
+      ######################################################################## What to do with this?
       assert_that("BinOutModel" %in% class(bin.out.model))
       private$m.fit <- bin.out.model$getfit
       self$is.fitted <- TRUE
@@ -425,12 +380,13 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       if (missing(newdata)) {
         stop("must provide newdata for BinOutModel$predict()")
       }
+
       # re-populate bindat with new X_mat:
       self$bindat$newdata(newdata = newdata, getoutvar = FALSE, ...)
       if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
         stop("BinOutModel$predict is not applicable to pooled regression, call BinOutModel$predictAeqa instead")
       } else {
-        private$probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
+        private$probA1 <- self$binfitalgorithm$predict(datsum_obj = self$bindat, m.fit = private$m.fit)
       }
       self$bindat$emptydata  # Xmat in bindat is no longer needed, but subset, outvar & probA1 may be needed for private$probA1
       invisible(self)
@@ -438,6 +394,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
 
     # take BinOutModel class object that contains the predictions for P(A=1|sW) and save these predictions to self$
     copy.predict = function(bin.out.model) {
+      ######################################################################## What to do with this?
       assert_that("BinOutModel" %in% class(bin.out.model))
       assert_that(self$is.fitted)
       private$probA1 <- bin.out.model$getprobA1
@@ -454,10 +411,10 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       n <- newdata$nobs
       # obtain predictions (likelihood) for response on fitted data (from long pooled regression):
       if (self$bindat$pool_cont && length(self$bindat$outvars_to_pool) > 1) {
-        probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit) # overwrite probA1 with new predictions:
+        probAeqa <- self$binfitalgorithm$predict.long(datsum_obj = self$bindat, m.fit = private$m.fit) # overwrite probA1 with new predictions:
       } else {
         # get predictions for P(sA[j]=1|sW=newdata) from newdata:
-        probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
+        probA1 <- self$binfitalgorithm$predict(datsum_obj = self$bindat, m.fit = private$m.fit)
         indA <- newdata$get.outvar(self$getsubset, self$getoutvarnm) # Always a vector of 0/1
         assert_that(is.integerish(indA)) # check that obsdat.sA is always a vector of of integers
         probAeqa <- rep.int(1L, n) # for missing, the likelihood is always set to P(A = a) = 1.
@@ -503,7 +460,7 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
         # probAeqa <- self$bindat$logispredict.long(m.fit = private$m.fit) # overwrite probA1 with new predictions:
       } else {
         # get probability P(sA[j]=1|sW=newdata) from newdata, then sample from rbinom
-        probA1 <- self$bindat$logispredict(m.fit = private$m.fit)
+        probA1 <- self$binfitalgorithm$predict(datsum_obj = self$bindat, m.fit = private$m.fit)
         sampleA <- rep.int(0L, n)
         sampleA[self$getsubset] <- rbinom(n = n, size = 1, prob = probA1)
 
