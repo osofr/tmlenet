@@ -126,6 +126,9 @@ glmR6 <- R6Class("glmR6",
         ),
   active =
     list(
+         get_fit_function = function() {
+           return(private$do.fit)
+         }
         ),
   private =
     list(
@@ -161,7 +164,7 @@ speedglmR6 <- R6Class("speedglmR6",
         ),
   private =
     list(
-        fallback_function = glmR6$new()$fit,
+        fallback_function = glmR6$new()$get_fit_function,
 
         do.fit = function(X_mat, Y_vals) {
           # , maxit=1000
