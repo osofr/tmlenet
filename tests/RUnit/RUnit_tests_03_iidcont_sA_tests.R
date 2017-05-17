@@ -89,9 +89,9 @@ test.sampleA <- function() {
   resampA_20times <- lapply(1:20, function(i) summeas.g0$sampleA(newdata = nodeobjs$datNetObs))
   resampA_combined <- unlist(resampA_20times)
   resampA_average <- rowMeans(do.call("cbind", resampA_20times))
-  summary(resampledA_average - datO[["sA"]])
-  print(mean(resampledA_average) - mean(datO[["sA"]]))
-  checkTrue(mean(resampledA_average) - mean(datO[["sA"]]) < 0.005)
+  summary(resampA_average - datO[["sA"]])
+  print(mean(resampA_average) - mean(datO[["sA"]]))
+  checkTrue(mean(resampA_average) - mean(datO[["sA"]]) < 0.005)
 
   # Get P(sA|W) for the observed data (W,sA):
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
