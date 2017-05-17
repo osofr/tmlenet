@@ -88,7 +88,7 @@ test.sampleA <- function() {
   set.seed(123456)
   resampA_20times <- lapply(1:20, function(i) summeas.g0$sampleA(newdata = nodeobjs$datNetObs))
   resampA_combined <- unlist(resampA_20times)
-  resampA_average <- rowMeans(do.call("cbind", resampledA_20times))
+  resampA_average <- rowMeans(do.call("cbind", resampA_20times))
   summary(resampledA_average - datO[["sA"]])
   print(mean(resampledA_average) - mean(datO[["sA"]]))
   checkTrue(mean(resampledA_average) - mean(datO[["sA"]]) < 0.005)
