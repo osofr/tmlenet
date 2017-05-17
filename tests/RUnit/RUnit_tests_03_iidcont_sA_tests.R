@@ -13,7 +13,7 @@ allNA <- function(x) all(is.na(x))
 # ---------------------------------------------------------------------------------
 # Test 1. Directly fit a joint density for sA, sA2 ~ W, for sA - continuous (with speedglm and glm.fit)
 # ---------------------------------------------------------------------------------
-test.simple.fit.density.sA <- function() {
+  ## helper fun
   get.density.sAdat <- function(nsamp = 100000) {
     require(simcausal)
     D <- DAG.empty()
@@ -26,7 +26,7 @@ test.simple.fit.density.sA <- function() {
     D <- set.DAG(D, n.test = 10)
     datO <- sim(D, n = nsamp, rndseed = 12345)
   }
-
+  ## helper fun
   get.setW.sAdat <- function(setWvals, nsamp = 100000) {
     require(simcausal)
     W1val <- setWvals[1]; W2val <- setWvals[2]; W3val <- setWvals[3]
@@ -41,7 +41,7 @@ test.simple.fit.density.sA <- function() {
     setWmat <- as.matrix(data.frame(W1 = W1val, W2 = W2val, W3 = W3val, sA = seq(-4, 4, by = 0.2)))
     return(list(setWsA = datWset$sA, setWmat = setWmat))
   }
-
+  ## helper fun
   def.nodeojb <- function(datO) {
     Kmax <- 1
     nodes <- list(Anodes = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
@@ -57,8 +57,86 @@ test.simple.fit.density.sA <- function() {
     return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
   }
 
+test.sampleA <- function() {
   nsamp <- 10000
-  # nsamp <- 100000
+  datO <- get.density.sAdat(nsamp)
+  nodeobjs <- def.nodeojb(datO)
+  testm.sW <- nodeobjs$sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
+  testm.sA <- nodeobjs$sA$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
+
+  DatNet_object <- nodeobjs$datNetObs
+  head(DatNet_object$dat.sWsA)
+  subset_mat <- DatNet_object$get.dat.sWsA(rowsubset = TRUE, covars = c("W1","W2"))
+
+  # Define est_params_list:
+  reg.sVars <- list(outvars = c("sA"), predvars = c("W1", "W2", "W3"))
+  subset_vars <- lapply(reg.sVars$outvars, function(var) {var})
+  sA_class <- nodeobjs$datNetObs$datnetA$type.sVar[reg.sVars$outvars]
+
+  # Put all est_params in RegressionClass (regression with speedglm package)
+  regclass <- RegressionClass$new(outvar.class = sA_class,
+                                  outvar = reg.sVars$outvars,
+                                  predvars = reg.sVars$predvars,
+                                  subset = subset_vars,
+                                  nbins=50)
+
+  summeas.g0 <- SummariesModel$new(reg = regclass, DatNet.sWsA.g0 = nodeobjs$datNetObs)
+  summeas.g0$fit(data = nodeobjs$datNetObs)
+  summeas.g0$predict(newdata = nodeobjs$datNetObs)  # summeas.g0$sA_nms
+
+  ## resample the outcome (sA), conditional on observed predictors, using the current conditional density fit for P(sA|X)
+  set.seed(123456)
+  resampA_20times <- lapply(1:20, function(i) summeas.g0$sampleA(newdata = nodeobjs$datNetObs))
+  resampA_combined <- unlist(resampA_20times)
+  resampA_average <- rowMeans(do.call("cbind", resampledA_20times))
+  summary(resampledA_average - datO[["sA"]])
+  print(mean(resampledA_average) - mean(datO[["sA"]]))
+  checkTrue(mean(resampledA_average) - mean(datO[["sA"]]) < 0.005)
+
+  # Get P(sA|W) for the observed data (W,sA):
+  h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
+
+  ## ---------------------------------------------------------------------------------------------------------
+  ## Plot density of the entire observed outcome vs. resampled outcomes (resampled 20 times and then combined into one long vector)
+  ## ---------------------------------------------------------------------------------------------------------
+  set.seed(12345)
+  dens_A <- density(datO[["sA"]])
+  dens_resampA <- density(resampA_combined)
+
+  ## plot the density fit with observed A vs. resampled A:
+  plot(dens_A)
+  lines(dens_resampA, col = "blue")
+
+  ## numerically compare the two density fits:
+  common_x <- intersect(round(dens_A[["x"]], 2), round(dens_resampA[["x"]], 2))
+  idx_A <- which(round(dens_A[["x"]], 2) %in% common_x)
+  idx_resampA <- which(round(dens_resampA[["x"]], 2) %in% common_x)
+  length(idx_resampA) == length(idx_A)
+  ## MSE on the density fit of the resampled A values (compared to density fit of the observed A values)
+  MSE_resampA <- mean((dens_A[["y"]][idx_A] - dens_resampA[["y"]][idx_resampA])^2)
+  print("MSE for observed density fit vs. resampled: " %+% MSE_resampA)
+  checkTrue(MSE_resampA < 1e-5)
+
+  ## ---------------------------------------------------------------------------------------------------------
+  ## Same as above but conditional on some FIXED values of predictors (W1,W2,W3)
+  ## + adding the predicted discretized probs conditional on same W's
+  ## ---------------------------------------------------------------------------------------------------------
+  setWvals <- c(W1 = 0, W2 = 0, W3 = 1)
+  subs <- (datO$W1==setWvals["W1"] & datO$W2==setWvals["W2"] & datO$W3==setWvals["W3"])
+  setWdat_res <- get.setW.sAdat(setWvals, nsamp)
+
+  ## plot densitity first:
+  plot(density(setWdat_res$setWsA))
+  lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
+  set.seed(12345)
+  resampA <- summeas.g0$sampleA(newdata = nodeobjs$datNetObs)
+  ## add the density of the resamp outcomes:
+  lines(density(resampA[subs]), col = "blue")
+
+}
+
+test.simple.fit.density.sA <- function() {
+  nsamp <- 10000
   datO <- get.density.sAdat(nsamp)
   nodeobjs <- def.nodeojb(datO)
   testm.sW <- nodeobjs$sW$eval.nodeforms(data.df = datO, netind_cl = nodeobjs$netind_cl)
@@ -80,8 +158,7 @@ test.simple.fit.density.sA <- function() {
   regclass <- RegressionClass$new(outvar.class = sA_class,
                                   outvar = reg.sVars$outvars,
                                   predvars = reg.sVars$predvars,
-                                  subset = subset_vars,
-                                  nbins=50)
+                                  subset = subset_vars)
   summeas.g0 <- SummariesModel$new(reg = regclass, DatNet.sWsA.g0 = nodeobjs$datNetObs)
   summeas.g0$fit(data = nodeobjs$datNetObs)
 
@@ -90,14 +167,10 @@ test.simple.fit.density.sA <- function() {
   out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
   print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
   print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
-  # print(tmlenet:::summary.BinOutModel(out_BinModels[[3]]))
-  # print(tmlenet:::summary.BinOutModel(out_BinModels[[4]]))
-  # print(tmlenet:::summary.BinOutModel(out_BinModels[[5]]))
 
   # (intrvls <- out_ContinSummaryModel$intrvls)
   # (intrvls.width <- diff(intrvls))
   # length(intrvls.width)
-
   # ord.sVar <- nodeobjs$datNetObs$discretize.sVar(name.sVar = "sA", intervals = out_ContinSummaryModel$intrvls)
   # ord.sVar_bw <- intrvls.width[ord.sVar]
   # print(head(cbind(sA = nodeobjs$datNetObs$dat.sVar[, "sA"], ord.sVar, bw = ord.sVar_bw, nodeobjs$datNetObs$dat.bin.sVar), 5))
@@ -127,6 +200,9 @@ test.simple.fit.density.sA <- function() {
   # plot(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
   # lines(density(setWdat_res$setWsA))
 
+  resampA <- summeas.g0$sampleA(newdata = nodeobjs$datNetObs)
+  lines(density(resampA[subs]), col = "blue")
+
   # ---------------------------------------------------------------------------------------------------------
   # Plot all predicted discretized probs together (without conditioning on particular subset of W's)
   # ---------------------------------------------------------------------------------------------------------
@@ -149,24 +225,15 @@ test.simple.fit.density.sA <- function() {
   out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
   print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
   print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
-  # print(tmlenet:::summary.BinOutModel(out_BinModels[[3]]))
-  # print(tmlenet:::summary.BinOutModel(out_BinModels[[4]]))
-  # print(tmlenet:::summary.BinOutModel(out_BinModels[[5]]))
 
   summeas.g0.glm$predict(newdata = nodeobjs$datNetObs)
   h_gN.glm <- summeas.g0.glm$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***
 
   print("h_gN fit under glm: " %+% mean(h_gN.glm)) # [1] 0.2718823
   checkTrue(abs(mean(h_gN.glm)-0.2718823) < 10^-4)
-
   # plot densitity first:
   # plot(density(setWdat_res$setWsA))
   # lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
-
-  # plot predicted vals first:
-  # plot(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
-  # lines(density(setWdat_res$setWsA))
-
 
   # ---------------------------------------------------------------------------------------------------------
   # **** Same fit as before but doing binnning by mass intervals & regressions with speedglm ****
@@ -197,10 +264,6 @@ test.simple.fit.density.sA <- function() {
   # plot(density(setWdat_res$setWsA))
   # lines(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
 
-  # plot predicted vals first:
-  # plot(datO[subs][["sA"]], h_gN[subs], type = "p", cex = .3, col = "red")
-  # lines(density(setWdat_res$setWsA))
-
   # ---------------------------------------------------------------------------------------------------------
   # **** Same fit as before but binning using "dhist" function & regressions with speedglm ****
   # ---------------------------------------------------------------------------------------------------------
@@ -225,9 +288,6 @@ test.simple.fit.density.sA <- function() {
   out_BinModels <- out_ContinSummaryModel$getPsAsW.models()
   print(tmlenet:::coef.BinOutModel(out_BinModels[[1]]))
   print(tmlenet:::summary.BinOutModel(out_BinModels[[2]]))
-  print(tmlenet:::summary.BinOutModel(out_BinModels[[3]]))
-  print(tmlenet:::summary.BinOutModel(out_BinModels[[4]]))
-  print(tmlenet:::summary.BinOutModel(out_BinModels[[5]]))
 
   summeas.g0$predict(newdata = nodeobjs$datNetObs)
   h_gN <- summeas.g0$predictAeqa(newdata = nodeobjs$datNetObs) # *** DatNet.sWsA$O.datnetA IS TO BE RENAMED TO $O.O.datnetA for clarity ***

@@ -528,6 +528,9 @@ BinOutModel  <- R6Class(classname = "BinOutModel",
       return(probAeqa)
     },
 
+    ## This function will sample a binary outcome given:
+    ## a) the predictors (X) in newdata, and
+    ## b) the model fit for the probability P(A=1|X)
     sampleA = function(newdata, bw.j.sA_diff) { # P(A^s[i]=a^s|W^s=w^s) - calculating the likelihood for indA[i] (n vector of a`s)
       assert_that(self$is.fitted)
       assert_that(!missing(newdata))

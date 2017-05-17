@@ -470,6 +470,8 @@ SummariesModel <- R6Class(classname = "SummariesModel",
       return(cumprodAeqa)
     },
 
+    ## Sample new outcome (A), given predictors (X) in newdata
+    ## The outcome can be continuous / categorical
     sampleA = function(newdata, ...) {
       # stop("not implemented")
       assert_that(!missing(newdata))
