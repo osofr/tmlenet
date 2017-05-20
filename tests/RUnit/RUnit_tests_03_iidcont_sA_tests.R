@@ -13,49 +13,49 @@ allNA <- function(x) all(is.na(x))
 # ---------------------------------------------------------------------------------
 # Test 1. Directly fit a joint density for sA, sA2 ~ W, for sA - continuous (with speedglm and glm.fit)
 # ---------------------------------------------------------------------------------
-  ## helper fun
-  get.density.sAdat <- function(nsamp = 100000) {
-    require(simcausal)
-    D <- DAG.empty()
-    D <-
-    D + node("W1", distr = "rbern", prob = 0.5) +
-        node("W2", distr = "rbern", prob = 0.3) +
-        node("W3", distr = "rbern", prob = 0.3) +
-        node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
-        node("sA", distr = "rnorm", mean = sA.mu, sd = 1)
-    D <- set.DAG(D, n.test = 10)
-    datO <- sim(D, n = nsamp, rndseed = 12345)
-  }
-  ## helper fun
-  get.setW.sAdat <- function(setWvals, nsamp = 100000) {
-    require(simcausal)
-    W1val <- setWvals[1]; W2val <- setWvals[2]; W3val <- setWvals[3]
-    D <- DAG.empty()
-    D <-
-    D + node("W1", distr = "rconst", const = .(W1val)) +
-        node("W2", distr = "rconst", const = .(W2val)) +
-        node("W3", distr = "rconst", const = .(W3val)) +
-        node("sA", distr = "rnorm", mean = (0.98 * W1 + 0.58 * W2 + 0.33 * W3), sd = 1)
-    D <- set.DAG(D, n.test = 10)
-    datWset <- sim(D, n = nsamp, rndseed = 12345)
-    setWmat <- as.matrix(data.frame(W1 = W1val, W2 = W2val, W3 = W3val, sA = seq(-4, 4, by = 0.2)))
-    return(list(setWsA = datWset$sA, setWmat = setWmat))
-  }
-  ## helper fun
-  def.nodeojb <- function(datO) {
-    Kmax <- 1
-    nodes <- list(Anodes = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
-    sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
-    sA <- def_sA(sA = "sA")
-    netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
-    # Define datNetObs:
-    OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
-    datnetW <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
-    checkTrue(tmlenet:::is.DatNet(datnetW))
-    datnetA <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
-    datNetObs <- DatNet.sWsA$new(Odata = OdataDT_R6, datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
-    return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
-  }
+## helper fun
+get.density.sAdat <- function(nsamp = 100000) {
+  require(simcausal)
+  D <- DAG.empty()
+  D <-
+  D + node("W1", distr = "rbern", prob = 0.5) +
+      node("W2", distr = "rbern", prob = 0.3) +
+      node("W3", distr = "rbern", prob = 0.3) +
+      node("sA.mu", distr = "rconst", const = (0.98 * W1 + 0.58 * W2 + 0.33 * W3)) +
+      node("sA", distr = "rnorm", mean = sA.mu, sd = 1)
+  D <- set.DAG(D, n.test = 10)
+  datO <- sim(D, n = nsamp, rndseed = 12345)
+}
+## helper fun
+get.setW.sAdat <- function(setWvals, nsamp = 100000) {
+  require(simcausal)
+  W1val <- setWvals[1]; W2val <- setWvals[2]; W3val <- setWvals[3]
+  D <- DAG.empty()
+  D <-
+  D + node("W1", distr = "rconst", const = .(W1val)) +
+      node("W2", distr = "rconst", const = .(W2val)) +
+      node("W3", distr = "rconst", const = .(W3val)) +
+      node("sA", distr = "rnorm", mean = (0.98 * W1 + 0.58 * W2 + 0.33 * W3), sd = 1)
+  D <- set.DAG(D, n.test = 10)
+  datWset <- sim(D, n = nsamp, rndseed = 12345)
+  setWmat <- as.matrix(data.frame(W1 = W1val, W2 = W2val, W3 = W3val, sA = seq(-4, 4, by = 0.2)))
+  return(list(setWsA = datWset$sA, setWmat = setWmat))
+}
+## helper fun
+def.nodeojb <- function(datO) {
+  Kmax <- 1
+  nodes <- list(Anodes = "sA", Wnodes = c("W1", "W2", "W3"), nFnode = "nF")
+  sW <- def_sW(W1 = "W1", W2 = "W2", W3 = "W3")
+  sA <- def_sA(sA = "sA")
+  netind_cl <- simcausal::NetIndClass$new(nobs = nrow(datO))
+  # Define datNetObs:
+  OdataDT_R6 <- OdataDT$new(Odata = datO, nFnode = "nF", iid_data_flag = FALSE)
+  datnetW <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sW)
+  checkTrue(tmlenet:::is.DatNet(datnetW))
+  datnetA <- DatNet$new(Odata = OdataDT_R6, netind_cl = netind_cl, nodes = nodes)$make.sVar(Odata = OdataDT_R6, sVar.object = sA)
+  datNetObs <- DatNet.sWsA$new(Odata = OdataDT_R6, datnetW = datnetW, datnetA = datnetA)$make.dat.sWsA()
+  return(list(datNetObs = datNetObs, netind_cl = netind_cl, sA = sA, sW = sW, nodes = nodes))
+}
 
 test.sampleA <- function() {
   nsamp <- 10000
@@ -132,8 +132,8 @@ test.sampleA <- function() {
   resampA <- summeas.g0$sampleA(newdata = nodeobjs$datNetObs)
   ## add the density of the resamp outcomes:
   lines(density(resampA[subs]), col = "blue")
-
 }
+
 
 test.simple.fit.density.sA <- function() {
   nsamp <- 10000
@@ -213,7 +213,7 @@ test.simple.fit.density.sA <- function() {
   # **** Same fit as before but doing regressions with stats::glm.fit ****
   # ---------------------------------------------------------------------------------------------------------
   print("fitting h_gN based equal.len intervals (default) and glm.fit: ")
-                                                 
+
   regclass.gml <- RegressionClass$new(bin_estimator = glmR6$new(), outvar.class = sA_class,
                                       outvar = reg.sVars$outvars,
                                       predvars = reg.sVars$predvars,
