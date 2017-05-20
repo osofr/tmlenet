@@ -56,6 +56,6 @@ Class for evaluating and storing arbitrary summary measures sVar.
    \item{\code{nodes}}{...}
 }
 }
+
 \keyword{R6}
 \keyword{class}
-

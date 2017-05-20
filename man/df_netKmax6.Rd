@@ -35,4 +35,3 @@ Simulated dataset containing 3 measured i.i.d. baseline covariates (\code{W1}, \
  Individual variables are described below.
 }
 \keyword{datasets}
-

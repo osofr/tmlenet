@@ -37,4 +37,3 @@ net_ind_obj$makeNetInd.fromIDs(Net_str = Net_str, IDs_str = IDs_str, sep = ' ')
 NetInd_mat <- net_ind_obj$NetInd
 }
 \keyword{datasets}
-

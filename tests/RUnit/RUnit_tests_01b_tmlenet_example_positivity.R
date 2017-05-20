@@ -9,7 +9,7 @@ test.hforms_IPTW_positivity <- function() {
   summary(datO_input)
   NetInd_mat <- attributes(datO_input)$netind_cl$NetInd_k
   K <- ncol(NetInd_mat)
-  # tmlenet_options(useglm = FALSE)
+  # tmlenet_options(bin_estimator = speedglmR6$new())
 
   sW <-  def_sW(W1, W2, WNoise, corrW.F1, corrW.F2, corrW.F3, corrW.F4, corrW.F5, HUB = ifelse(nF >= 25, 1, 0), PA0 = (PA == 0))
   sA <-  def_sA(A, nF.PA = sum(PA[[1:Kmax]]), replaceNAw0 = TRUE) +

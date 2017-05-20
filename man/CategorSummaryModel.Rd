@@ -45,6 +45,6 @@ This R6 class defines and fits a conditional probability model \code{P(sA[j]|sW,
   \item{\code{cats}}{...}
 }
 }
+
 \keyword{R6}
 \keyword{class}
-

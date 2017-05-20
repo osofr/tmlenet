@@ -44,6 +44,6 @@ This R6 class performs the Monte-Carlo evaluation of the target parameters using
   \item{\code{get.fiW()}}{...}
 }
 }
+
 \keyword{R6}
 \keyword{class}
-

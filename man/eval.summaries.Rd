@@ -120,4 +120,3 @@ res_K6$EY_gstar1$IC.CIs
 \seealso{
 \code{\link{tmlenet}} for estimation of network effects and \code{\link{def_sW}} for defining the summary measures.
 }
-

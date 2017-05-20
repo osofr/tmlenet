@@ -36,8 +36,8 @@ print_tmlenet_opts <- function() {
 #' Setting Options for \code{tmlenet}
 #'
 #' Additional options that control the estimation algorithm in \code{tmlenet} package
-#' @param useglm Set to \code{FALSE} to estimate with \code{\link[speedglm]{speedglm.wfit}} and \code{TRUE} for 
-#' \code{\link[stats]{glm.fit}}.
+#' @param bin_estimator The estimator to use for fitting the binary outcomes (defaults to \code{speedglmR6} which estimates with \code{\link[speedglm]{speedglmR6}})
+#'  another default option is \code{\link[stats]{glmR6}}.
 #' @param bin.method The method for choosing bins when discretizing and fitting the conditional continuous summary
 #'  exposure variable \code{sA}. The default method is \code{"equal.len"}, which partitions the range of \code{sA}
 #'  into equal length \code{nbins} intervals. Method \code{"equal.mass"} results in a data-adaptive selection of the bins
@@ -65,7 +65,7 @@ print_tmlenet_opts <- function() {
 #' @return Invisibly returns a list with old option settings.
 #' @seealso \code{\link{print_tmlenet_opts}}
 #' @export
-tmlenet_options <- function(useglm = FALSE,
+tmlenet_options <- function(bin_estimator = speedglmR6$new(),
                             parfit = FALSE,
                             bin.method = c("equal.len", "equal.mass", "dhist"),
                             nbins = NA,
@@ -85,7 +85,7 @@ tmlenet_options <- function(useglm = FALSE,
   }
 
   opts <- list(
-    useglm = useglm,
+    bin_estimator = bin_estimator,
     bin.method = bin.method,
     parfit = parfit,
     nbins = nbins,

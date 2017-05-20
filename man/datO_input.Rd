@@ -11,4 +11,3 @@ data(datO_input)
 An example simulated dataset used for testing
 }
 \keyword{datasets}
-
