@@ -7,7 +7,7 @@ using namespace Rcpp;
 
 // logit_linkinv
 NumericVector logit_linkinv(NumericVector eta);
-RcppExport SEXP tmlenet_logit_linkinv(SEXP etaSEXP) {
+RcppExport SEXP _tmlenet_logit_linkinv(SEXP etaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -15,4 +15,14 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(logit_linkinv(eta));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"_tmlenet_logit_linkinv", (DL_FUNC) &_tmlenet_logit_linkinv, 1},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_tmlenet(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }
