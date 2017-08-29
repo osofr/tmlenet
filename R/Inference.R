@@ -139,7 +139,7 @@ est.sigma_sparse <- function(fvec_i, sparse_connectmtx, excludeIDs = NULL)  {
   # sum of fvec_i[i]*fvec[j] for correlated cross-product terms (i,j), s.t., i<j
   Dstar_crossprod <- sum_crossprod_Fij(sparseAdjMat = sparse_connectmtx, fvec_i = fvec_i, excludeIDs = excludeIDs)
   # double cross prod sum + sum of squares over i=1,...,n
-  Dstar <- (1/n) * ((2*Dstar_crossprod) + sum(fvec_i^2))
+  Dstar <- (1/n) * ((2*abs(Dstar_crossprod)) + sum(fvec_i^2))
   return(Dstar)
 }
 
@@ -164,8 +164,11 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
 
   ## TMLE variance for psi_0 (a double sum to adjust for correlated W and Y):
   var_tmle <- est.sigma_sparse(IC_tmle, connectmtx_1stO)
+  # var_tmle_indep <- (1/n) * sum(IC_tmle^2)
   ## TMLE variance for psi_0(W) (a double sum to adjust for correlated Y), gives inference CONDITIONAL all W, assuming dependent Q | A^s,W^s:
   var_tmle_W <- est.sigma_sparse(IC_Q_tmle, connectmtx_1stO)
+  # var_tmle_W_corr <- est.sigma_sparse(abs(IC_Q_tmle), connectmtx_1stO)
+
   ## Gives inference CONDITIONAL all W, assuming independent Q | A^s,W^s:
   var_tmle_W_indQ <- (1/n) * sum(IC_Q_tmle^2)
   ## IPW inference:
