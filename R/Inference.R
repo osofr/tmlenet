@@ -173,109 +173,24 @@ est_sigmas <- function(estnames, n, NetInd_k, nF, obsYvals, ests_mat, QY_mat, wt
 
   ## record variance ests for marginal parameter (psi_0):
   IC.dep.vars <- c(abs(var_tmle), abs(var_iptw_h), NA)
-  # as.var_mat <- matrix(0, nrow = length(IC.dep.vars), ncol = 1)
-  # as.var_mat[,1] <- IC.dep.vars
-  # rownames(as.var_mat) <- estnames; colnames(as.var_mat) <- "Var"
-
   ## record variance ests for parameter conditional on W (allowing for dependent Q)
   condW.vars <- c(abs(var_tmle_W), NA, NA)
-  # condW.vars <- matrix(0, nrow = length(condW.vars), ncol = 1)
-  # condW.vars[,1] <- condW.vars
-  # rownames(condW.vars) <- names(condW.vars); colnames(condW.vars) <- "Var"
-
   ## Inference conditional on W (assuming only independent Q, conditional on all W,A)
   condW.indepQ.vars <- c(abs(var_tmle_W_indQ), NA, NA)
-  # condW.indepQ.vars <- matrix(0, nrow = length(condW.indepQ.vars), ncol = 1)
-  # condW.indepQ.vars[,1] <- condW.indepQ.vars
-  # rownames(condW.indepQ.vars) <- names(condW.indepQ.vars); colnames(condW.indepQ.vars) <- "Var"
 
   # Simple estimator of the iid asymptotic IC-based variance (no adjustment made when two observations i!=j are dependent):
   iid_var_tmle <- (1/n) * sum(IC_tmle^2)
   iid_var_iptw_h <- mean((IC_iptw_h)^2)
-  # IC_vars <- rbind(var_tmle/n, var_tmle_W_indQ/n, iid_var_tmle/n)
-  # rownames(IC_vars) <- c("var_IC_tmle", "var_tmle_W_indQ", "iid_var_tmle")
-  # # print(IC_vars)
   # IID inference (ignores all dependence)
   iid.vars = c(abs(iid_var_tmle), # no adjustment for correlations i,j for tmle
                abs(iid_var_iptw_h), # no adjustment for correlations i,j for iptw
                NA)
-  # iid.vars <- matrix(0, nrow = length(iid.vars), ncol = 1)
-  # iid.vars[,1] <- iid.vars
-  # rownames(iid.vars) <- names(iid.vars); colnames(iid.vars) <- "Var"
 
   # Alternative TMLE variance estimators using decomposition of the EIC
   ## variance for the 2nd componenent of the EIC:
   IC_W_tmle <- (fWi - MC.tmle.eval)
   var_IC_W_tmle <- est.sigma_sparse(IC_W_tmle, connectmtx_1stO)
   aux.vars <- c(factorized_DY_DW = var_tmle_W_indQ + var_IC_W_tmle)
-  # aux.vars <- matrix(0, nrow = 1, ncol = 1)
-  # colnames(aux.vars) <- "Var"
-  # aux.vars[1,1] <- var_tmle_W_indQ + var_IC_W_tmle
-  # rownames(aux.vars) <- c("factorized_DY_DW")
-
-  # QY.star <- QY_mat[, "QY.star"]
-  # g_wts <- wts_mat[,"g_wts"]
-  # var_tmle_A <- var_tmleiptw_1stO <- var_tmleiptw_2ndO <- var_iptw_1stO <- var_iptw_2ndO <- 0
-  # var_tmle_A_Q.init <- var_tmle_B_Q.init <- 0
-  # # TMLE A (clever covariate update): Inference based on the iid IC analogy, QY.init := initial Q model predictions, h_wts := h_tilde
-  # if (!onlyTMLE_B) {
-  #   IC_tmle_A <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",])
-  #   var_tmle_A <- est.sigma_sparse(IC_tmle_A, connectmtx_1stO)
-  # }
-  # # TMLE B (weighted model update): Inference based on the iid IC:
-  # IC_tmle_B <- h_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",])
-  # var_tmle_B <- est.sigma_sparse(IC_tmle_B, connectmtx_1stO)
-  # # simple iid estimator of the asymptotic variance (no adjustment made when two observations i!=j are dependent):
-  # iid_var_tmle_B <- mean((IC_tmle_B)^2)
-  # TMLE based on iptw clever covariate (more non-parametric):
-  # if (!onlyTMLE_B) {
-  #   IC_tmleiptw <- g_wts * (obsYvals - QY.init) + (fWi - ests_mat[rownames(ests_mat)%in%"tmle_g_iptw",])
-  #   var_tmleiptw_1stO <- est.sigma_sparse(IC_tmleiptw, connectmtx_1stO)
-  # }
-  # # IPTW g:
-  # if (!onlyTMLE_B) {
-  #   iidIC_iptw_g <- g_wts * (obsYvals) - (ests_mat[rownames(ests_mat)%in%"g_iptw",])
-  #   var_iptw_1stO <- est.sigma_sparse(iidIC_iptw_g, connectmtx_1stO)
-  # }
-  # Inference based on the EIC, with factorization into orthogonal components sigma2_DY and sigma2_W_N
-  # sigma2_DY_i are independent (since they are conditioned on W,A)
-  # sigma2_W_N_i are dependent => need to take double sum of their crossprod among dependent units
-  # if (!onlyTMLE_B) {
-  #   D_star_Yi.Qinit <- h_wts * (obsYvals - QY.init) # h*(Y-Q_bar_N):
-  #   sigma2_DY <- (1/n) * sum(D_star_Yi.Qinit^2)  # Sum_{i} (D_star_Yi)^2
-
-  #   fW_A_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_A",]
-  #   sigma2_W_N_A <- est.sigma_sparse(fW_A_i, connectmtx_1stO)
-  #   var_tmle_A_Q.init <- sigma2_W_N_A + sigma2_DY
-
-  #   # **NEW** TMLE B (weights model update)
-  #   fW_B_i <- fWi - ests_mat[rownames(ests_mat)%in%"tmle_B",]
-  #   sigma2_W_N_B <- est.sigma_sparse(fW_B_i, connectmtx_1stO)
-  #   var_tmle_B_Q.init <- sigma2_W_N_B + sigma2_DY
-
-  #   # D_star_Yi.Qstar <- h_wts * (obsYvals - QY.star)
-  #   # D_star_Yi.Qstar[determ.Q] <- 0
-  #   # fDY_crossprod <- get.crossprodmtx(D_star_Yi.Qstar)
-  #   # double sum over dependent subjects, Sum_{i,j} R_W(i,j)*D_star_Yi*D_star_Yj
-  #   # sigma2_Y_N <- est.sigma_sparse(D_star_Yi.Qstar, connectmtx_1stO)
-  #   # var_tmle_Q.init_c <- sigma2_W_N_A + sigma2_Y_N
-
-  #   # #--------
-  #   # # conservative estimate of the as. variance from EIC for TMLE A:
-  #   # # abs terms double sum over dependent subjects, Sum_{i,j} R_W(i,j)*|D_star_Yi|*|D_star_Yj|:
-  #   # abs_sigma2_Y_N <- est.sigma_sparse(abs(D_star_Yi.Qstar), connectmtx_1stO)
-  #   # var_tmle_A_Q.star_cons <- sigma2_W_N_A + abs_sigma2_Y_N
-  #   # # --------
-  # }
-  # var.ests <- c(abs(var_tmle_A), abs(var_tmle_B), abs(var_tmleiptw_1stO), abs(var_iptw_h), abs(var_iptw_1stO), 0)
-  # estnames <- c( "TMLE_A", "TMLE_B", "TMLE_g_IPTW", "h_IPTW", "g_IPTW", "MLE")
-  # other.vars = c(
-  #               iid_var_tmle_B = abs(iid_var_tmle_B), # no adjustment for correlations i,j
-  #               var_tmleiptw_2ndO = abs(var_tmleiptw_2ndO), # adjusting for 2nd order dependence of i,j
-  #               var_iptw_2ndO = abs(var_iptw_2ndO), # adjusting for 2nd order dependence of i,j
-  #               var_tmle_A_Q.init = abs(var_tmle_A_Q.init), # using the EIC & Q.init for TMLE A
-  #               var_tmle_B_Q.init = abs(var_tmle_B_Q.init)  # using the EIC & Q.init for TMLE B
-  #               )
 
   # return(list(as.var_mat = as.var_mat))
   return(list(IC.dep.vars = as.matrix(IC.dep.vars),
